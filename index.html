@@ -605,7 +605,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
     <div style="overflow-x:auto">
       <table>
         <thead><tr>
-          <th>Secretaria / Centro de Custo / Regime</th>
+          <th>Secretaria / Centro de Custo / Regime / Servidor</th>
           <th class="num-right">Serv./mês</th>
           <th class="num-right">Valor Total</th>
           <th class="num-right">% do Total</th>
@@ -1727,7 +1727,7 @@ function buildDrilldown(d) {
                 .forEach(([,srv])=>{
                   const avgMes=srv.meses>0?srv.v/srv.meses:0;
                   const pctSrv=rd.v>0?(srv.v/rd.v*100).toFixed(1):0;
-                  rows.push({level:3,label:srv.nome,v:srv.v,q:srv.meses,pct:pctSrv,avgMes,expanded:false,key:null});
+                  rows.push({level:3,si,ci,ri,label:srv.nome,v:srv.v,q:srv.meses,pct:pctSrv,avgMes,expanded:false,key:null});
                 });
             }
           });
