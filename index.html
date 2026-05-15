@@ -137,6 +137,9 @@ tbody td{padding:10px 14px;font-size:13px}
 .pager button{padding:4px 13px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;transition:all .15s;font-family:inherit}
 .pager button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .pager button:disabled{opacity:.3;cursor:default}
+.pager-btn{padding:4px 13px;border:1.5px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;transition:all .15s;font-family:inherit}
+.pager-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pager-btn:disabled{opacity:.3;cursor:default}
 footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-top:1px solid var(--border);background:#fff}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
 
@@ -169,8 +172,8 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
   <div class="tab-nav-inner">
     <button class="tab-btn active" id="tbtn-geral" onclick="switchTab('geral')">&#128202; Vis&#227;o Geral</button>
     <button class="tab-btn" id="tbtn-cc" onclick="switchTab('cc')">&#128193; Centro de Custo</button>
-    <button class="tab-btn" id="tbtn-diag" onclick="switchTab('diag')">&#128270; Diagn&#243;stico RH</button>
-    <button class="tab-btn" id="tbtn-audit" onclick="switchTab('audit')">&#128373;&#65039; Auditoria</button>
+    <button class="tab-btn" id="tbtn-diag" onclick="switchTab('diag')">&#9888;&#65039; Diagn&#243;stico RH</button>
+    <button class="tab-btn" id="tbtn-audit" onclick="switchTab('audit')">&#128270; Auditoria</button>
   </div>
 </div>
 
@@ -1390,8 +1393,8 @@ function renderTab(){
   }).join('');
   const s=(pgAtual-1)*PG+1, e=Math.min(pgAtual*PG,tot);
   document.getElementById('pInfo').textContent=`${fN(s)}–${fN(e)} de ${fN(tot)} registros`;
-  document.querySelectorAll('.pager button')[0].disabled=pgAtual<=1;
-  document.querySelectorAll('.pager button')[1].disabled=pgAtual>=maxPg;
+  document.querySelectorAll('#tab-geral .pager button')[0].disabled=pgAtual<=1;
+  document.querySelectorAll('#tab-geral .pager button')[1].disabled=pgAtual>=maxPg;
 }
 function pgPrev(){if(pgAtual>1){pgAtual--;renderTab();}}
 function pgNext(){pgAtual++;renderTab();}
