@@ -1994,6 +1994,8 @@ function renderAuditF() {
 }
 
 function initAudit() {
+  const AUDIT_ANOS = new Set([2025, 2026]);
+
   // ── Índices ─────────────────────────────────────────────────
   const ri_tmp = REGS.findIndex(r=>r.includes('Tempor'));
   const ri_ef  = REGS.findIndex(r=>r==='2 - Estatutários');
@@ -2003,6 +2005,7 @@ function initAudit() {
   const bySec = {};
   RAW.forEach(r=>{
     const [mes,ano,si,ri,qtd,val]=r;
+    if(!AUDIT_ANOS.has(ano)) return;
     if(!bySec[si]) bySec[si]=[];
     bySec[si].push({mes,ano,val});
   });
@@ -2038,6 +2041,7 @@ function initAudit() {
   const auditC=[];
   SRV_RAW.forEach(r=>{
     const [ano,si,ci,ri,mi,ni,meses,val]=r;
+    if(!AUDIT_ANOS.has(ano)) return;
     if(meses===0) return;
     const k=mi+'_'+ano; if(seen.has(k)) return; seen.add(k);
     const mv=val/meses, med=regMed[ri]||0;
@@ -2053,6 +2057,7 @@ function initAudit() {
   const byMatAno={};
   SRV_RAW.forEach(r=>{
     const [ano,si,ci,ri,mi,ni,meses,val]=r;
+    if(!AUDIT_ANOS.has(ano)) return;
     const k=mi+'_'+ano;
     if(!byMatAno[k]) byMatAno[k]={mi,ano,ni,entries:[]};
     byMatAno[k].entries.push({si,ci,ri,val,meses,cc_norm:norm2(SRV_CCS[ci])});
@@ -2081,6 +2086,7 @@ function initAudit() {
   const byCCAno={};
   cc_raw2.forEach(r=>{
     const [mes,ano,si,ci,ri,qtd,val]=r;
+    if(!AUDIT_ANOS.has(ano)) return;
     const k=ci+'_'+ano;
     if(!byCCAno[k]) byCCAno[k]={ci,si,ano,v:0,q:0,cnt:0,meses:new Set()};
     byCCAno[k].v+=val; byCCAno[k].q+=qtd; byCCAno[k].cnt++; byCCAno[k].meses.add(mes);
