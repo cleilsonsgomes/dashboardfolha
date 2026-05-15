@@ -268,7 +268,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
       <div class="dl-item"><div class="dl-dot" style="background:#4f46e5"></div> Valor Bruto (eixo esq.)</div>
       <div class="dl-item"><div class="dl-dot" style="background:#10b981"></div> Qtd. Servidores (eixo dir.)</div>
     </div>
-    <canvas id="cSec" height="420"></canvas>
+    <canvas id="cSec" height="340"></canvas>
   </div>
 
   <!-- Regime + RegimeQtd -->
@@ -863,7 +863,7 @@ function aggSec(d){
   const m={};
   d.forEach(r=>{ if(!m[r[2]])m[r[2]]={v:0,q:0,cnt:0}; m[r[2]].v+=r[5];m[r[2]].q+=r[4];m[r[2]].cnt++; });
   const s=Object.entries(m).sort((a,b)=>b[1].v-a[1].v);
-  const sh=n=>n.replace('Secretaria Municipal de ','SM ').replace('Secretaria Municipal do ','SM ').replace('Secretaria de ','Sec. ').substring(0,32);
+  const sh=n=>n.replace('Secretaria Municipal de ','SM ').replace('Secretaria Municipal do ','SM ').replace('Secretaria de ','Sec. ').replace('Controladoria Geral do Município - CGM','CGM').replace('Procuradoria Geral do Município - PGM','PGM').replace('Assessoria de Comunicação','Assessoria Comunic.').substring(0,28);
   return {labels:s.map(([i])=>sh(SECS[i])),values:s.map(([,x])=>x.v),qtds:s.map(([,x])=>Math.round(x.q/Math.max(1,x.cnt)))};
 }
 function aggReg(d){
@@ -1049,13 +1049,14 @@ function initCharts(d){
   }});
 
   cSec=new Chart(document.getElementById('cSec'),{type:'bar',data:{labels:sec.labels,datasets:[
-    {label:'Valor Bruto',data:sec.values,yAxisID:'y',backgroundColor:BLUE+'cc',borderRadius:4,borderSkipped:false,barPercentage:.35,categoryPercentage:.75},
-    {label:'Servidores (média/mês)',data:sec.qtds,yAxisID:'y2',backgroundColor:GREEN+'cc',borderRadius:4,borderSkipped:false,barPercentage:.35,categoryPercentage:.75},
-  ]},options:{responsive:true,interaction:{mode:'index',intersect:false},
+    {label:'Valor Bruto',data:sec.values,xAxisID:'x',backgroundColor:BLUE+'cc',borderRadius:4,borderSkipped:false,barPercentage:.5,categoryPercentage:.8},
+    {label:'Servidores (média/mês)',data:sec.qtds,xAxisID:'x2',backgroundColor:GREEN+'cc',borderRadius:4,borderSkipped:false,barPercentage:.5,categoryPercentage:.8},
+  ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
     plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>ctx.datasetIndex===0?' Valor: '+fS(ctx.raw):'  Serv.: '+fN(ctx.raw)+' serv./mês'}}},
-    scales:{x:{grid:{display:false},ticks:{font:{size:11}}},
-      y:{grid:{color:'#f0f0f8'},border:{display:false},ticks:{font:{size:11},callback:v=>fS(v)},title:{display:true,text:'Valor Bruto',font:{size:10},color:'#6b7280'}},
-      y2:{position:'right',grid:{display:false},border:{display:false},ticks:{font:{size:11},callback:v=>fN(v)},title:{display:true,text:'Servidores',font:{size:10},color:'#6b7280'}}}
+    scales:{
+      y:{grid:{display:false},border:{display:false},ticks:{font:{size:10}}},
+      x:{position:'bottom',grid:{color:'#f0f0f8'},border:{display:false},ticks:{font:{size:10},callback:v=>fS(v)},title:{display:true,text:'Valor Bruto',font:{size:10},color:'#4f46e5'}},
+      x2:{position:'top',grid:{display:false},border:{display:false},ticks:{font:{size:10},callback:v=>fN(v)},title:{display:true,text:'Servidores',font:{size:10},color:'#10b981'}}}
   }});
 
   cReg=new Chart(document.getElementById('cReg'),{type:'doughnut',data:{labels:reg.labels,datasets:[{data:reg.values,backgroundColor:reg.colors,borderWidth:2,borderColor:'#fff',hoverOffset:8}]},
