@@ -1574,10 +1574,9 @@ const CCCCS  = DCC.ccs;
 const CCREGS = DCC.regs;
 const RAWCC  = DCC.raw; // [mes, ano, secIdx, ccIdx, regIdx, qtd, valor]
 
-// Server-level data (ano-level aggregation)
-const DCCS      = JSON.parse(document.getElementById('dccs').textContent);
-const DCCS_NOMES = DCCS.nomes;  // nomes de servidores
-const DCCS_RAW   = DCCS.raw;    // [ano, secIdx, ccIdx, regIdx, matIdx, nomeIdx, meses, valor]
+// Server-level data — lazy-loaded inside initCC() to avoid DOM ordering issue
+let DCCS_NOMES = [];
+let DCCS_RAW   = [];
 
 // ═══════════════════════════════════════════════════════
 // CC MULTI-SELECT ENGINE (namespace: MSC + c-prefixed IDs)
@@ -1792,6 +1791,13 @@ function ccPgNext(){ ccPg++;renderDrilldown(); }
 // CC INIT
 // ═══════════════════════════════════════════════════════
 function initCC() {
+  // Lazy-load server data (dccs tag appears after this script in the DOM)
+  const _dccsEl = document.getElementById('dccs');
+  if (_dccsEl) {
+    const _dccs = JSON.parse(_dccsEl.textContent);
+    DCCS_NOMES = _dccs.nomes;
+    DCCS_RAW   = _dccs.raw;
+  }
   // Determina índice do regime Cargos em Comissão
   const regComIdx = CCREGS.findIndex(r=>r.includes('Cargos em Comiss'));
   const defaultReg = regComIdx>=0 ? [String(regComIdx)] : [];
