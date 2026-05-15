@@ -2522,10 +2522,26 @@ function buildDrilldown(d) {
   const nomeBusca=(document.getElementById('ccNomeBusca')||{value:''}).value.toLowerCase();
   // Anos selecionados (para filtro no nível servidor)
   const sAno=MSC['ano']?MSC['ano'].selected:new Set();
+
+  // Índice de nomes para busca rápida: key="si_ci_ri" → [nomes]
+  const srvIdx={};
+  if(nomeBusca && DCCS_RAW.length){
+    DCCS_RAW.forEach(r=>{
+      const [ano,rsi,rci,rri,rmi,rni,rmeses,rval]=r;
+      if(sAno.size>0&&sAno.size<MSC['ano'].allValues.length&&!sAno.has(String(ano))) return;
+      const k=rsi+'_'+rci+'_'+rri;
+      if(!srvIdx[k]) srvIdx[k]=new Set();
+      srvIdx[k].add(DCCS_NOMES[rni].toLowerCase());
+    });
+  }
+  const secHasMatch=si=>!nomeBusca||Object.keys(srvIdx).some(k=>k.startsWith(si+'_')&&[...srvIdx[k]].some(n=>n.includes(nomeBusca)));
+
   const rows=[];
   Object.entries(bysSec).sort((a,b)=>b[1].v-a[1].v).forEach(([si,sd])=>{
+    if(nomeBusca&&!secHasMatch(si)) return;
     const secLabel=CCSECS[si];
-    const secExpanded=expandedSecs.has(si);
+    const forceExpand=!!nomeBusca;
+    const secExpanded=forceExpand||expandedSecs.has(si);
     const pct=grandTotal>0?(sd.v/grandTotal*100).toFixed(1):0;
     const q=avgQ(sd);
     if(busca&&!secLabel.toLowerCase().includes(busca)){
@@ -2538,14 +2554,14 @@ function buildDrilldown(d) {
         const ccLabel=CCCCS[ci];
         if(busca&&!secLabel.toLowerCase().includes(busca)&&!ccLabel.toLowerCase().includes(busca)) return;
         const ccKey=si+'-'+ci;
-        const ccExpanded=expandedCCs.has(ccKey);
+        const ccExpanded=forceExpand||expandedCCs.has(ccKey);
         const pctCC=sd.v>0?(cd.v/sd.v*100).toFixed(1):0;
         const qCC=avgQ(cd);
         rows.push({level:1,si,ci,label:ccLabel,v:cd.v,q:qCC,pct:pctCC,expanded:ccExpanded,key:ccKey});
         if(ccExpanded){
           Object.entries(cd.regs).sort((a,b)=>b[1].v-a[1].v).forEach(([ri,rd])=>{
             const regKey=si+'-'+ci+'-'+ri;
-            const regExpanded=expandedRegs.has(regKey);
+            const regExpanded=forceExpand||expandedRegs.has(regKey);
             const pctR=cd.v>0?(rd.v/cd.v*100).toFixed(1):0;
             const qR=avgQ(rd);
             rows.push({level:2,si,ci,ri,label:CCREGS[ri].replace(/^\d+ - /,''),v:rd.v,q:qR,pct:pctR,expanded:regExpanded,key:regKey});
