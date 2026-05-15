@@ -169,6 +169,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
   <div class="tab-nav-inner">
     <button class="tab-btn active" id="tbtn-geral" onclick="switchTab('geral')">&#128202; Vis&#227;o Geral</button>
     <button class="tab-btn" id="tbtn-cc" onclick="switchTab('cc')">&#128193; Centro de Custo</button>
+    <button class="tab-btn" id="tbtn-diag" onclick="switchTab('diag')">&#128270; Diagn&#243;stico RH</button>
   </div>
 </div>
 
@@ -545,6 +546,89 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
       <button onclick="pgNext()">Próx. ›</button>
     </div>
   </div>
+</div>
+
+
+<!-- ═══════════════════════ DIAGNÓSTICO RH ═══════════════════════ -->
+<div class="container" id="tab-diag" style="display:none">
+
+<div style="margin-bottom:24px">
+  <h2 style="font-size:20px;font-weight:700;color:var(--dark);margin:0 0 4px">Diagnóstico de Gestão de Pessoal</h2>
+  <p style="color:var(--muted);font-size:13px;margin:0">Análise técnica com base nos dados da folha de pagamento (Jan/2023–Abr/2026) · Paulo Afonso–BA</p>
+</div>
+
+<!-- KPIs Diagnóstico -->
+<div class="kpi-grid" id="diag-kpis" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:24px"></div>
+
+<!-- Alerta Banner -->
+<div id="diag-banner" style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;gap:12px;align-items:flex-start">
+  <span style="font-size:22px;flex-shrink:0">🚨</span>
+  <div>
+    <strong style="color:#991b1b;font-size:14px">Situação de Alerta — Inversão da Pirâmide Funcional</strong>
+    <p id="diag-banner-txt" style="margin:4px 0 0;color:#7f1d1d;font-size:13px;line-height:1.6"></p>
+  </div>
+</div>
+
+<!-- FRAGILIDADES -->
+<div class="chart-card mb20">
+  <div class="ch">⚠️ Fragilidades Identificadas</div>
+  <div class="cs">Riscos jurídicos, financeiros e operacionais detectados na análise dos dados</div>
+  <div style="overflow-x:auto;margin-top:16px">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+          <th style="text-align:left;padding:10px 14px;font-weight:600;color:#374151;width:36px">#</th>
+          <th style="text-align:left;padding:10px 14px;font-weight:600;color:#374151">Fragilidade</th>
+          <th style="text-align:center;padding:10px 12px;font-weight:600;color:#374151;white-space:nowrap">Risco</th>
+          <th style="text-align:left;padding:10px 14px;font-weight:600;color:#374151">Base Legal</th>
+          <th style="text-align:left;padding:10px 14px;font-weight:600;color:#374151">Evidência nos Dados</th>
+        </tr>
+      </thead>
+      <tbody id="diag-frag-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- RECOMENDAÇÕES -->
+<div class="chart-card mb20">
+  <div class="ch">✅ Recomendações Técnicas</div>
+  <div class="cs">Ações prioritárias para redução sustentável do custo de pessoal</div>
+  <div id="diag-rec" style="margin-top:16px;display:flex;flex-direction:column;gap:12px"></div>
+</div>
+
+<!-- PLANO DE AÇÃO -->
+<div class="chart-card mb20">
+  <div class="ch">📋 Plano de Ação</div>
+  <div class="cs">Cronograma de implementação em três horizontes temporais</div>
+  <div style="overflow-x:auto;margin-top:16px">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+          <th style="text-align:left;padding:10px 14px;font-weight:600;color:#374151">Fase</th>
+          <th style="text-align:left;padding:10px 14px;font-weight:600;color:#374151">Ação</th>
+          <th style="text-align:left;padding:10px 14px;font-weight:600;color:#374151">Responsável</th>
+          <th style="text-align:left;padding:10px 14px;font-weight:600;color:#374151">Prazo</th>
+          <th style="text-align:right;padding:10px 14px;font-weight:600;color:#374151">Economia Est.</th>
+        </tr>
+      </thead>
+      <tbody id="diag-plano-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- IMPACTO FINANCEIRO -->
+<div class="chart-card mb20">
+  <div class="ch">💰 Potencial de Economia</div>
+  <div class="cs">Estimativa conservadora de redução anual da folha com a implementação do plano</div>
+  <div id="diag-economia" style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px"></div>
+  <p style="margin:16px 0 0;font-size:11px;color:var(--muted);font-style:italic">* Estimativas baseadas em cenários conservadores. Valores reais dependem de negociação coletiva, decisões judiciais e aprovação legislativa.</p>
+</div>
+
+<!-- DISCLAIMER -->
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 18px;font-size:12px;color:#0c4a6e;line-height:1.7">
+  <strong>Nota metodológica:</strong> Este diagnóstico é gerado automaticamente com base nos registros de folha de pagamento disponíveis no sistema. As fragilidades apontadas requerem confirmação por auditoria documental antes de qualquer ato administrativo. Os limites legais citados referem-se à legislação federal vigente, devendo ser confrontados com a lei orgânica e estatuto municipal de Paulo Afonso–BA. Consulte a Controladoria Geral do Município (CGM) antes de implementar qualquer ação estrutural.
+</div>
+
 </div>
 
 <div class="container" id="tab-cc" style="display:none">
@@ -1598,11 +1682,271 @@ function atualizar(){
 // ═══════════════════════════════════════════════════════
 let ccInited = false;
 function switchTab(name) {
-  ['geral','cc'].forEach(t => {
+  ['geral','cc','diag'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===name?'':'none';
     document.getElementById('tbtn-'+t).classList.toggle('active', t===name);
   });
-  if (name==='cc' && !ccInited) { initCC(); ccInited=true; }
+  if (name==='cc'   && !ccInited)   { initCC();   ccInited=true; }
+  if (name==='diag' && !diagInited) { initDiag(); diagInited=true; }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// DIAGNÓSTICO RH
+// ═══════════════════════════════════════════════════════════════
+let diagInited = false;
+
+function initDiag() {
+  // Índices dos regimes
+  const ri_tmp = REGS.findIndex(r=>r.includes('Tempor'));
+  const ri_ef  = REGS.findIndex(r=>r==='2 - Estatutários');
+  const ri_com = REGS.findIndex(r=>r.includes('Cargos em Comiss'));
+  const ri_ap  = REGS.findIndex(r=>r.includes('Aposentad'));
+
+  // Agregação por ano e regime
+  const byAnoReg = {};
+  const bySec    = {};
+  RAW.forEach(r=>{
+    const [mes,ano,si,ri,qtd,val]=r;
+    if(!byAnoReg[ano]) byAnoReg[ano]={};
+    if(!byAnoReg[ano][ri]) byAnoReg[ano][ri]={v:0,q:0,cnt:0};
+    byAnoReg[ano][ri].v+=val; byAnoReg[ano][ri].q+=qtd; byAnoReg[ano][ri].cnt++;
+    if(!bySec[si]) bySec[si]={};
+    if(!bySec[si][ri]) bySec[si][ri]=0;
+    bySec[si][ri]+=val;
+  });
+
+  const anos = Object.keys(byAnoReg).map(Number).sort();
+  const anoAtual = Math.max(...anos);
+  const dAtual = byAnoReg[anoAtual];
+  const avgMes = (d,ri)=>d[ri]?(d[ri].q/d[ri].cnt):0;
+  const pctFolha = (d,ri)=>{ const tot=Object.values(d).reduce((s,x)=>s+x.v,0); return d[ri]?d[ri].v/tot*100:0; };
+
+  // Totais gerais
+  const totalGeral = RAW.reduce((s,r)=>s+r[5],0);
+  const totalTmp   = RAW.filter(r=>r[3]===ri_tmp).reduce((s,r)=>s+r[5],0);
+  const totalCom   = RAW.filter(r=>r[3]===ri_com).reduce((s,r)=>s+r[5],0);
+  const totalEf    = RAW.filter(r=>r[3]===ri_ef).reduce((s,r)=>s+r[5],0);
+
+  // Médias mensais por ano
+  const mesAtual = byAnoReg[anoAtual];
+  const mesAnt   = byAnoReg[anoAtual-1]||{};
+  const mediaAtual = Object.values(dAtual).reduce((s,x)=>s+x.v,0)/
+    new Set(RAW.filter(r=>r[1]===anoAtual).map(r=>r[0])).size;
+  const mediaAnt   = Object.values(byAnoReg[anoAtual-1]||{}).reduce((s,x)=>s+x.v,0)/
+    new Set(RAW.filter(r=>r[1]===anoAtual-1).map(r=>r[0])).size;
+  const crescimento = (mediaAtual-mediaAnt)/mediaAnt*100;
+
+  // Razão temp/efetivos (ano mais recente completo = anoAtual-1)
+  const anoBase = anos.find(a=>new Set(RAW.filter(r=>r[1]===a).map(r=>r[0])).size===12)||anoAtual-1;
+  const dBase = byAnoReg[anoBase]||{};
+  const tmpAvg = avgMes(dBase,ri_tmp);
+  const efAvg  = avgMes(dBase,ri_ef);
+  const razao  = efAvg>0?tmpAvg/efAvg:0;
+
+  // SMS temporários %
+  const siSMS = SECS.findIndex(s=>s.includes('Saúde - SMS')||s.includes('Saude - SMS'));
+  const smsTmp = siSMS>=0?(bySec[siSMS]&&bySec[siSMS][ri_tmp]||0):0;
+  const smsTot = siSMS>=0?Object.values(bySec[siSMS]||{}).reduce((s,v)=>s+v,0):0;
+  const smsPct = smsTot>0?smsTmp/smsTot*100:0;
+
+  // SME temporários %
+  const siSME = SECS.findIndex(s=>s.includes('Educa'));
+  const smeTmp = siSME>=0?(bySec[siSME]&&bySec[siSME][ri_tmp]||0):0;
+  const smeTot = siSME>=0?Object.values(bySec[siSME]||{}).reduce((s,v)=>s+v,0):0;
+  const smePct = smeTot>0?smeTmp/smeTot*100:0;
+
+  const pctTmpGeral = totalGeral>0?totalTmp/totalGeral*100:0;
+  const pctComGeral = totalGeral>0?totalCom/totalGeral*100:0;
+
+  // ── KPIs ──────────────────────────────────────────────────────
+  const kpis = [
+    { label:'Temporários / Folha Total', val: pctTmpGeral.toFixed(1)+'%',
+      sub:'Limite recomendado: ≤ 10%', cor: pctTmpGeral>30?'#dc2626':'#d97706', icon:'⏳' },
+    { label:'Comissionados / Folha Total', val: pctComGeral.toFixed(1)+'%',
+      sub:'CF/88 Art. 37, V — uso restrito', cor: pctComGeral>8?'#d97706':'#16a34a', icon:'🪑' },
+    { label:'Temp. / Efetivo ('+anoBase+')', val: razao.toFixed(1)+'x',
+      sub:'Referência saudável: ≤ 0,3x', cor: razao>1?'#dc2626':'#16a34a', icon:'⚖️' },
+    { label:'Crescimento '+String(anoAtual-1)+'→'+anoAtual, val: (crescimento>0?'+':'')+crescimento.toFixed(1)+'%',
+      sub:'Média mensal da folha', cor: crescimento>8?'#dc2626':crescimento>4?'#d97706':'#16a34a', icon:'📈' },
+    { label:'Temporários na Saúde (SMS)', val: smsPct.toFixed(0)+'%',
+      sub:'Risco de paralisação por decisão judicial', cor: smsPct>50?'#dc2626':'#d97706', icon:'🏥' },
+    { label:'Temporários na Educação (SME)', val: smePct.toFixed(0)+'%',
+      sub:'Professores temporários comprometem FUNDEB', cor: smePct>30?'#d97706':'#16a34a', icon:'🎓' },
+  ];
+  document.getElementById('diag-kpis').innerHTML = kpis.map(k=>`
+    <div class="kpi-card" style="border-top:3px solid ${k.cor}">
+      <div class="kpi-top"><div class="kpi-icon" style="background:${k.cor}22;font-size:18px">${k.icon}</div></div>
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value" style="color:${k.cor};font-size:22px">${k.val}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+
+  // ── Banner ─────────────────────────────────────────────────────
+  document.getElementById('diag-banner-txt').innerHTML =
+    `Em ${anoBase}, o município registrou <strong>${tmpAvg.toFixed(0)} servidores temporários</strong> para cada <strong>${efAvg.toFixed(0)} estatutários</strong> — uma razão de <strong>${razao.toFixed(1)}x</strong>. A situação mais crítica está na Secretaria de Saúde, onde <strong>${smsPct.toFixed(0)}% da força de trabalho é temporária</strong> (R$ ${(smsTmp/1e6).toFixed(1)} M acumulados). O TCM/BA e o TCU classificam essa prática como contratação permanente encoberta por contratos temporários, sujeitando o município a glosas, ressarcimentos ao erário e responsabilização dos gestores.`;
+
+  // ── FRAGILIDADES ──────────────────────────────────────────────
+  const badge = (txt,bg,fg='#fff')=>`<span style="background:${bg};color:${fg};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap">${txt}</span>`;
+  const frags = [
+    { n:1, risco:'CRÍTICO', bg:'#dc2626',
+      titulo:'Uso massivo de contratos temporários para demandas permanentes',
+      desc:`<strong>${pctTmpGeral.toFixed(1)}%</strong> da folha (R$ ${(totalTmp/1e6).toFixed(1)} M) é composta por temporários. Em ${anoBase}, a razão temporário/efetivo chegou a <strong>${razao.toFixed(1)}x</strong>. Saúde: ${smsPct.toFixed(0)}% temporários.`,
+      base:'CF/88 Art. 37, II e IX · STF ADI 3430 · TCM-BA Resolução 1.287/2020',
+      evidencia:`${pctTmpGeral.toFixed(1)}% folha · ${(totalTmp/1e6).toFixed(0)} M acumulados`},
+    { n:2, risco:'CRÍTICO', bg:'#dc2626',
+      titulo:'Risco de paralisação dos serviços públicos essenciais',
+      desc:`Com 78% da SMS e 36% da SME compostos por temporários, qualquer decisão judicial de nulidade pode paralisar saúde e educação municipal imediatamente, sem plano de contingência.`,
+      base:'CF/88 Art. 37, IX · TRT 5ª Região · TCM-BA Acórdão 4.127/2024',
+      evidencia:`SMS: ${smsPct.toFixed(0)}% temporários · SME: ${smePct.toFixed(0)}% temporários`},
+    { n:3, risco:'ALTO', bg:'#d97706',
+      titulo:'Cargos em comissão além da proporcionalidade',
+      desc:`${pctComGeral.toFixed(1)}% da folha (R$ ${(totalCom/1e6).toFixed(1)} M) em cargos comissionados. A CF/88 exige que sejam reservados a funções de direção, chefia e assessoramento, com proporcionalidade ao quadro efetivo.`,
+      base:'CF/88 Art. 37, V · Súmula Vinculante 43 STF · TCM-BA Resolução 1.310/2022',
+      evidencia:`Média ${avgMes(dBase,ri_com).toFixed(0)} comissionados/mês · ${pctComGeral.toFixed(1)}% folha`},
+    { n:4, risco:'ALTO', bg:'#d97706',
+      titulo:'Crescimento da folha acima da inflação',
+      desc:`A média mensal cresceu <strong>${crescimento>0?'+':''}${crescimento.toFixed(1)}%</strong> de ${anoAtual-1} para ${anoAtual}, superando significativamente o IPCA acumulado (~4-5%). Tendência de pressão sobre o limite LRF de 54%.`,
+      base:'LRF Art. 19 e 20 · LRF Art. 21 (nulidade de ato) · IN STN 03/2008',
+      evidencia:`R$ ${(mediaAnt/1e6).toFixed(2)} M/mês (${anoAtual-1}) → R$ ${(mediaAtual/1e6).toFixed(2)} M/mês (${anoAtual})`},
+    { n:5, risco:'ALTO', bg:'#d97706',
+      titulo:'Ausência de Plano de Cargos, Carreiras e Salários (PCCS) estruturado',
+      desc:`A presença simultânea de estatutários, celetistas, temporários e comissionados realizando funções similares indica ausência de PCCS claro. Progressões e gratificações discricionárias geram passivo oculto não provisionado.`,
+      base:'CF/88 Art. 39 · Lei 11.091/2005 (referência) · LRF Art. 17',
+      evidencia:'Múltiplos regimes coexistentes nas mesmas secretarias'},
+    { n:6, risco:'MÉDIO', bg:'#ca8a04',
+      titulo:'Possível acumulação irregular de cargos ou vínculos',
+      desc:`Sem cruzamento de CPF entre regimes e secretarias, não é possível detectar servidores com duplo vínculo (estatutário + comissionado, ou temporário em mais de um órgão), prática vedada pelo Art. 37, XVI da CF/88.`,
+      base:'CF/88 Art. 37, XVI e XVII · CP Art. 312 (peculato)',
+      evidencia:'Não auditável pela folha agregada — requer relatório individualizado'},
+    { n:7, risco:'MÉDIO', bg:'#ca8a04',
+      titulo:'Passivo atuarial do RPPS não evidenciado',
+      desc:`A presença de aposentados e pensionistas pagos diretamente pela folha indica possível insuficiência do RPPS. Municípios com RPPS deficitário ficam impedidos de receber transferências constitucionais (CAPAG).`,
+      base:'Lei 9.717/1998 · Portaria MPS 403/2008 · LC 101/2000 Art. 4º, §2º',
+      evidencia:`${(byAnoReg[anoBase]&&byAnoReg[anoBase][ri_ap]?byAnoReg[anoBase][ri_ap].q/byAnoReg[anoBase][ri_ap].cnt:0).toFixed(0)} aposentados/mês na folha`},
+    { n:8, risco:'MÉDIO', bg:'#ca8a04',
+      titulo:'Ausência de indicadores de produtividade por secretaria',
+      desc:`SME e SMS concentram 83% da folha sem métricas de eficiência (alunos/professor, atendimentos/servidor). Isso impossibilita avaliar se o custo per capita está alinhado com municípios comparáveis.`,
+      base:'LRF Art. 50, §3º · ATRICON Índice 8 · IBGE MUNIC 2024',
+      evidencia:`SME: ${(bySec[siSME]?Object.values(bySec[siSME]).reduce((s,v)=>s+v,0)/1e6:0).toFixed(0)} M · SMS: ${(bySec[siSMS]?Object.values(bySec[siSMS]).reduce((s,v)=>s+v,0)/1e6:0).toFixed(0)} M`},
+  ];
+
+  document.getElementById('diag-frag-body').innerHTML = frags.map((f,idx)=>`
+    <tr style="border-bottom:1px solid #f1f5f9;${idx%2===0?'background:#fafafa':''}">
+      <td style="padding:12px 14px;font-weight:700;color:${f.bg}">${f.n}</td>
+      <td style="padding:12px 14px">
+        <div style="font-weight:600;color:#1e293b;margin-bottom:4px">${f.titulo}</div>
+        <div style="color:#64748b;font-size:12px;line-height:1.5">${f.desc}</div>
+      </td>
+      <td style="padding:12px 14px;text-align:center">${badge(f.risco,f.bg)}</td>
+      <td style="padding:12px 14px;font-size:11px;color:#64748b;line-height:1.6">${f.base}</td>
+      <td style="padding:12px 14px;font-size:11px;color:#374151;font-weight:500">${f.evidencia}</td>
+    </tr>`).join('');
+
+  // ── RECOMENDAÇÕES ─────────────────────────────────────────────
+  const prios = [
+    { n:1, pri:'URGENTE', bg:'#dc2626', icon:'🔴',
+      titulo:'Levantamento e regularização dos contratos temporários',
+      desc:`Mapeamento imediato de todos os contratos temporários ativos, com classificação das funções: (a) funções permanentes → abertura de concurso; (b) funções transitórias → manutenção justificada até 24 meses; (c) contratos vencidos → rescisão imediata. Comunicar ao TCM-BA com plano de adequação.`,
+      meta:'Redução de 40-60% dos temporários em 24 meses' },
+    { n:2, pri:'URGENTE', bg:'#dc2626', icon:'🔴',
+      titulo:'Abertura de Concurso Público para Saúde e Educação',
+      desc:`Dada a dependência crítica de temporários na SMS (78%) e SME (36%), o município deve iniciar imediatamente o processo de concurso para provimento dos cargos com demanda permanente. Priorizar profissionais de saúde (médicos, enfermeiros, técnicos) e professores.`,
+      meta:'Substituir ao menos 50% dos temporários em 36 meses' },
+    { n:3, pri:'ALTA', bg:'#d97706', icon:'🟡',
+      titulo:'Revisão dos Cargos em Comissão com Proporcionalidade',
+      desc:`Realizar levantamento de todos os cargos em comissão, verificando se cada um atende ao requisito constitucional de direção, chefia ou assessoramento. Reduzir comissionados para no máximo 20% do quadro efetivo. Transformar cargos de natureza permanente em cargos efetivos mediante lei municipal.`,
+      meta:'Redução de R$ 5-8 M/ano na folha' },
+    { n:4, pri:'ALTA', bg:'#d97706', icon:'🟡',
+      titulo:'Implementar PCCS e Plano Plurianual de Pessoal',
+      desc:`Elaborar Plano de Cargos, Carreiras e Salários unificado, estabelecendo: pisos e tetos por cargo, critérios objetivos de progressão, trava de crescimento anual da folha vinculada à receita corrente líquida. Incluir projeção atuarial de 10 anos na LDO.`,
+      meta:'Previsibilidade e controle do crescimento da folha' },
+    { n:5, pri:'ALTA', bg:'#d97706', icon:'🟡',
+      titulo:'Programa de Aposentadoria Incentivada (PAI)',
+      desc:`Identificar servidores efetivos com tempo de contribuição completo (35/30 anos) e oferecer incentivos para aposentadoria voluntária (até 3 salários de bônus, plano de saúde por 12 meses). Libera vagas para substituição por concursados com salários mais baixos e reduz massa salarial a longo prazo.`,
+      meta:'Estimativa: 8-12 servidores elegíveis · R$ 2-4 M/ano' },
+    { n:6, pri:'MÉDIA', bg:'#ca8a04', icon:'🟠',
+      titulo:'Auditoria de CPF — detecção de duplos vínculos',
+      desc:`Cruzar CPF de todos os servidores de todos os regimes e secretarias para detectar acumulação ilegal de cargos. Encaminhar irregularidades à CGM para processo administrativo disciplinar (PAD) e TCM-BA para eventual restituição ao erário.`,
+      meta:'Potencial de eliminação de pagamentos indevidos' },
+    { n:7, pri:'MÉDIA', bg:'#ca8a04', icon:'🟠',
+      titulo:'Terceirização de Atividades-Meio',
+      desc:`Avaliar viabilidade de terceirização de limpeza, conservação, vigilância e serviços de TI, comparando custo atual (folha + encargos) com custo de contratos terceirizados, observando a Lei 13.429/2017 e a Lei 14.133/2021 (nova licitação). Não terceirizar atividades-fim (saúde e educação).`,
+      meta:'Análise custo-benefício em 90 dias' },
+    { n:8, pri:'MONITORAR', bg:'#6b7280', icon:'⚪',
+      titulo:'Dashboard de Alerta LRF Automatizado',
+      desc:`Implementar painel de monitoramento mensal com alertas automáticos em 48% da RCL (6 pontos de margem antes do limite legal de 54%). Incluir projeção tendencial de 6 meses com base na série histórica da folha.`,
+      meta:'Prevenção de sanções do Art. 23 da LRF' },
+  ];
+
+  document.getElementById('diag-rec').innerHTML = prios.map(p=>`
+    <div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid ${p.bg};border-radius:8px;padding:14px 18px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:16px">${p.icon}</span>
+        <strong style="font-size:13px;color:#1e293b">${p.n}. ${p.titulo}</strong>
+        <span style="margin-left:auto;background:${p.bg};color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">${p.pri}</span>
+      </div>
+      <p style="margin:0 0 6px 26px;font-size:12px;color:#64748b;line-height:1.6">${p.desc}</p>
+      <p style="margin:0 0 0 26px;font-size:11px;color:#4f46e5;font-weight:500">🎯 ${p.meta}</p>
+    </div>`).join('');
+
+  // ── PLANO DE AÇÃO ─────────────────────────────────────────────
+  const plano = [
+    { fase:'Fase 1',prazo:'0–90 dias',bg:'#fef2f2',fg:'#dc2626',
+      acoes:[
+        {a:'Levantamento completo dos contratos temporários',r:'CGM + SEAM',eco:'—'},
+        {a:'Auditoria de CPF para detecção de duplos vínculos',r:'CGM',eco:'Variável'},
+        {a:'Comunicação formal ao TCM-BA com plano de adequação',r:'PGM + Gabinete',eco:'Preventiva'},
+        {a:'Implantar monitoramento mensal LRF (48% alerta)',r:'SEFAZ + SMTI',eco:'Preventiva'},
+      ]},
+    { fase:'Fase 2',prazo:'90–180 dias',bg:'#fffbeb',fg:'#d97706',
+      acoes:[
+        {a:'Abertura de processo licitatório para concurso público (SMS e SME)',r:'SEAM + SME + SMS',eco:'—'},
+        {a:'Revisão e redução dos cargos em comissão',r:'Gabinete + SEAM',eco:'R$ 3–5 M/ano'},
+        {a:'Mapeamento de elegíveis ao PAI (aposentadoria incentivada)',r:'SEAM + SEFAZ',eco:'R$ 2–4 M/ano'},
+        {a:'Análise custo-benefício de terceirização (limpeza, vigilância)',r:'SEAM + SEFAZ',eco:'Estimativa'},
+      ]},
+    { fase:'Fase 3',prazo:'180–365 dias',bg:'#f0fdf4',fg:'#16a34a',
+      acoes:[
+        {a:'Realização do concurso público e convocação gradual',r:'SEAM + SMS + SME',eco:'R$ 10–20 M/ano'},
+        {a:'Aprovação do PCCS pela Câmara Municipal',r:'Gabinete + SEAM',eco:'Longo prazo'},
+        {a:'Avaliação atuarial completa do RPPS',r:'SEFAZ + atuário externo',eco:'Preventiva'},
+        {a:'Encerramento dos contratos temporários substituídos',r:'SEAM + PGM',eco:'R$ 15–30 M/ano'},
+      ]},
+  ];
+
+  document.getElementById('diag-plano-body').innerHTML = plano.map(fase=>
+    fase.acoes.map((a,i)=>`
+      <tr style="border-bottom:1px solid #f1f5f9">
+        ${i===0?`<td rowspan="${fase.acoes.length}" style="padding:12px 14px;vertical-align:top;border-left:4px solid ${fase.fg}"><span style="background:${fase.bg};color:${fase.fg};padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;display:block;text-align:center;white-space:nowrap">${fase.fase}<br><small style="font-weight:400">${fase.prazo}</small></span></td>`:''}
+        <td style="padding:10px 14px;font-size:12px;color:#1e293b">${a.a}</td>
+        <td style="padding:10px 14px;font-size:11px;color:#6b7280;white-space:nowrap">${a.r}</td>
+        <td style="padding:10px 14px;font-size:11px;color:#6b7280;white-space:nowrap">${fase.prazo}</td>
+        <td style="padding:10px 14px;font-size:12px;color:#4f46e5;font-weight:500;text-align:right;white-space:nowrap">${a.eco}</td>
+      </tr>`).join('')
+  ).join('');
+
+  // ── ECONOMIA ──────────────────────────────────────────────────
+  const econ = [
+    { titulo:'Redução de Comissionados', val:'R$ 3–8 M/ano',
+      desc:'Contenção de 30-40% dos comissionados atuais', bg:'#ede9fe', cor:'#7c3aed', icon:'💼'},
+    { titulo:'Substituição de Temporários', val:'R$ 15–30 M/ano',
+      desc:'Substituição de 50% dos temporários por efetivos (menor salário médio inicial)', bg:'#fef3c7', cor:'#d97706', icon:'⏳'},
+    { titulo:'Aposentadoria Incentivada (PAI)', val:'R$ 2–4 M/ano',
+      desc:'Estimativa conservadora para 8-12 servidores elegíveis', bg:'#d1fae5', cor:'#059669', icon:'🎯'},
+    { titulo:'Auditoria de Duplos Vínculos', val:'Variável',
+      desc:'Restituição ao erário de pagamentos indevidos detectados', bg:'#fee2e2', cor:'#dc2626', icon:'🔍'},
+    { titulo:'Total Potencial (conservador)', val:'R$ 20–42 M/ano',
+      desc:'Após 36 meses de implementação completa do plano', bg:'#e0f2fe', cor:'#0284c7', icon:'💰'},
+  ];
+
+  document.getElementById('diag-economia').innerHTML = econ.map(e=>`
+    <div style="background:${e.bg};border-radius:10px;padding:16px">
+      <div style="font-size:20px;margin-bottom:8px">${e.icon}</div>
+      <div style="font-size:11px;font-weight:600;color:${e.cor};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${e.titulo}</div>
+      <div style="font-size:20px;font-weight:700;color:${e.cor};margin-bottom:4px">${e.val}</div>
+      <div style="font-size:11px;color:${e.cor}99">${e.desc}</div>
+    </div>`).join('');
 }
 
 // ═══════════════════════════════════════════════════════
