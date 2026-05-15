@@ -314,6 +314,119 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
     <canvas id="cLRF" height="95"></canvas>
   </div>
 
+  <!-- Pareto -->
+  <div class="chart-card mb20" id="card-pareto">
+    <div class="ch">Curva de Pareto — Concentração de Gasto por Secretaria</div>
+    <div class="cs">Barras = valor total · Linha amarela = % acumulado · Linha vermelha = limite 80%</div>
+    <canvas id="cPareto" height="90"></canvas>
+  </div>
+
+  <!-- Eficiência -->
+  <div class="chart-card mb20" id="card-efic">
+    <div class="ch">Custo Médio por Servidor — Ranking de Eficiência</div>
+    <div class="cs">Valor total ÷ servidores no período selecionado · vermelho = mais caro · verde = mais eficiente</div>
+    <canvas id="cEfic" height="130"></canvas>
+  </div>
+
+  <!-- Projeção -->
+  <div class="chart-card mb20" id="card-proj">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+      <div>
+        <div class="ch">Projeção de Tendência — Próximos 12 Meses</div>
+        <div class="cs">Regressão linear sobre os dados históricos filtrados · área tracejada = projeção</div>
+      </div>
+      <div style="display:flex;gap:14px;font-size:11px;font-weight:600;align-items:center">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:24px;height:3px;background:#4f46e5;display:inline-block;border-radius:2px"></span>Histórico</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:24px;height:3px;background:#f59e0b;border-top:2px dashed #f59e0b;display:inline-block;border-radius:2px"></span>Projeção</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="background:#fafbff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:130px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Tendência/mês</div>
+        <div style="font-size:1.2rem;font-weight:800" id="projSlope">—</div>
+      </div>
+      <div style="background:#fafbff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:130px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Projetado dez/2026</div>
+        <div style="font-size:1.2rem;font-weight:800" id="projFim">—</div>
+      </div>
+      <div style="background:#fafbff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:130px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Variação projetada</div>
+        <div style="font-size:1.2rem;font-weight:800" id="projVar">—</div>
+      </div>
+    </div>
+    <canvas id="cProj" height="80"></canvas>
+  </div>
+
+  <!-- Mapa de Calor -->
+  <div class="table-card mb20" id="card-heatmap">
+    <div class="table-hdr">
+      <h3>Mapa de Calor — Secretaria × Competência</h3>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+        <span>Menor</span>
+        <div style="display:flex;gap:2px">
+          <div style="width:16px;height:14px;background:#e0e7ff;border-radius:2px"></div>
+          <div style="width:16px;height:14px;background:#a5b4fc;border-radius:2px"></div>
+          <div style="width:16px;height:14px;background:#818cf8;border-radius:2px"></div>
+          <div style="width:16px;height:14px;background:#4f46e5;border-radius:2px"></div>
+          <div style="width:16px;height:14px;background:#3730a3;border-radius:2px"></div>
+        </div>
+        <span>Maior</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto;overflow-y:auto;max-height:480px">
+      <table style="border-collapse:collapse;min-width:100%">
+        <thead id="hmHead" style="position:sticky;top:0;z-index:3;background:#f9fafb"></thead>
+        <tbody id="hmBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Meta LRF -->
+  <div class="table-card mb20" id="card-meta">
+    <div class="table-hdr">
+      <h3>&#127919; Calculadora de Meta LRF</h3>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--muted);font-weight:600">Meta desejada:</label>
+        <input type="number" id="metaLRF" min="30" max="54" step="0.1" value="45"
+          style="width:74px;padding:5px 10px;border:2px solid #4f46e5;border-radius:8px;font-size:14px;font-weight:700;text-align:center;color:#4f46e5;outline:none"
+          oninput="calcMetaLRF()">
+        <span style="font-size:14px;font-weight:700;color:#4f46e5">% da RCL</span>
+        <button onclick="calcMetaLRF()" style="padding:6px 16px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Calcular</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin:16px 0">
+      <div style="background:#fafbff;border:1px solid var(--border);border-radius:12px;padding:12px 18px;flex:1;min-width:130px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">LRF Atual</div>
+        <div style="font-size:1.3rem;font-weight:800" id="metaAtualLRF">—</div>
+        <div style="font-size:10.5px;color:var(--muted)">abr/2026</div>
+      </div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 18px;flex:1;min-width:130px">
+        <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Corte Necessário/mês</div>
+        <div style="font-size:1.3rem;font-weight:800;color:#dc2626" id="metaCorteValor">—</div>
+      </div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 18px;flex:1;min-width:130px">
+        <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Redução Necessária</div>
+        <div style="font-size:1.3rem;font-weight:800;color:#dc2626" id="metaCortesPct">—</div>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px 18px;flex:1;min-width:130px">
+        <div style="font-size:10px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Nova Folha/mês</div>
+        <div style="font-size:1.3rem;font-weight:800;color:#15803d" id="metaNovaFolha">—</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Secretaria</th>
+          <th class="num-right">Custo Médio/Mês (2025)</th>
+          <th class="num-right">Corte Necessário/mês</th>
+          <th class="num-right">Redução (%)</th>
+        </tr></thead>
+        <tbody id="metaTabela"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">* Corte distribuído proporcionalmente ao custo médio de 2025. LRF calculado sobre RCL de abr/2026.</div>
+  </div>
+
   <!-- Ranking de Crescimento -->
   <div class="chart-card mb20" id="card-ranking">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
@@ -899,6 +1012,200 @@ function pgPrev(){if(pgAtual>1){pgAtual--;renderTab();}}
 function pgNext(){pgAtual++;renderTab();}
 
 // ═══════════════════════════════════
+// PARETO
+// ═══════════════════════════════════
+function aggPareto(d) {
+  const bySec = {};
+  d.forEach(r => { bySec[r[2]] = (bySec[r[2]]||0) + r[5]; });
+  const sorted = Object.entries(bySec).sort((a,b) => b[1]-a[1]);
+  const total = sorted.reduce((s,[,v])=>s+v, 0);
+  let cum = 0;
+  const cumPct = sorted.map(([,v]) => { cum+=v; return +(cum/total*100).toFixed(1); });
+  const sh = n => SECS[n].replace('Secretaria Municipal de ','SM ').replace('Secretaria Municipal do ','SM ').replace('Secretaria de ','Sec. ').substring(0,26);
+  return { labels: sorted.map(([i])=>sh(i)), values: sorted.map(([,v])=>v), cumPct };
+}
+let cPareto;
+function initPareto(d) {
+  const p = aggPareto(d);
+  cPareto = new Chart(document.getElementById('cPareto'), {
+    type: 'bar',
+    data: { labels: p.labels, datasets: [
+      { label:'Valor Bruto', data:p.values, yAxisID:'y', backgroundColor:p.values.map((_,i)=>i<3?'#4f46e5cc':'#818cf8aa'), borderRadius:4, borderSkipped:false, order:2 },
+      { label:'% Acumulado', data:p.cumPct, type:'line', yAxisID:'y2', borderColor:'#f59e0b', borderWidth:2.5, pointRadius:0, tension:0, backgroundColor:'transparent', order:1 },
+      { label:'Limite 80%', data:p.labels.map(()=>80), type:'line', yAxisID:'y2', borderColor:'#ef4444', borderWidth:1.5, borderDash:[6,4], pointRadius:0, backgroundColor:'transparent', order:0 },
+    ]},
+    options: {
+      responsive:true, interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{...TT,callbacks:{
+          label:ctx=>{ if(ctx.datasetIndex===0) return ' Valor: '+fS(ctx.raw); if(ctx.datasetIndex===1) return ' Acumulado: '+ctx.raw+'%'; return null; },
+          filter:item=>item.datasetIndex!==2,
+        }},
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:9},maxRotation:35}},
+        y:{grid:{color:'#f0f0f8'},border:{display:false},ticks:{font:{size:10},callback:v=>fS(v)}},
+        y2:{position:'right',min:0,max:100,grid:{display:false},border:{display:false},ticks:{font:{size:10},callback:v=>v+'%'}},
+      }
+    }
+  });
+}
+function updatePareto(d) {
+  const p = aggPareto(d);
+  cPareto.data.labels = p.labels;
+  cPareto.data.datasets[0].data = p.values;
+  cPareto.data.datasets[0].backgroundColor = p.values.map((_,i)=>i<3?'#4f46e5cc':'#818cf8aa');
+  cPareto.data.datasets[1].data = p.cumPct;
+  cPareto.data.datasets[2].data = p.labels.map(()=>80);
+  cPareto.update();
+}
+
+// ═══════════════════════════════════
+// EFICIÊNCIA (custo por servidor)
+// ═══════════════════════════════════
+function aggEficiencia(d) {
+  const bySec = {};
+  d.forEach(r => { if(!bySec[r[2]]) bySec[r[2]]={v:0,q:0}; bySec[r[2]].v+=r[5]; bySec[r[2]].q+=r[4]; });
+  const arr = Object.entries(bySec).filter(([,x])=>x.q>0)
+    .map(([i,x])=>({ label:SECS[i].replace('Secretaria Municipal de ','SM ').replace('Secretaria Municipal do ','SM ').replace('Secretaria de ','Sec. ').substring(0,28), custo:x.v/x.q }))
+    .sort((a,b)=>b.custo-a.custo);
+  const n = arr.length;
+  return { labels:arr.map(a=>a.label), values:arr.map(a=>+a.custo.toFixed(2)), colors:arr.map((_,i)=>i<3?'#f87171':i>=n-3?'#34d399':'#818cf8aa') };
+}
+let cEfic;
+function initEficiencia(d) {
+  const e = aggEficiencia(d);
+  cEfic = new Chart(document.getElementById('cEfic'), {
+    type:'bar',
+    data:{ labels:e.labels, datasets:[{ label:'Custo/servidor', data:e.values, backgroundColor:e.colors, borderRadius:5, borderSkipped:false }]},
+    options:{
+      indexAxis:'y', responsive:true, layout:{padding:{right:10}},
+      plugins:{ legend:{display:false}, tooltip:{...TT,callbacks:{label:ctx=>' Custo/servidor: '+fR(ctx.raw)}} },
+      scales:{
+        x:{grid:{color:'#f0f0f8'},border:{display:false},ticks:{font:{size:10},callback:v=>fS(v)}},
+        y:{grid:{display:false},afterFit:axis=>{axis.width=200;},ticks:{font:{size:10}}},
+      }
+    }
+  });
+}
+function updateEficiencia(d) {
+  const e = aggEficiencia(d);
+  cEfic.data.labels=e.labels; cEfic.data.datasets[0].data=e.values; cEfic.data.datasets[0].backgroundColor=e.colors; cEfic.update();
+}
+
+// ═══════════════════════════════════
+// PROJEÇÃO DE TENDÊNCIA
+// ═══════════════════════════════════
+function linReg(xs, ys) {
+  const n=xs.length, sx=xs.reduce((a,b)=>a+b,0), sy=ys.reduce((a,b)=>a+b,0);
+  const sxy=xs.reduce((s,x,i)=>s+x*ys[i],0), sx2=xs.reduce((s,x)=>s+x*x,0);
+  const slope=(n*sxy-sx*sy)/(n*sx2-sx*sx);
+  return {slope, intercept:(sy-slope*sx)/n};
+}
+function aggProjecao(d) {
+  const m={};
+  d.forEach(r=>{const k=r[1]*100+r[0]; m[k]=(m[k]||0)+r[5];});
+  const sorted=Object.entries(m).sort((a,b)=>a[0]-b[0]);
+  if(sorted.length<2) return null;
+  const xs=sorted.map((_,i)=>i), ys=sorted.map(([,v])=>v);
+  const {slope,intercept}=linReg(xs,ys);
+  const toLabel=k=>{const n=Number(k),y=Math.floor(n/100),mo=n%100; return String(mo).padStart(2,'0')+'/'+y;};
+  const lastKey=Number(sorted[sorted.length-1][0]), lastY=Math.floor(lastKey/100), lastM=lastKey%100;
+  const projLabels=[], projVals=[];
+  for(let i=1;i<=12;i++){let mo=lastM+i,yr=lastY; while(mo>12){mo-=12;yr++;} projLabels.push(String(mo).padStart(2,'0')+'/'+yr); projVals.push(Math.max(0,intercept+slope*(xs.length+i-1)));}
+  const lastHist=ys[ys.length-1], lastProj=projVals[projVals.length-1];
+  return {
+    labels:[...sorted.map(([k])=>toLabel(k)),...projLabels],
+    historical:[...ys,...projLabels.map(()=>null)],
+    projection:[...sorted.map(()=>null),lastHist,...projVals],
+    slope, lastHist, lastProj,
+  };
+}
+let cProj;
+function initProjecao(d) {
+  const p=aggProjecao(d); if(!p) return;
+  const vp=((p.lastProj-p.lastHist)/p.lastHist*100);
+  document.getElementById('projSlope').textContent=(p.slope>=0?'+':'')+fS(p.slope)+'/mês';
+  document.getElementById('projSlope').style.color=p.slope>0?'#dc2626':'#059669';
+  document.getElementById('projFim').textContent=fS(p.lastProj);
+  document.getElementById('projVar').textContent=(vp>=0?'+':'')+vp.toFixed(1)+'%';
+  document.getElementById('projVar').style.color=vp>0?'#dc2626':'#059669';
+  cProj=new Chart(document.getElementById('cProj'),{
+    type:'line',
+    data:{labels:p.labels,datasets:[
+      {label:'Histórico',data:p.historical,borderColor:BLUE,borderWidth:2.5,backgroundColor:'transparent',pointRadius:0,tension:.3},
+      {label:'Projeção',data:p.projection,borderColor:'#f59e0b',borderWidth:2.5,borderDash:[6,4],backgroundColor:'rgba(245,158,11,.08)',pointRadius:0,tension:.3,fill:true},
+    ]},
+    options:{
+      responsive:true, interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{...TT,callbacks:{label:ctx=>ctx.raw!==null?(ctx.datasetIndex===0?' Histórico: ':' Projeção: ')+fS(ctx.raw):null,filter:item=>item.raw!==null}},
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10},maxTicksLimit:16}},
+        y:{grid:{color:'#f0f0f8'},border:{display:false},ticks:{font:{size:10},callback:v=>fS(v)}},
+      }
+    }
+  });
+}
+function updateProjecao(d) {
+  const p=aggProjecao(d); if(!p||!cProj) return;
+  const vp=((p.lastProj-p.lastHist)/p.lastHist*100);
+  document.getElementById('projSlope').textContent=(p.slope>=0?'+':'')+fS(p.slope)+'/mês';
+  document.getElementById('projSlope').style.color=p.slope>0?'#dc2626':'#059669';
+  document.getElementById('projFim').textContent=fS(p.lastProj);
+  document.getElementById('projVar').textContent=(vp>=0?'+':'')+vp.toFixed(1)+'%';
+  document.getElementById('projVar').style.color=vp>0?'#dc2626':'#059669';
+  cProj.data.labels=p.labels; cProj.data.datasets[0].data=p.historical; cProj.data.datasets[1].data=p.projection; cProj.update();
+}
+
+// ═══════════════════════════════════
+// MAPA DE CALOR
+// ═══════════════════════════════════
+function renderHeatmap(d) {
+  const bySec={}, periodos=new Set();
+  d.forEach(r=>{const k=String(r[0]).padStart(2,'0')+'/'+r[1]; periodos.add(k); if(!bySec[r[2]])bySec[r[2]]={};bySec[r[2]][k]=(bySec[r[2]][k]||0)+r[5];});
+  const cols=[...periodos].sort((a,b)=>{const[ma,aa]=a.split('/').map(Number),[mb,ab]=b.split('/').map(Number);return aa!==ab?aa-ab:ma-mb;});
+  let maxVal=0;
+  Object.values(bySec).forEach(m=>Object.values(m).forEach(v=>{if(v>maxVal)maxVal=v;}));
+  const sh=n=>SECS[n].replace('Secretaria Municipal de ','SM ').replace('Secretaria Municipal do ','SM ').replace('Secretaria de ','Sec. ').substring(0,26);
+  const secsSort=Object.keys(bySec).sort((a,b)=>{const ta=Object.values(bySec[a]).reduce((s,v)=>s+v,0),tb=Object.values(bySec[b]).reduce((s,v)=>s+v,0);return tb-ta;});
+  function heatBg(v){if(!v)return '#f9fafb';const p=v/maxVal;if(p>.8)return '#3730a3';if(p>.6)return '#4f46e5';if(p>.4)return '#818cf8';if(p>.2)return '#a5b4fc';if(p>.05)return '#c7d2fe';return '#e0e7ff';}
+  function heatFg(v){return v&&v/maxVal>.4?'#fff':'#1e1b4b';}
+  document.getElementById('hmHead').innerHTML=`<tr><th style="position:sticky;left:0;background:#f9fafb;z-index:2;min-width:150px;font-size:11px;text-align:left">Secretaria</th>${cols.map(p=>`<th style="font-size:9px;white-space:nowrap;padding:4px 6px;text-align:right;font-weight:600">${p}</th>`).join('')}</tr>`;
+  document.getElementById('hmBody').innerHTML=secsSort.map(sec=>`<tr><td style="position:sticky;left:0;background:#fff;z-index:1;font-size:11px;white-space:nowrap;padding:4px 8px;border-right:1px solid #e5e7eb">${sh(sec)}</td>${cols.map(p=>{const v=bySec[sec][p]||0;return `<td title="${SECS[sec]} · ${p}: ${v?fR(v):'—'}" style="background:${heatBg(v)};color:${heatFg(v)};font-size:9px;text-align:right;padding:3px 5px;white-space:nowrap">${v?fS(v):''}</td>`;}).join('')}</tr>`).join('');
+}
+
+// ═══════════════════════════════════
+// META LRF
+// ═══════════════════════════════════
+function initMetaLRF() { calcMetaLRF(); }
+function calcMetaLRF() {
+  const meta=Number(document.getElementById('metaLRF').value)||45;
+  const lastRCL=RCL['04/2026'], metaValor=meta/100*lastRCL;
+  const folhaMap={};
+  RAW.forEach(r=>{const k=r[1]*100+r[0];folhaMap[k]=(folhaMap[k]||0)+r[5];});
+  const lastK=Math.max(...Object.keys(folhaMap).map(Number));
+  const atualTotal=folhaMap[lastK], atualLRF=atualTotal/lastRCL*100;
+  const corteNec=atualTotal-metaValor, pctCorte=corteNec/atualTotal*100;
+  const lrfEl=document.getElementById('metaAtualLRF');
+  lrfEl.textContent=atualLRF.toFixed(1)+'%';
+  lrfEl.style.color=atualLRF>=LIM_MAXIMO?'#dc2626':atualLRF>=LIM_PRUDENCIAL?'#d97706':atualLRF>=LIM_ALERTA?'#ca8a04':'#15803d';
+  document.getElementById('metaCorteValor').textContent=corteNec>0?fS(corteNec):'Meta já atingida ✓';
+  document.getElementById('metaCortesPct').textContent=corteNec>0?pctCorte.toFixed(1)+'%':'—';
+  document.getElementById('metaNovaFolha').textContent=fS(Math.max(0,metaValor));
+  if(corteNec<=0){document.getElementById('metaTabela').innerHTML='<tr><td colspan="4" style="text-align:center;color:#059669;padding:20px;font-weight:700">✓ Meta já atingida! O gasto atual está abaixo do limite definido.</td></tr>';return;}
+  const by2025={};
+  RAW.forEach(r=>{if(r[1]===2025){if(!by2025[r[2]])by2025[r[2]]={total:0,meses:new Set()};by2025[r[2]].total+=r[5];by2025[r[2]].meses.add(r[0]);}});
+  const secList=Object.entries(by2025).map(([i,x])=>({name:SECS[i],med:x.total/x.meses.size})).sort((a,b)=>b.med-a.med);
+  const totalMed=secList.reduce((s,x)=>s+x.med,0);
+  const sh=n=>n.replace('Secretaria Municipal de ','SM ').replace('Secretaria Municipal do ','SM ').replace('Secretaria de ','Sec. ').substring(0,32);
+  document.getElementById('metaTabela').innerHTML=secList.map(s=>{const corte=corteNec*(s.med/totalMed),pct=corte/s.med*100;return`<tr><td style="font-size:12px">${sh(s.name)}</td><td class="num-right" style="font-size:12px">${fS(s.med)}</td><td class="num-right" style="font-size:12px;color:#dc2626;font-weight:600">${fS(corte)}</td><td class="num-right" style="font-size:12px;color:#dc2626">${pct.toFixed(1)}%</td></tr>`;}).join('');
+}
+
+// ═══════════════════════════════════
 // RANKING DE CRESCIMENTO
 // ═══════════════════════════════════
 function rkPeriodData(period) {
@@ -1113,6 +1420,10 @@ function atualizar(){
   updateKPIs(dfilt);
   updateCharts(dfilt);
   updateLRF();
+  updatePareto(dfilt);
+  updateEficiencia(dfilt);
+  updateProjecao(dfilt);
+  renderHeatmap(dfilt);
   renderTab();
 }
 
@@ -1122,6 +1433,11 @@ function atualizar(){
   updateKPIs(dfilt);
   initCharts(dfilt);
   initLRF();
+  initPareto(dfilt);
+  initEficiencia(dfilt);
+  initProjecao(dfilt);
+  renderHeatmap(dfilt);
+  initMetaLRF();
   initRanking();
   initSimulador();
   renderTab();
