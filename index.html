@@ -689,9 +689,9 @@ function toggleOpt(id, value, checked) {
   if (checked) MS[id].selected.add(value);
   else MS[id].selected.delete(value);
   updateMsBtn(id);
-  // re-render list to update checked classes
   const search = document.querySelector('#dd-'+id+' .ms-search').value;
   renderMsList(id, search);
+  if (id === 'ano') rebuildCompFilter();
   aplicar();
 }
 
@@ -700,6 +700,7 @@ function selectAll(id) {
   const search = document.querySelector('#dd-'+id+' .ms-search').value;
   renderMsList(id, search);
   updateMsBtn(id);
+  if (id === 'ano') rebuildCompFilter();
   aplicar();
 }
 
@@ -708,6 +709,7 @@ function clearMs(id) {
   const search = document.querySelector('#dd-'+id+' .ms-search').value;
   renderMsList(id, search);
   updateMsBtn(id);
+  if (id === 'ano') rebuildCompFilter();
   aplicar();
 }
 
@@ -723,7 +725,7 @@ function updateMsBtn(id) {
   if (badge) badge.remove();
 
   if (n === 0 || n === total) {
-    const defaults = { ano:'Todos os anos', reg:'Todos os regimes', sec:'Todas as secretarias' };
+    const defaults = { ano:'Todos os anos', reg:'Todos os regimes', sec:'Todas as secretarias', comp:'Todas' };
     label.textContent = defaults[id];
   } else if (n === 1) {
     const val = [...selected][0];
@@ -778,9 +780,27 @@ function initFiltros() {
   const secs = SECS.map((s,i) => ({value:String(i), label:s}));
   msInit('sec', secs);
 
-  const comps = [...new Set(RAW.map(r=>r[1]*100+r[0]))].sort()
-    .map(k=>({value:String(k), label:String(k%100).padStart(2,'0')+'/'+Math.floor(k/100)}));
-  msInit('comp', comps);
+  rebuildCompFilter();
+}
+
+function rebuildCompFilter() {
+  const sAno = MS['ano'] ? MS['ano'].selected : new Set();
+  const allAnos = MS['ano'] ? MS['ano'].allValues : [];
+  const todosAnos = sAno.size === 0 || sAno.size === allAnos.length;
+  const comps = [...new Set(RAW
+    .filter(r => todosAnos || sAno.has(String(r[1])))
+    .map(r => r[1]*100+r[0])
+  )].sort()
+    .map(k => ({value:String(k), label:Math.floor(k/100)+'/'+String(k%100).padStart(2,'0')}));
+  const prevSelected = MS['comp'] ? MS['comp'].selected : new Set();
+  msInit('comp', comps, comps.map(c=>c.value));
+  // preserva seleção anterior se ainda válida
+  if(prevSelected.size > 0 && prevSelected.size < (MS['comp']?MS['comp'].allValues.length:0)){
+    MS['comp'].selected = new Set([...prevSelected].filter(v => MS['comp'].allValues.includes(v)));
+    if(MS['comp'].selected.size === 0) MS['comp'].allValues.forEach(v=>MS['comp'].selected.add(v));
+  }
+  renderMsList('comp','');
+  updateMsBtn('comp');
 }
 
 function aplicar() { pgAtual = 1; atualizar(); }
