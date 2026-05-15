@@ -2567,12 +2567,15 @@ function buildDrilldown(d) {
             rows.push({level:2,si,ci,ri,label:CCREGS[ri].replace(/^\d+ - /,''),v:rd.v,q:qR,pct:pctR,expanded:regExpanded,key:regKey});
             if(regExpanded){
               // Nível 3: servidores — filtra DCCS_RAW por si,ci,ri e anos selecionados
+              // Quando nomeBusca ativo, ignora filtro de regime para não perder servidores
+              // cadastrados com regime diferente do nó (ex: Agente Político dentro de CC Comissão)
               const bySrv={};
               DCCS_RAW.forEach(r=>{
                 const [ano,rsi,rci,rri,rmi,rni,rmeses,rval]=r;
-                if(rsi!=si||rci!=ci||rri!=ri) return;
+                if(rsi!=si||rci!=ci) return;
+                if(!nomeBusca && rri!=ri) return;
                 if(sAno.size>0&&sAno.size<MSC['ano'].allValues.length&&!sAno.has(String(ano))) return;
-                if(!bySrv[rmi]) bySrv[rmi]={nome:DCCS_NOMES[rni],v:0,meses:0};
+                if(!bySrv[rmi]) bySrv[rmi]={nome:DCCS_NOMES[rni],v:0,meses:0,reg:CCREGS[rri]};
                 bySrv[rmi].v+=rval; bySrv[rmi].meses+=rmeses;
               });
               Object.entries(bySrv)
@@ -2581,7 +2584,7 @@ function buildDrilldown(d) {
                 .forEach(([,srv])=>{
                   const avgMes=srv.meses>0?srv.v/srv.meses:0;
                   const pctSrv=rd.v>0?(srv.v/rd.v*100).toFixed(1):0;
-                  rows.push({level:3,si,ci,ri,label:srv.nome,v:srv.v,q:srv.meses,pct:pctSrv,avgMes,expanded:false,key:null});
+                  rows.push({level:3,si,ci,ri,label:srv.nome+(nomeBusca&&srv.reg&&srv.reg!==CCREGS[ri]?' ('+srv.reg.replace(/^\d+ - /,'')+')':''),v:srv.v,q:srv.meses,pct:pctSrv,avgMes,expanded:false,key:null});
                 });
             }
           });
