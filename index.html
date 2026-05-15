@@ -661,6 +661,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
   <button id="abtnc" onclick="auditSub('C')" class="audit-sub" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer">👤 C — Remuneração Atípica</button>
   <button id="abtnd" onclick="auditSub('D')" class="audit-sub" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer">🔗 D — Múltiplos Vínculos</button>
   <button id="abtnf" onclick="auditSub('F')" class="audit-sub" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer">📈 F — Crescimento Anômalo de CC</button>
+  <button id="abtng" onclick="auditSub('G')" class="audit-sub" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer">🔎 G — Crescimento por Regime em CC</button>
 </div>
 
 <!-- Painel A -->
@@ -767,8 +768,8 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
 <!-- Painel F -->
 <div id="audit-panel-F" style="display:none">
   <div class="chart-card mb20">
-    <div class="ch">📈 F — Centros de Custo com Crescimento Desproporcional</div>
-    <div class="cs">CCs onde o valor médio mensal cresceu mais de 35% de um ano para o outro sem crescimento proporcional de servidores — possível reajuste salarial seletivo, criação de gratificações ou reclassificações não autorizadas.</div>
+    <div class="ch">📈 F — Centros de Custo com Crescimento Desproporcional (todos os regimes)</div>
+    <div class="cs">CCs onde o valor médio mensal total cresceu mais de 35% de um ano para o outro sem crescimento proporcional de servidores — possível reajuste salarial seletivo, criação de gratificações ou reclassificações não autorizadas. Considera a soma de todos os regimes no CC.</div>
     <div style="overflow-x:auto;margin-top:12px">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
@@ -785,6 +786,44 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
     </div>
     <div id="audit-f-empty" style="display:none;text-align:center;padding:32px;color:var(--muted);font-size:13px">
       ✅ Nenhum centro de custo com crescimento desproporcional detectado no período analisado.
+    </div>
+  </div>
+</div>
+
+<!-- Painel G -->
+<div id="audit-panel-G" style="display:none">
+  <div class="chart-card mb20">
+    <div class="ch">🔎 G — Crescimento Desproporcional por Regime dentro de CC</div>
+    <div class="cs">Crescimento >30% no valor médio mensal de um regime específico dentro de um CC, sem crescimento proporcional de servidores — identifica pressões salariais pontuais em estatutários, temporários, comissionados ou outros vínculos, independentemente do comportamento geral do CC.</div>
+    <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;align-items:center">
+      <input class="tsearch" id="audit-g-busca" placeholder="Filtrar por CC ou secretaria…" oninput="renderAuditG()" style="max-width:280px">
+      <select id="audit-g-reg" onchange="renderAuditG()" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></select>
+      <span id="audit-g-info" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div style="overflow-x:auto;margin-top:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+          <th style="text-align:left;padding:9px 12px;font-weight:600;color:#374151">Centro de Custo</th>
+          <th style="text-align:left;padding:9px 12px;font-weight:600;color:#374151">Secretaria</th>
+          <th style="text-align:left;padding:9px 10px;font-weight:600;color:#374151">Regime</th>
+          <th style="text-align:center;padding:9px 10px;font-weight:600;color:#374151">Período</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Valor/Mês Antes</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Valor/Mês Depois</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Δ Valor</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Δ Serv.</th>
+        </tr></thead>
+        <tbody id="audit-g-body"></tbody>
+      </table>
+    </div>
+    <div id="audit-g-empty" style="display:none;text-align:center;padding:32px;color:var(--muted);font-size:13px">
+      ✅ Nenhum crescimento desproporcional por regime detectado no período analisado.
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <div id="audit-g-pg-info" style="font-size:12px;color:var(--muted)"></div>
+      <div style="display:flex;gap:6px">
+        <button onclick="auditPg('G',-1)" class="pager-btn">‹ Anterior</button>
+        <button onclick="auditPg('G',1)"  class="pager-btn">Próxima ›</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1858,12 +1897,12 @@ function switchTab(name) {
 // ═══════════════════════════════════════════════════════════════
 let auditInited = false;
 let auditData = {};
-let auditPgs = {A:1,C:1,D:1};
+let auditPgs = {A:1,C:1,D:1,G:1};
 const AUDIT_PG = 20;
 let auditSub_cur = 'A';
 
 function auditSub(id) {
-  ['A','C','D','F'].forEach(x => {
+  ['A','C','D','F','G'].forEach(x => {
     document.getElementById('audit-panel-'+x).style.display = x===id?'':'none';
     const btn = document.getElementById('abtn'+x.toLowerCase());
     btn.style.background = x===id?'#4f46e5':'#fff';
@@ -1879,6 +1918,7 @@ function auditPg(id, dir) {
   if(id==='A') renderAuditA();
   if(id==='C') renderAuditC();
   if(id==='D') renderAuditD();
+  if(id==='G') renderAuditG();
 }
 
 function getFilteredAudit(id) {
@@ -1902,6 +1942,14 @@ function getFilteredAudit(id) {
     return auditData.D.filter(r =>
       (!q   || r.nome.toLowerCase().includes(q)) &&
       (!ano || String(r.ano)===ano)
+    );
+  }
+  if(id==='G') {
+    const q   = (document.getElementById('audit-g-busca')||{value:''}).value.toLowerCase();
+    const reg = (document.getElementById('audit-g-reg')||{value:''}).value;
+    return (auditData.G||[]).filter(r =>
+      (!q   || r.cc.toLowerCase().includes(q) || r.sec.toLowerCase().includes(q)) &&
+      (!reg || r.reg===reg)
     );
   }
   return [];
@@ -1996,6 +2044,43 @@ function renderAuditF() {
   }).join('');
 }
 
+function renderAuditG() {
+  const rows = getFilteredAudit('G');
+  const pg = auditPgs.G;
+  const slice = rows.slice((pg-1)*AUDIT_PG, pg*AUDIT_PG);
+  document.getElementById('audit-g-info').textContent = rows.length + ' ocorrências';
+  document.getElementById('audit-g-pg-info').textContent =
+    rows.length ? `${(pg-1)*AUDIT_PG+1}–${Math.min(pg*AUDIT_PG,rows.length)} de ${rows.length}` : '';
+  if(!rows.length) {
+    document.getElementById('audit-g-empty').style.display='';
+    document.getElementById('audit-g-body').innerHTML='';
+    return;
+  }
+  document.getElementById('audit-g-empty').style.display='none';
+  const regColors = {
+    'Estatut':'#1d4ed8','Tempor':'#7c3aed','Comiss':'#b45309',
+    'Celetist':'#065f46','Aposentad':'#6b7280','Autôn':'#be185d',
+  };
+  const regColor = reg => {
+    for(const [k,c] of Object.entries(regColors)) if(reg.includes(k)) return c;
+    return '#374151';
+  };
+  document.getElementById('audit-g-body').innerHTML = slice.map(r => {
+    const sev = r.cresc_v >= 100 ? ['#dc2626','CRÍTICO'] : r.cresc_v >= 60 ? ['#d97706','ALTO'] : ['#ca8a04','MÉDIO'];
+    const rc = regColor(r.reg);
+    return `<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:9px 12px;font-weight:500;color:#1e293b;max-width:200px">${r.cc}</td>
+      <td style="padding:9px 12px;font-size:11px;color:#64748b;max-width:160px">${r.sec}</td>
+      <td style="padding:9px 10px"><span style="background:${rc}18;color:${rc};padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap">${r.reg.replace(/^\d+ - /,'')}</span></td>
+      <td style="padding:9px 10px;text-align:center;white-space:nowrap">${r.a1}→${r.a2}</td>
+      <td style="padding:9px 12px;text-align:right;color:#64748b">${fR(r.v1)}/mês</td>
+      <td style="padding:9px 12px;text-align:right;font-weight:600">${fR(r.v2)}/mês</td>
+      <td style="padding:9px 10px;text-align:right"><span style="background:${sev[0]}22;color:${sev[0]};font-weight:700;font-size:11px;padding:2px 8px;border-radius:12px">+${r.cresc_v.toFixed(0)}%</span></td>
+      <td style="padding:9px 10px;text-align:right;color:#64748b">${r.cresc_q>=0?'+':''}${r.cresc_q.toFixed(0)}%</td>
+    </tr>`;
+  }).join('');
+}
+
 function initAudit() {
   const AUDIT_ANOS = new Set([2025, 2026]);
 
@@ -2030,7 +2115,7 @@ function initAudit() {
 
   // ── C: Remuneração atípica ─────────────────────────────────
   const DCCS_EL2 = document.getElementById('dccs');
-  if(!DCCS_EL2) { auditData={A:auditA,C:[],D:[],F:[]}; finalizeAudit(auditA,[],[],[]); return; }
+  if(!DCCS_EL2) { auditData={A:auditA,C:[],D:[],F:[],G:[]}; finalizeAudit(auditA,[],[],[],[]); return; }
   const _dccs2 = JSON.parse(DCCS_EL2.textContent);
   const SRV_RAW=_dccs2.raw, SRV_NOMES=_dccs2.nomes, SRV_MATS=_dccs2.mats;
   const SRV_SECS=_dccs2.secs, SRV_REGS=_dccs2.regs, SRV_CCS=_dccs2.ccs;
@@ -2115,18 +2200,57 @@ function initAudit() {
   });
   auditF.sort((a,b)=>b.cresc_v-a.cresc_v);
 
-  finalizeAudit(auditA, auditC, auditD, auditF);
+  // ── G: Crescimento desproporcional por regime dentro de CC ──
+  const CC_REGS2 = JSON.parse(DCC2.textContent).regs;
+  const byCCRegAno={};
+  cc_raw2.forEach(r=>{
+    const [mes,ano,si,ci,ri,qtd,val]=r;
+    if(!AUDIT_ANOS.has(ano)) return;
+    const k=ci+'_'+ri+'_'+ano;
+    if(!byCCRegAno[k]) byCCRegAno[k]={ci,si,ri,ano,v:0,q:0,cnt:0,meses:new Set()};
+    byCCRegAno[k].v+=val; byCCRegAno[k].q+=qtd; byCCRegAno[k].cnt++; byCCRegAno[k].meses.add(mes);
+  });
+  const byCIRI={};
+  Object.values(byCCRegAno).forEach(d=>{
+    const k=d.ci+'_'+d.ri;
+    if(!byCIRI[k]) byCIRI[k]=[];
+    byCIRI[k].push(d);
+  });
+  const auditG=[];
+  Object.values(byCIRI).forEach(anos=>{
+    anos.sort((a,b)=>a.ano-b.ano);
+    for(let i=1;i<anos.length;i++){
+      const d1=anos[i-1],d2=anos[i];
+      const nm1=d1.meses.size,nm2=d2.meses.size;
+      if(nm1<3||nm2<3) continue;
+      const v1=d1.v/nm1,v2=d2.v/nm2;
+      const q1=d1.q/d1.cnt,q2=d2.q/d2.cnt;
+      if(v1<=0) continue;
+      const cv=(v2-v1)/v1*100,cq=q1>0?(q2-q1)/q1*100:0;
+      if(cv>30 && cq<20 && v1>10000)
+        auditG.push({cc:CC_CCS2[d1.ci],sec:CC_SECS2[d1.si],
+          reg:CC_REGS2[d1.ri]||String(d1.ri),
+          a1:d1.ano,a2:d2.ano,
+          v1:Math.round(v1),v2:Math.round(v2),
+          q1:Math.round(q1*10)/10,q2:Math.round(q2*10)/10,
+          cresc_v:Math.round(cv*10)/10,cresc_q:Math.round(cq*10)/10});
+    }
+  });
+  auditG.sort((a,b)=>b.cresc_v-a.cresc_v);
+
+  finalizeAudit(auditA, auditC, auditD, auditF, auditG);
 }
 
-function finalizeAudit(auditA, auditC, auditD, auditF) {
-  auditData = {A:auditA, C:auditC, D:auditD, F:auditF};
+function finalizeAudit(auditA, auditC, auditD, auditF, auditG) {
+  auditData = {A:auditA, C:auditC, D:auditD, F:auditF, G:auditG||[]};
 
   // KPIs
   document.getElementById('audit-kpis').innerHTML = [
     {icon:'📊',label:'Spikes de Folha',val:auditA.length,sub:'meses com Z > 2,2σ',cor:'#7c3aed'},
     {icon:'👤',label:'Remuneração Atípica',val:auditC.length,sub:'servidores > 2,5× mediana',cor:'#dc2626'},
     {icon:'🔗',label:'Múltiplos Vínculos',val:auditD.length,sub:'servidores em ≥2 CCs/ano',cor:'#d97706'},
-    {icon:'📈',label:'CCs Anômalos',val:auditF.length,sub:'crescimento desproporcional',cor:'#059669'},
+    {icon:'📈',label:'CCs Anômalos (F)',val:auditF.length,sub:'crescimento desproporcional total',cor:'#059669'},
+    {icon:'🔎',label:'Regimes Anômalos (G)',val:(auditG||[]).length,sub:'crescimento por regime em CC',cor:'#0891b2'},
   ].map(k=>`<div class="kpi-card" style="border-top:3px solid ${k.cor}">
     <div class="kpi-top"><div class="kpi-icon" style="background:${k.cor}22;font-size:18px">${k.icon}</div></div>
     <div class="kpi-label">${k.label}</div>
@@ -2143,7 +2267,11 @@ function finalizeAudit(auditA, auditC, auditD, auditF) {
   const anosD=[...new Set(auditD.map(r=>r.ano))].sort();
   document.getElementById('audit-d-ano').innerHTML='<option value="">Todos os anos</option>'+anosD.map(a=>`<option>${a}</option>`).join('');
 
-  renderAuditA(); renderAuditC(); renderAuditD(); renderAuditF();
+  // Filtros G
+  const regsG=[...new Set((auditG||[]).map(r=>r.reg))].sort();
+  document.getElementById('audit-g-reg').innerHTML='<option value="">Todos os regimes</option>'+regsG.map(r=>`<option value="${r}">${r.replace(/^\d+ - /,'')}</option>`).join('');
+
+  renderAuditA(); renderAuditC(); renderAuditD(); renderAuditF(); renderAuditG();
 }
 
 // ═══════════════════════════════════════════════════════════════
