@@ -1898,6 +1898,12 @@ function switchTab(name) {
 let auditInited = false;
 let auditData = {};
 let auditPgs = {A:1,C:1,D:1,G:1};
+let expandedG = new Set();
+
+function toggleG(key) {
+  if(expandedG.has(key)) expandedG.delete(key); else expandedG.add(key);
+  renderAuditG();
+}
 const AUDIT_PG = 20;
 let auditSub_cur = 'A';
 
@@ -2065,11 +2071,20 @@ function renderAuditG() {
     for(const [k,c] of Object.entries(regColors)) if(reg.includes(k)) return c;
     return '#374151';
   };
+
+  const dccs = auditData._dccs;
+
   document.getElementById('audit-g-body').innerHTML = slice.map(r => {
+    const key = r.ci+'|'+r.ri+'|'+r.a1;
+    const isExp = expandedG.has(key);
     const sev = r.cresc_v >= 100 ? ['#dc2626','CRÍTICO'] : r.cresc_v >= 60 ? ['#d97706','ALTO'] : ['#ca8a04','MÉDIO'];
     const rc = regColor(r.reg);
-    return `<tr style="border-bottom:1px solid #f1f5f9">
-      <td style="padding:9px 12px;font-weight:500;color:#1e293b;max-width:200px">${r.cc}</td>
+    const safeKey = key.replace(/'/g,"\\'");
+
+    const mainRow = `<tr style="border-bottom:1px solid #f1f5f9;cursor:pointer" onclick="toggleG('${safeKey}')" title="Clique para ver servidores">
+      <td style="padding:9px 12px;font-weight:500;color:#1e293b;max-width:200px">
+        <span style="margin-right:6px;font-size:10px;color:#94a3b8">${isExp?'▾':'▸'}</span>${r.cc}
+      </td>
       <td style="padding:9px 12px;font-size:11px;color:#64748b;max-width:160px">${r.sec}</td>
       <td style="padding:9px 10px"><span style="background:${rc}18;color:${rc};padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap">${r.reg.replace(/^\d+ - /,'')}</span></td>
       <td style="padding:9px 10px;text-align:center;white-space:nowrap">${r.a1}→${r.a2}</td>
@@ -2078,6 +2093,53 @@ function renderAuditG() {
       <td style="padding:9px 10px;text-align:right"><span style="background:${sev[0]}22;color:${sev[0]};font-weight:700;font-size:11px;padding:2px 8px;border-radius:12px">+${r.cresc_v.toFixed(0)}%</span></td>
       <td style="padding:9px 10px;text-align:right;color:#64748b">${r.cresc_q>=0?'+':''}${r.cresc_q.toFixed(0)}%</td>
     </tr>`;
+
+    if(!isExp || !dccs) return mainRow;
+
+    // Agrupar servidores por ano+matrícula para os dois anos comparados
+    const bySrvAno = {};
+    dccs.raw.forEach(s=>{
+      const [ano,si,ci,ri,mi,ni,meses,val]=s;
+      if(ci!==r.ci||ri!==r.ri) return;
+      if(ano!==r.a1&&ano!==r.a2) return;
+      const k2=ano+'_'+mi;
+      if(!bySrvAno[k2]) bySrvAno[k2]={ano,nome:dccs.nomes[ni],mat:dccs.mats[mi],meses:0,val:0};
+      bySrvAno[k2].meses+=meses; bySrvAno[k2].val+=val;
+    });
+    const srvs = Object.values(bySrvAno).sort((a,b)=>a.ano-b.ano||b.val-a.val);
+
+    if(!srvs.length) {
+      return mainRow+`<tr style="background:#fafafa"><td colspan="8" style="padding:8px 24px;font-size:11px;color:#94a3b8;font-style:italic">Nenhum servidor identificado neste período.</td></tr>`;
+    }
+
+    // Cabeçalho do drilldown
+    const header = `<tr style="background:#f1f5f9">
+      <td colspan="2" style="padding:6px 12px 6px 28px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px">Servidor</td>
+      <td style="padding:6px 10px;font-size:10px;font-weight:700;color:#64748b;text-align:center">Ano</td>
+      <td style="padding:6px 10px;font-size:10px;font-weight:700;color:#64748b;text-align:center">Meses</td>
+      <td style="padding:6px 12px;font-size:10px;font-weight:700;color:#64748b;text-align:right">Méd./Mês</td>
+      <td style="padding:6px 12px;font-size:10px;font-weight:700;color:#64748b;text-align:right">Total</td>
+      <td colspan="2"></td>
+    </tr>`;
+
+    const srvRows = srvs.map(s=>{
+      const avg = s.meses>0 ? s.val/s.meses : 0;
+      const anoColor = s.ano===r.a2 ? '#1e293b' : '#64748b';
+      const bg = s.ano===r.a2 ? '#fff' : '#fafafa';
+      return `<tr style="background:${bg};border-bottom:1px solid #f1f5f9">
+        <td colspan="2" style="padding:7px 12px 7px 28px;font-size:11px;color:${anoColor}">
+          ${s.nome}
+          <span style="font-size:10px;color:#94a3b8;margin-left:6px">Mat.${s.mat}</span>
+        </td>
+        <td style="padding:7px 10px;text-align:center;font-size:11px;font-weight:600;color:${s.ano===r.a2?'#4f46e5':'#94a3b8'}">${s.ano}</td>
+        <td style="padding:7px 10px;text-align:center;font-size:11px;color:#64748b">${s.meses}</td>
+        <td style="padding:7px 12px;text-align:right;font-size:11px;color:#64748b">${fR(avg)}</td>
+        <td style="padding:7px 12px;text-align:right;font-size:11px;font-weight:600;color:${anoColor}">${fR(s.val)}</td>
+        <td colspan="2"></td>
+      </tr>`;
+    }).join('');
+
+    return mainRow + header + srvRows;
   }).join('');
 }
 
@@ -2228,7 +2290,8 @@ function initAudit() {
       if(v1<=0) continue;
       const cv=(v2-v1)/v1*100,cq=q1>0?(q2-q1)/q1*100:0;
       if(cv>30 && cq<20 && v1>10000)
-        auditG.push({cc:CC_CCS2[d1.ci],sec:CC_SECS2[d1.si],
+        auditG.push({ci:d1.ci,ri:d1.ri,
+          cc:CC_CCS2[d1.ci],sec:CC_SECS2[d1.si],
           reg:CC_REGS2[d1.ri]||String(d1.ri),
           a1:d1.ano,a2:d2.ano,
           v1:Math.round(v1),v2:Math.round(v2),
@@ -2239,6 +2302,7 @@ function initAudit() {
   auditG.sort((a,b)=>b.cresc_v-a.cresc_v);
 
   finalizeAudit(auditA, auditC, auditD, auditF, auditG);
+  auditData._dccs = {raw:SRV_RAW, nomes:SRV_NOMES, mats:SRV_MATS};
 }
 
 function finalizeAudit(auditA, auditC, auditD, auditF, auditG) {
