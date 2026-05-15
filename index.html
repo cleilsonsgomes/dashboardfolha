@@ -170,6 +170,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
     <button class="tab-btn active" id="tbtn-geral" onclick="switchTab('geral')">&#128202; Vis&#227;o Geral</button>
     <button class="tab-btn" id="tbtn-cc" onclick="switchTab('cc')">&#128193; Centro de Custo</button>
     <button class="tab-btn" id="tbtn-diag" onclick="switchTab('diag')">&#128270; Diagn&#243;stico RH</button>
+    <button class="tab-btn" id="tbtn-audit" onclick="switchTab('audit')">&#128373;&#65039; Auditoria</button>
   </div>
 </div>
 
@@ -627,6 +628,159 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
 <!-- DISCLAIMER -->
 <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 18px;font-size:12px;color:#0c4a6e;line-height:1.7">
   <strong>Nota metodológica:</strong> Este diagnóstico é gerado automaticamente com base nos registros de folha de pagamento disponíveis no sistema. As fragilidades apontadas requerem confirmação por auditoria documental antes de qualquer ato administrativo. Os limites legais citados referem-se à legislação federal vigente, devendo ser confrontados com a lei orgânica e estatuto municipal de Paulo Afonso–BA. Consulte a Controladoria Geral do Município (CGM) antes de implementar qualquer ação estrutural.
+</div>
+
+</div>
+
+
+<!-- ═══════════════════════ AUDITORIA ═══════════════════════ -->
+<div class="container" id="tab-audit" style="display:none">
+
+<div style="margin-bottom:20px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px">
+  <div>
+    <h2 style="font-size:20px;font-weight:700;color:var(--dark);margin:0 0 4px">Painel de Auditoria</h2>
+    <p style="color:var(--muted);font-size:13px;margin:0">Casos sinalizados automaticamente para análise e investigação · Paulo Afonso–BA</p>
+  </div>
+  <div style="font-size:11px;color:var(--muted);background:#fef3c7;padding:6px 12px;border-radius:8px;border:1px solid #fcd34d">
+    ⚠️ Sinalizações automáticas — requerem confirmação documental antes de qualquer ato
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid" id="audit-kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px"></div>
+
+<!-- Sub-tabs -->
+<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+  <button id="abtna" onclick="auditSub('A')" class="audit-sub active" style="padding:8px 16px;border-radius:8px;border:1.5px solid #4f46e5;background:#4f46e5;color:#fff;font-size:13px;font-weight:600;cursor:pointer">📊 A — Spikes de Folha</button>
+  <button id="abtnc" onclick="auditSub('C')" class="audit-sub" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer">👤 C — Remuneração Atípica</button>
+  <button id="abtnd" onclick="auditSub('D')" class="audit-sub" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer">🔗 D — Múltiplos Vínculos</button>
+  <button id="abtnf" onclick="auditSub('F')" class="audit-sub" style="padding:8px 16px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer">📈 F — Crescimento Anômalo de CC</button>
+</div>
+
+<!-- Painel A -->
+<div id="audit-panel-A">
+  <div class="chart-card mb20">
+    <div class="ch">📊 A — Spikes Estatísticos de Folha por Secretaria</div>
+    <div class="cs">Meses onde o valor pago por uma secretaria supera em mais de 2,2 desvios padrão a mediana histórica daquela unidade — possível pagamento retroativo, bônus coletivo ou erro de lançamento.</div>
+    <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;align-items:center">
+      <input class="tsearch" id="audit-a-busca" placeholder="Filtrar por secretaria…" oninput="renderAuditA()" style="max-width:280px">
+      <span id="audit-a-info" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+          <th style="text-align:left;padding:9px 12px;font-weight:600;color:#374151">Secretaria</th>
+          <th style="text-align:center;padding:9px 10px;font-weight:600;color:#374151">Competência</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Valor do Mês</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Mediana Histórica</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Desvio (Z)</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Excesso</th>
+          <th style="text-align:center;padding:9px 10px;font-weight:600;color:#374151">Sinalização</th>
+        </tr></thead>
+        <tbody id="audit-a-body"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <div id="audit-a-pg-info" style="font-size:12px;color:var(--muted)"></div>
+      <div style="display:flex;gap:6px">
+        <button onclick="auditPg('A',-1)" class="pager-btn">‹ Anterior</button>
+        <button onclick="auditPg('A',1)"  class="pager-btn">Próxima ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Painel C -->
+<div id="audit-panel-C" style="display:none">
+  <div class="chart-card mb20">
+    <div class="ch">👤 C — Servidores com Remuneração Atípica</div>
+    <div class="cs">Servidores cuja remuneração média mensal supera 2,5× a mediana do respectivo regime — possível enquadramento incorreto, gratificação indevida ou contrato atípico.</div>
+    <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;align-items:center">
+      <input class="tsearch" id="audit-c-busca" placeholder="Buscar por nome ou secretaria…" oninput="renderAuditC()" style="max-width:280px">
+      <select id="audit-c-ano" onchange="renderAuditC()" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></select>
+      <select id="audit-c-reg" onchange="renderAuditC()" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></select>
+      <span id="audit-c-info" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+          <th style="text-align:left;padding:9px 12px;font-weight:600;color:#374151">Servidor</th>
+          <th style="text-align:left;padding:9px 12px;font-weight:600;color:#374151">Secretaria / CC</th>
+          <th style="text-align:center;padding:9px 10px;font-weight:600;color:#374151">Regime</th>
+          <th style="text-align:center;padding:9px 10px;font-weight:600;color:#374151">Ano</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Méd./Mês</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Mediana Regime</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Múltiplo</th>
+        </tr></thead>
+        <tbody id="audit-c-body"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <div id="audit-c-pg-info" style="font-size:12px;color:var(--muted)"></div>
+      <div style="display:flex;gap:6px">
+        <button onclick="auditPg('C',-1)" class="pager-btn">‹ Anterior</button>
+        <button onclick="auditPg('C',1)"  class="pager-btn">Próxima ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Painel D -->
+<div id="audit-panel-D" style="display:none">
+  <div class="chart-card mb20">
+    <div class="ch">🔗 D — Múltiplos Vínculos no Mesmo Ano</div>
+    <div class="cs">Servidores registrados em dois ou mais centros de custo distintos no mesmo exercício — possível acumulação irregular de cargos ou lançamentos duplicados.</div>
+    <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;align-items:center">
+      <input class="tsearch" id="audit-d-busca" placeholder="Buscar por nome…" oninput="renderAuditD()" style="max-width:280px">
+      <select id="audit-d-ano" onchange="renderAuditD()" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></select>
+      <span id="audit-d-info" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+          <th style="text-align:left;padding:9px 12px;font-weight:600;color:#374151">Servidor / Matrícula</th>
+          <th style="text-align:center;padding:9px 10px;font-weight:600;color:#374151">Ano</th>
+          <th style="text-align:center;padding:9px 10px;font-weight:600;color:#374151">Vínculos</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Total Recebido</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Méd./Mês</th>
+          <th style="text-align:left;padding:9px 12px;font-weight:600;color:#374151">Centros de Custo</th>
+        </tr></thead>
+        <tbody id="audit-d-body"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <div id="audit-d-pg-info" style="font-size:12px;color:var(--muted)"></div>
+      <div style="display:flex;gap:6px">
+        <button onclick="auditPg('D',-1)" class="pager-btn">‹ Anterior</button>
+        <button onclick="auditPg('D',1)"  class="pager-btn">Próxima ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Painel F -->
+<div id="audit-panel-F" style="display:none">
+  <div class="chart-card mb20">
+    <div class="ch">📈 F — Centros de Custo com Crescimento Desproporcional</div>
+    <div class="cs">CCs onde o valor médio mensal cresceu mais de 35% de um ano para o outro sem crescimento proporcional de servidores — possível reajuste salarial seletivo, criação de gratificações ou reclassificações não autorizadas.</div>
+    <div style="overflow-x:auto;margin-top:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+          <th style="text-align:left;padding:9px 12px;font-weight:600;color:#374151">Centro de Custo</th>
+          <th style="text-align:left;padding:9px 12px;font-weight:600;color:#374151">Secretaria</th>
+          <th style="text-align:center;padding:9px 10px;font-weight:600;color:#374151">Período</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Valor/Mês Antes</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Valor/Mês Depois</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Δ Valor</th>
+          <th style="text-align:right;padding:9px 12px;font-weight:600;color:#374151">Δ Serv.</th>
+        </tr></thead>
+        <tbody id="audit-f-body"></tbody>
+      </table>
+    </div>
+    <div id="audit-f-empty" style="display:none;text-align:center;padding:32px;color:var(--muted);font-size:13px">
+      ✅ Nenhum centro de custo com crescimento desproporcional detectado no período analisado.
+    </div>
+  </div>
 </div>
 
 </div>
@@ -1682,14 +1836,303 @@ function atualizar(){
 // ═══════════════════════════════════════════════════════
 let ccInited = false;
 function switchTab(name) {
-  ['geral','cc','diag'].forEach(t => {
+  ['geral','cc','diag','audit'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===name?'':'none';
     document.getElementById('tbtn-'+t).classList.toggle('active', t===name);
   });
   if (name==='cc'   && !ccInited)   { initCC();   ccInited=true; }
   if (name==='diag' && !diagInited) { initDiag(); diagInited=true; }
+  if (name==='audit' && !auditInited) { initAudit(); auditInited=true; }
 }
 
+
+
+// ═══════════════════════════════════════════════════════════════
+// AUDITORIA
+// ═══════════════════════════════════════════════════════════════
+let auditInited = false;
+let auditData = {};
+let auditPgs = {A:1,C:1,D:1};
+const AUDIT_PG = 20;
+let auditSub_cur = 'A';
+
+function auditSub(id) {
+  ['A','C','D','F'].forEach(x => {
+    document.getElementById('audit-panel-'+x).style.display = x===id?'':'none';
+    const btn = document.getElementById('abtn'+x.toLowerCase());
+    btn.style.background = x===id?'#4f46e5':'#fff';
+    btn.style.color = x===id?'#fff':'#374151';
+    btn.style.borderColor = x===id?'#4f46e5':'#e2e8f0';
+  });
+  auditSub_cur = id;
+}
+
+function auditPg(id, dir) {
+  const max = Math.ceil(getFilteredAudit(id).length / AUDIT_PG);
+  auditPgs[id] = Math.max(1, Math.min(auditPgs[id] + dir, max));
+  if(id==='A') renderAuditA();
+  if(id==='C') renderAuditC();
+  if(id==='D') renderAuditD();
+}
+
+function getFilteredAudit(id) {
+  if(id==='A') {
+    const q = (document.getElementById('audit-a-busca')||{value:''}).value.toLowerCase();
+    return auditData.A.filter(r => !q || r.sec.toLowerCase().includes(q));
+  }
+  if(id==='C') {
+    const q   = (document.getElementById('audit-c-busca')||{value:''}).value.toLowerCase();
+    const ano = (document.getElementById('audit-c-ano')||{value:''}).value;
+    const reg = (document.getElementById('audit-c-reg')||{value:''}).value;
+    return auditData.C.filter(r =>
+      (!q   || r.nome.toLowerCase().includes(q) || r.sec.toLowerCase().includes(q)) &&
+      (!ano || String(r.ano)===ano) &&
+      (!reg || r.reg===reg)
+    );
+  }
+  if(id==='D') {
+    const q   = (document.getElementById('audit-d-busca')||{value:''}).value.toLowerCase();
+    const ano = (document.getElementById('audit-d-ano')||{value:''}).value;
+    return auditData.D.filter(r =>
+      (!q   || r.nome.toLowerCase().includes(q)) &&
+      (!ano || String(r.ano)===ano)
+    );
+  }
+  return [];
+}
+
+function renderAuditA() {
+  const rows = getFilteredAudit('A');
+  const pg = auditPgs.A;
+  const slice = rows.slice((pg-1)*AUDIT_PG, pg*AUDIT_PG);
+  document.getElementById('audit-a-info').textContent = rows.length + ' ocorrências';
+  document.getElementById('audit-a-pg-info').textContent =
+    rows.length ? `${(pg-1)*AUDIT_PG+1}–${Math.min(pg*AUDIT_PG,rows.length)} de ${rows.length}` : '';
+  document.getElementById('audit-a-body').innerHTML = slice.map(r => {
+    const excesso = r.val - r.med;
+    const sev = r.z >= 3.5 ? ['#dc2626','CRÍTICO'] : r.z >= 2.8 ? ['#d97706','ALTO'] : ['#ca8a04','MÉDIO'];
+    return `<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:9px 12px;font-weight:500;color:#1e293b;max-width:220px">${r.sec}</td>
+      <td style="padding:9px 10px;text-align:center;white-space:nowrap">${String(r.mes).padStart(2,'0')}/${r.ano}</td>
+      <td style="padding:9px 12px;text-align:right;font-weight:600;color:#1e293b">${fR(r.val)}</td>
+      <td style="padding:9px 12px;text-align:right;color:#64748b">${fR(r.med)}</td>
+      <td style="padding:9px 10px;text-align:right;font-weight:600;color:${sev[0]}">${r.z}</td>
+      <td style="padding:9px 12px;text-align:right;color:#4f46e5;font-weight:500">+${fR(excesso)}<br><span style="font-size:10px;color:#64748b">+${r.pct.toFixed(0)}%</span></td>
+      <td style="padding:9px 10px;text-align:center"><span style="background:${sev[0]}22;color:${sev[0]};padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700">${sev[1]}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Nenhum resultado</td></tr>';
+}
+
+function renderAuditC() {
+  const rows = getFilteredAudit('C');
+  const pg = auditPgs.C;
+  const slice = rows.slice((pg-1)*AUDIT_PG, pg*AUDIT_PG);
+  document.getElementById('audit-c-info').textContent = rows.length + ' servidores sinalizados';
+  document.getElementById('audit-c-pg-info').textContent =
+    rows.length ? `${(pg-1)*AUDIT_PG+1}–${Math.min(pg*AUDIT_PG,rows.length)} de ${rows.length}` : '';
+  document.getElementById('audit-c-body').innerHTML = slice.map(r => {
+    const sev = r.ratio >= 10 ? ['#dc2626','CRÍTICO'] : r.ratio >= 5 ? ['#d97706','ALTO'] : ['#ca8a04','MÉDIO'];
+    return `<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:9px 12px">
+        <div style="font-weight:600;color:#1e293b">${r.nome}</div>
+        <div style="font-size:10px;color:#94a3b8">Mat. ${r.mat}</div>
+      </td>
+      <td style="padding:9px 12px;font-size:11px;color:#64748b;max-width:180px">
+        <div>${r.sec}</div><div style="color:#94a3b8">${r.cc}</div>
+      </td>
+      <td style="padding:9px 10px;text-align:center"><span style="background:#f1f5f9;padding:2px 7px;border-radius:6px;font-size:10px">${r.reg.replace(/^\d+ - /,'')}</span></td>
+      <td style="padding:9px 10px;text-align:center;font-weight:500">${r.ano}</td>
+      <td style="padding:9px 12px;text-align:right;font-weight:700;color:${sev[0]}">${fR(r.mes_val)}</td>
+      <td style="padding:9px 12px;text-align:right;color:#64748b">${fR(r.mediana)}</td>
+      <td style="padding:9px 10px;text-align:right"><span style="background:${sev[0]}22;color:${sev[0]};padding:3px 8px;border-radius:12px;font-size:11px;font-weight:700">${r.ratio}x</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Nenhum resultado</td></tr>';
+}
+
+function renderAuditD() {
+  const rows = getFilteredAudit('D');
+  const pg = auditPgs.D;
+  const slice = rows.slice((pg-1)*AUDIT_PG, pg*AUDIT_PG);
+  document.getElementById('audit-d-info').textContent = rows.length + ' casos sinalizados';
+  document.getElementById('audit-d-pg-info').textContent =
+    rows.length ? `${(pg-1)*AUDIT_PG+1}–${Math.min(pg*AUDIT_PG,rows.length)} de ${rows.length}` : '';
+  document.getElementById('audit-d-body').innerHTML = slice.map(r => {
+    return `<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:9px 12px">
+        <div style="font-weight:600;color:#1e293b">${r.nome}</div>
+        <div style="font-size:10px;color:#94a3b8">Mat. ${r.mat}</div>
+      </td>
+      <td style="padding:9px 10px;text-align:center;font-weight:500">${r.ano}</td>
+      <td style="padding:9px 10px;text-align:center"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${r.n_ccs} CCs</span></td>
+      <td style="padding:9px 12px;text-align:right;font-weight:700;color:#dc2626">${fR(r.total)}</td>
+      <td style="padding:9px 12px;text-align:right;color:#64748b">${fR(r.avg_mes)}/mês</td>
+      <td style="padding:9px 12px;font-size:11px;color:#64748b">
+        ${r.vinculos.map(v=>`<div>• ${v.cc.substring(0,38)} <span style="color:#94a3b8">(${v.reg.replace(/^\d+ - /,'')})</span> — ${fR(v.val)}</div>`).join('')}
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Nenhum resultado</td></tr>';
+}
+
+function renderAuditF() {
+  const rows = auditData.F;
+  if(!rows.length) { document.getElementById('audit-f-empty').style.display=''; return; }
+  document.getElementById('audit-f-body').innerHTML = rows.map(r => {
+    const sev = r.cresc_v >= 100 ? ['#dc2626','CRÍTICO'] : r.cresc_v >= 60 ? ['#d97706','ALTO'] : ['#ca8a04','MÉDIO'];
+    return `<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:9px 12px;font-weight:500;color:#1e293b">${r.cc}</td>
+      <td style="padding:9px 12px;font-size:11px;color:#64748b">${r.sec}</td>
+      <td style="padding:9px 10px;text-align:center;white-space:nowrap">${r.a1}→${r.a2}</td>
+      <td style="padding:9px 12px;text-align:right;color:#64748b">${fR(r.v1)}/mês</td>
+      <td style="padding:9px 12px;text-align:right;font-weight:600">${fR(r.v2)}/mês</td>
+      <td style="padding:9px 10px;text-align:right"><span style="background:${sev[0]}22;color:${sev[0]};font-weight:700;font-size:11px;padding:2px 8px;border-radius:12px">+${r.cresc_v.toFixed(0)}%</span></td>
+      <td style="padding:9px 10px;text-align:right;color:#64748b">${r.cresc_q>=0?'+':''}${r.cresc_q.toFixed(0)}%</td>
+    </tr>`;
+  }).join('');
+}
+
+function initAudit() {
+  // ── Índices ─────────────────────────────────────────────────
+  const ri_tmp = REGS.findIndex(r=>r.includes('Tempor'));
+  const ri_ef  = REGS.findIndex(r=>r==='2 - Estatutários');
+  const ri_com = REGS.findIndex(r=>r.includes('Cargos em Comiss'));
+
+  // ── A: Spikes estatísticos ────────────────────────────────
+  const bySec = {};
+  RAW.forEach(r=>{
+    const [mes,ano,si,ri,qtd,val]=r;
+    if(!bySec[si]) bySec[si]=[];
+    bySec[si].push({mes,ano,val});
+  });
+  const auditA = [];
+  Object.entries(bySec).forEach(([si,recs])=>{
+    if(recs.length<6) return;
+    const vals = recs.map(r=>r.val).sort((a,b)=>a-b);
+    const mid = Math.floor(vals.length/2);
+    const med = vals.length%2===0?(vals[mid-1]+vals[mid])/2:vals[mid];
+    const mean = vals.reduce((s,v)=>s+v,0)/vals.length;
+    const std  = Math.sqrt(vals.reduce((s,v)=>s+(v-mean)**2,0)/vals.length);
+    if(std===0) return;
+    recs.forEach(r=>{
+      const z=(r.val-med)/std;
+      if(z>2.2) auditA.push({si,sec:SECS[si],mes:r.mes,ano:r.ano,val:r.val,med,z:Math.round(z*10)/10,pct:r.val/med*100-100});
+    });
+  });
+  auditA.sort((a,b)=>b.z-a.z);
+
+  // ── C: Remuneração atípica ─────────────────────────────────
+  const DCCS_EL2 = document.getElementById('dccs');
+  if(!DCCS_EL2) { auditData={A:auditA,C:[],D:[],F:[]}; finalizeAudit(auditA,[],[],[]); return; }
+  const _dccs2 = JSON.parse(DCCS_EL2.textContent);
+  const SRV_RAW=_dccs2.raw, SRV_NOMES=_dccs2.nomes, SRV_MATS=_dccs2.mats;
+  const SRV_SECS=_dccs2.secs, SRV_REGS=_dccs2.regs, SRV_CCS=_dccs2.ccs;
+
+  const regVals={};
+  SRV_RAW.forEach(r=>{ const [ano,si,ci,ri,mi,ni,meses,val]=r; if(meses>0){if(!regVals[ri])regVals[ri]=[]; regVals[ri].push(val/meses);} });
+  const regMed={};
+  Object.entries(regVals).forEach(([ri,v])=>{ v.sort((a,b)=>a-b); const m=Math.floor(v.length/2); regMed[ri]=v.length%2===0?(v[m-1]+v[m])/2:v[m]; });
+
+  const seen=new Set();
+  const auditC=[];
+  SRV_RAW.forEach(r=>{
+    const [ano,si,ci,ri,mi,ni,meses,val]=r;
+    if(meses===0) return;
+    const k=mi+'_'+ano; if(seen.has(k)) return; seen.add(k);
+    const mv=val/meses, med=regMed[ri]||0;
+    if(med>0 && mv>med*2.5 && val>10000)
+      auditC.push({nome:SRV_NOMES[ni],mat:SRV_MATS[mi],sec:SRV_SECS[si],cc:SRV_CCS[ci],
+        reg:SRV_REGS[ri],ano,mes_val:Math.round(mv*100)/100,total:Math.round(val*100)/100,
+        meses,mediana:Math.round(med*100)/100,ratio:Math.round(mv/med*10)/10});
+  });
+  auditC.sort((a,b)=>b.ratio-a.ratio);
+
+  // ── D: Múltiplos vínculos ─────────────────────────────────
+  const norm2=s=>s.toLowerCase().replace(/[^a-z0-9 ]/g,' ').trim().split(/\s+/).slice(0,5).join(' ');
+  const byMatAno={};
+  SRV_RAW.forEach(r=>{
+    const [ano,si,ci,ri,mi,ni,meses,val]=r;
+    const k=mi+'_'+ano;
+    if(!byMatAno[k]) byMatAno[k]={mi,ano,ni,entries:[]};
+    byMatAno[k].entries.push({si,ci,ri,val,meses,cc_norm:norm2(SRV_CCS[ci])});
+  });
+  const auditD=[];
+  Object.values(byMatAno).forEach(({mi,ano,ni,entries})=>{
+    const ccNorms=new Set(entries.map(e=>e.cc_norm));
+    const siSet=new Set(entries.map(e=>e.si));
+    if(ccNorms.size<2) return;
+    const total=entries.reduce((s,e)=>s+e.val,0);
+    if(total<30000) return;
+    const maxMes=Math.max(...entries.map(e=>e.meses));
+    auditD.push({mat:SRV_MATS[mi],nome:SRV_NOMES[ni],ano,
+      n_ccs:ccNorms.size,n_secs:siSet.size,
+      total:Math.round(total*100)/100,avg_mes:Math.round(total/maxMes*100)/100,
+      vinculos:entries.map(e=>({sec:SRV_SECS[e.si],cc:SRV_CCS[e.ci],reg:SRV_REGS[e.ri],val:Math.round(e.val*100)/100}))
+    });
+  });
+  auditD.sort((a,b)=>b.total-a.total);
+
+  // ── F: Crescimento desproporcional de CC ──────────────────
+  const DCC2=document.getElementById('dcc');
+  const cc_raw2=JSON.parse(DCC2.textContent).raw;
+  const CC_SECS2=JSON.parse(DCC2.textContent).secs;
+  const CC_CCS2=JSON.parse(DCC2.textContent).ccs;
+  const byCCAno={};
+  cc_raw2.forEach(r=>{
+    const [mes,ano,si,ci,ri,qtd,val]=r;
+    const k=ci+'_'+ano;
+    if(!byCCAno[k]) byCCAno[k]={ci,si,ano,v:0,q:0,cnt:0,meses:new Set()};
+    byCCAno[k].v+=val; byCCAno[k].q+=qtd; byCCAno[k].cnt++; byCCAno[k].meses.add(mes);
+  });
+  const byCI={};
+  Object.values(byCCAno).forEach(d=>{ if(!byCI[d.ci]) byCI[d.ci]=[]; byCI[d.ci].push(d); });
+  const auditF=[];
+  Object.values(byCI).forEach(anos=>{
+    anos.sort((a,b)=>a.ano-b.ano);
+    for(let i=1;i<anos.length;i++){
+      const d1=anos[i-1],d2=anos[i];
+      const nm1=d1.meses.size,nm2=d2.meses.size;
+      if(nm1<3||nm2<3) continue;
+      const v1=d1.v/nm1,v2=d2.v/nm2;
+      const q1=d1.q/d1.cnt,q2=d2.q/d2.cnt;
+      if(v1<=0) continue;
+      const cv=(v2-v1)/v1*100, cq=q1>0?(q2-q1)/q1*100:0;
+      if(cv>35 && cq<20 && v1>20000)
+        auditF.push({cc:CC_CCS2[d1.ci],sec:CC_SECS2[d1.si],a1:d1.ano,a2:d2.ano,
+          v1:Math.round(v1),v2:Math.round(v2),q1:Math.round(q1*10)/10,q2:Math.round(q2*10)/10,
+          cresc_v:Math.round(cv*10)/10,cresc_q:Math.round(cq*10)/10});
+    }
+  });
+  auditF.sort((a,b)=>b.cresc_v-a.cresc_v);
+
+  finalizeAudit(auditA, auditC, auditD, auditF);
+}
+
+function finalizeAudit(auditA, auditC, auditD, auditF) {
+  auditData = {A:auditA, C:auditC, D:auditD, F:auditF};
+
+  // KPIs
+  document.getElementById('audit-kpis').innerHTML = [
+    {icon:'📊',label:'Spikes de Folha',val:auditA.length,sub:'meses com Z > 2,2σ',cor:'#7c3aed'},
+    {icon:'👤',label:'Remuneração Atípica',val:auditC.length,sub:'servidores > 2,5× mediana',cor:'#dc2626'},
+    {icon:'🔗',label:'Múltiplos Vínculos',val:auditD.length,sub:'servidores em ≥2 CCs/ano',cor:'#d97706'},
+    {icon:'📈',label:'CCs Anômalos',val:auditF.length,sub:'crescimento desproporcional',cor:'#059669'},
+  ].map(k=>`<div class="kpi-card" style="border-top:3px solid ${k.cor}">
+    <div class="kpi-top"><div class="kpi-icon" style="background:${k.cor}22;font-size:18px">${k.icon}</div></div>
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-value" style="color:${k.cor}">${k.val.toLocaleString('pt-BR')}</div>
+    <div class="kpi-sub">${k.sub}</div></div>`).join('');
+
+  // Filtros C
+  const anosC=[...new Set(auditC.map(r=>r.ano))].sort();
+  document.getElementById('audit-c-ano').innerHTML='<option value="">Todos os anos</option>'+anosC.map(a=>`<option>${a}</option>`).join('');
+  const regsC=[...new Set(auditC.map(r=>r.reg))].sort();
+  document.getElementById('audit-c-reg').innerHTML='<option value="">Todos os regimes</option>'+regsC.map(r=>`<option value="${r}">${r.replace(/^\d+ - /,'')}</option>`).join('');
+
+  // Filtros D
+  const anosD=[...new Set(auditD.map(r=>r.ano))].sort();
+  document.getElementById('audit-d-ano').innerHTML='<option value="">Todos os anos</option>'+anosD.map(a=>`<option>${a}</option>`).join('');
+
+  renderAuditA(); renderAuditC(); renderAuditD(); renderAuditF();
+}
 
 // ═══════════════════════════════════════════════════════════════
 // DIAGNÓSTICO RH
