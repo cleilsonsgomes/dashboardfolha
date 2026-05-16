@@ -150,6 +150,7 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   <button class="tb"        id="tbn-srv"    onclick="switchTab('srv')">🔎 6. Drill-down Servidor</button>
   <button class="tb"        id="tbn-ins"    onclick="switchTab('ins')">⚗️ 7. Insalubridade</button>
   <button class="tb"        id="tbn-grat"   onclick="switchTab('grat')">💰 8. Gratificações</button>
+  <button class="tb"        id="tbn-sim"    onclick="switchTab('sim')">🧮 9. Simulador</button>
 </div>
 
 <!-- TAB 1: Composição -->
@@ -342,6 +343,15 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     <input class="tsearch" id="srv-busca" placeholder="Digite nome ou matrícula do servidor…" oninput="srvSearch()" style="min-width:320px">
     <span id="srv-info" style="font-size:12px;color:var(--mu)"></span>
   </div>
+  <div id="srv-default">
+    <div class="info-box" style="background:#f0f9ff;border-color:#bae6fd;color:#075985;margin-bottom:14px">
+      🔎 Digite ao menos 2 caracteres para buscar um servidor. Abaixo estão os <strong>top 20 servidores</strong> com maior remuneração no período filtrado.
+    </div>
+    <div class="cc" style="padding:0;overflow:hidden">
+      <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Total</th></tr></thead>
+      <tbody id="srv-top-body"></tbody></table></div>
+    </div>
+  </div>
   <div id="srv-results"></div>
   <div id="srv-detail" style="display:none">
     <div class="srv-card" id="srv-profile"></div>
@@ -435,6 +445,49 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       <table>
         <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Qtd Rubricas</th><th class="r">Total Gratificações</th><th class="r">% da Remu.</th></tr></thead>
         <tbody id="grat-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<div class="con" id="tab-sim" style="display:none">
+  <div class="info-box" style="background:#fefce8;border-color:#fde68a;color:#713f12;margin-bottom:18px">
+    🧮 <strong>Simulador de Planejamento:</strong> marque os eventos que deseja <em>excluir</em> da folha para estimar o impacto orçamentário. O cálculo usa os filtros globais (ano, regime, secretaria) ativos.
+  </div>
+  <!-- KPIs do simulador -->
+  <div class="kpi-grid" style="margin-bottom:18px" id="kpi-sim"></div>
+  <!-- Seletor de eventos -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+    <div class="cc" style="padding:14px">
+      <div class="ch" style="margin-bottom:10px">Selecionar Eventos para Excluir</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="pb" onclick="simSelectCat(0)">Marcar Base Salarial</button>
+        <button class="pb" onclick="simSelectCat(1)">Marcar Gratificações</button>
+        <button class="pb" onclick="simSelectCat(2)">Marcar Extras/Plantões</button>
+        <button class="pb" onclick="simSelectCat(3)">Marcar Férias</button>
+        <button class="pb" onclick="simClearAll()" style="border-color:#dc2626;color:#dc2626">Limpar tudo</button>
+      </div>
+      <input class="tsearch" id="sim-ev-busca" placeholder="Buscar evento…" oninput="simFilterEvs(this.value)" style="width:100%;margin-bottom:8px">
+      <div id="sim-ev-list" style="max-height:380px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="cc" style="padding:14px">
+        <div class="ch" style="margin-bottom:10px">Impacto por Categoria</div>
+        <canvas id="ch-sim-cat" height="200"></canvas>
+      </div>
+      <div class="cc" style="padding:14px">
+        <div class="ch" style="margin-bottom:10px">Impacto por Secretaria (Top 10)</div>
+        <canvas id="ch-sim-sec" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="cc" style="padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px">Impacto por Regime</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Regime</th><th class="r">Folha Atual</th><th class="r">Economia</th><th class="r">Folha Simulada</th><th class="r">Redução %</th></tr></thead>
+        <tbody id="sim-reg-body"></tbody>
       </table>
     </div>
   </div>
@@ -560,7 +613,7 @@ function filtA2(){
 // ════════════════════════════════════════════════════════════════
 // TABS
 // ════════════════════════════════════════════════════════════════
-const ALL_TABS=['comp','cresc','plant','he','dup','srv','ins','grat'];
+const ALL_TABS=['comp','cresc','plant','he','dup','srv','ins','grat','sim'];
 let inited={};
 let charts={};
 
@@ -580,8 +633,10 @@ function renderTab(t){
   if(t==='plant') renderPlant();
   if(t==='he')    renderHE();
   if(t==='dup')   renderDup();
+  if(t==='srv')   renderSrvDefault();
   if(t==='ins')   renderIns();
   if(t==='grat')  renderGrat();
+  if(t==='sim')   renderSim();
 }
 
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
@@ -903,9 +958,37 @@ function renderDup(){
 let srvSelected=null;
 let srvAllRows=[];
 
+function renderSrvDefault(){
+  // Top 20 servidores pelo total em agg4 respeitando filtros
+  const totSrv={};
+  agg4.forEach(r=>{
+    if(FS.anos.size>0&&!FS.anos.has(r[A4_ANO]))return;
+    if(FS.ris.size>0){const prof=srv_profile[r[A4_MI]];if(prof&&!FS.ris.has(prof[2]))return;}
+    if(FS.sis.size>0){const prof=srv_profile[r[A4_MI]];if(prof&&!FS.sis.has(prof[1]))return;}
+    totSrv[r[A4_MI]]=(totSrv[r[A4_MI]]||0)+r[A4_VAL];
+  });
+  const top20=Object.entries(totSrv).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  document.getElementById('srv-top-body').innerHTML=top20.map(([mi,v],i)=>{
+    const prof=srv_profile[+mi]||[0,0,0];
+    return`<tr style="cursor:pointer" onclick="document.getElementById('srv-busca').value=nomes[${mi}];srvSearch();document.getElementById('srv-busca').dispatchEvent(new Event('focus'))">
+      <td style="color:#94a3b8">${i+1}</td>
+      <td style="font-weight:600;color:#4f46e5">${nomes[+mi]||mats[+mi]}</td>
+      <td style="font-size:11px;color:#64748b">${(secs[prof[1]]||'').replace(/^\d+ - /,'')}</td>
+      <td><span class="badge" style="background:#ede9fe;color:#7c3aed;font-size:10px">${(regimes[prof[2]]||'').replace(/^\d+ - /,'')}</span></td>
+      <td class="r" style="font-weight:700">${fR(v)}</td>
+    </tr>`;
+  }).join('');
+}
 function srvSearch(){
   const q=(document.getElementById('srv-busca').value||'').toLowerCase().trim();
-  if(q.length<2){document.getElementById('srv-results').innerHTML='';return;}
+  const defEl=document.getElementById('srv-default');
+  if(q.length<2){
+    document.getElementById('srv-results').innerHTML='';
+    document.getElementById('srv-detail').style.display='none';
+    if(defEl) defEl.style.display='';
+    return;
+  }
+  if(defEl) defEl.style.display='none';
   const matches=nomes.map((n,i)=>({i,n,mat:mats[i]})).filter(x=>x.n.toLowerCase().includes(q)||x.mat.includes(q)).slice(0,15);
   document.getElementById('srv-info').textContent=matches.length+' encontrados';
   document.getElementById('srv-results').innerHTML=`<div class="cc" style="padding:12px">
@@ -1200,6 +1283,142 @@ function renderGrat(){
       <td class="r" style="color:#dc2626">${pct}%</td>
     </tr>`;
   }).join('');
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// TAB 9 — SIMULADOR DE EXCLUSÃO DE EVENTOS
+// ════════════════════════════════════════════════════════════════
+let simExcluded = new Set(); // índices de eventos excluídos
+
+function simBuildEvList(q=''){
+  const el=document.getElementById('sim-ev-list');
+  if(!el) return;
+  const rows=filtA1();
+  // Valor por evento no filtro atual
+  const evVal={};
+  rows.forEach(r=>{ evVal[r[A1_EI]]=(evVal[r[A1_EI]]||0)+r[A1_VAL]; });
+  const sorted=Object.entries(evVal).sort((a,b)=>b[1]-a[1]);
+  const qL=q.toLowerCase();
+  const visible=sorted.filter(([ei])=>!qL||ev_names[+ei].toLowerCase().includes(qL));
+  el.innerHTML=visible.map(([ei,val])=>{
+    const cat=evCat(+ei);
+    const chk=simExcluded.has(+ei)?'checked':'';
+    return`<label style="display:flex;align-items:center;gap:10px;padding:7px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:12px;transition:background .1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+      <input type="checkbox" ${chk} onchange="simToggle(${+ei},this.checked)" style="accent-color:#dc2626;width:14px;height:14px;cursor:pointer;flex-shrink:0">
+      <span style="flex:1">${ev_names[+ei]}</span>
+      <span class="badge" style="background:${CC[cat]}22;color:${CC[cat]};flex-shrink:0">${CAT[cat]}</span>
+      <span style="color:#64748b;white-space:nowrap;flex-shrink:0">${fK(val)}</span>
+    </label>`;
+  }).join('');
+}
+
+function simFilterEvs(q){ simBuildEvList(q); }
+
+function simToggle(ei, checked){
+  if(checked) simExcluded.add(ei); else simExcluded.delete(ei);
+  simCalc();
+}
+
+function simSelectCat(cat){
+  const rows=filtA1();
+  rows.forEach(r=>{ if(evCat(r[A1_EI])===cat) simExcluded.add(r[A1_EI]); });
+  simBuildEvList((document.getElementById('sim-ev-busca')||{value:''}).value);
+  simCalc();
+}
+
+function simClearAll(){
+  simExcluded.clear();
+  simBuildEvList('');
+  simCalc();
+}
+
+function fK(v){ return v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1000?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0); }
+
+function simCalc(){
+  const rows=filtA1();
+  let totalAtual=0, totalExcl=0;
+  const byCatAtual=[0,0,0,0,0], byCatExcl=[0,0,0,0,0];
+  const bySecAtual={}, bySecExcl={};
+  const byRegAtual={}, byRegExcl={};
+
+  rows.forEach(r=>{
+    const cat=evCat(r[A1_EI]);
+    totalAtual+=r[A1_VAL];
+    byCatAtual[cat]+=r[A1_VAL];
+    bySecAtual[r[A1_SI]]=(bySecAtual[r[A1_SI]]||0)+r[A1_VAL];
+    byRegAtual[r[A1_RI]]=(byRegAtual[r[A1_RI]]||0)+r[A1_VAL];
+    if(simExcluded.has(r[A1_EI])){
+      totalExcl+=r[A1_VAL];
+      byCatExcl[cat]+=r[A1_VAL];
+      bySecExcl[r[A1_SI]]=(bySecExcl[r[A1_SI]]||0)+r[A1_VAL];
+      byRegExcl[r[A1_RI]]=(byRegExcl[r[A1_RI]]||0)+r[A1_VAL];
+    }
+  });
+
+  const totalSim=totalAtual-totalExcl;
+  const pct=totalAtual>0?(totalExcl/totalAtual*100).toFixed(1):0;
+
+  // KPIs
+  document.getElementById('kpi-sim').innerHTML=[
+    {l:'Folha Atual',v:fK(totalAtual),s:'período filtrado',c:'#1d4ed8'},
+    {l:'Economia Simulada',v:fK(totalExcl),s:pct+'% da folha',c:'#dc2626'},
+    {l:'Folha Simulada',v:fK(totalSim),s:'após exclusões',c:'#059669'},
+    {l:'Eventos Excluídos',v:simExcluded.size,s:'rubricas selecionadas',c:'#7c3aed'},
+  ].map(k=>`<div class="kpi" style="border-top:3px solid ${k.c}">
+    <div class="kpi-l">${k.l}</div>
+    <div class="kpi-v" style="color:${k.c};font-size:18px">${k.v}</div>
+    <div class="kpi-s">${k.s}</div></div>`).join('');
+
+  // Gráfico por Categoria
+  destroyChart('ch-sim-cat');
+  charts['ch-sim-cat']=new Chart(document.getElementById('ch-sim-cat'),{type:'bar',
+    data:{
+      labels:CAT,
+      datasets:[
+        {label:'Atual',data:byCatAtual,backgroundColor:CC.map(c=>c+'66'),borderColor:CC,borderWidth:1.5,borderRadius:4},
+        {label:'Excluído',data:byCatExcl,backgroundColor:'#dc262666',borderColor:'#dc2626',borderWidth:1.5,borderRadius:4}
+      ]
+    },
+    options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10}}},
+             scales:{y:{ticks:{callback:v=>fK(v)}}}}
+  });
+
+  // Gráfico por Secretaria (top 10 impacto)
+  const secImpact=Object.entries(bySecExcl).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  destroyChart('ch-sim-sec');
+  charts['ch-sim-sec']=new Chart(document.getElementById('ch-sim-sec'),{type:'bar',
+    data:{
+      labels:secImpact.map(([si])=>secs[+si].replace(/^\d+ - /,'').substring(0,30)),
+      datasets:[
+        {label:'Economia',data:secImpact.map(([si,v])=>v),backgroundColor:'#dc262666',borderColor:'#dc2626',borderWidth:1.5,borderRadius:4},
+        {label:'Restante',data:secImpact.map(([si])=>(bySecAtual[+si]||0)-(bySecExcl[+si]||0)),backgroundColor:'#05996966',borderColor:'#059669',borderWidth:1.5,borderRadius:4}
+      ]
+    },
+    options:{indexAxis:'y',plugins:{legend:{position:'bottom',labels:{boxWidth:10}}},
+             scales:{x:{stacked:false,ticks:{callback:v=>fK(v)}}}}
+  });
+
+  // Tabela por Regime
+  const regsPresent=Object.keys(byRegAtual).sort((a,b)=>byRegAtual[b]-byRegAtual[a]);
+  document.getElementById('sim-reg-body').innerHTML=regsPresent.map(ri=>{
+    const atual=byRegAtual[ri]||0;
+    const excl=byRegExcl[ri]||0;
+    const sim=atual-excl;
+    const pctR=atual>0?(excl/atual*100).toFixed(1):0;
+    return`<tr>
+      <td><span class="badge" style="background:#f1f5f9;color:#374151">${regimes[+ri].replace(/^\d+ - /,'')}</span></td>
+      <td class="r">${fK(atual)}</td>
+      <td class="r" style="color:#dc2626;font-weight:${excl>0?'700':'400'}">${excl>0?'-'+fK(excl):'—'}</td>
+      <td class="r" style="color:#059669;font-weight:600">${fK(sim)}</td>
+      <td class="r" style="color:${excl>0?'#dc2626':'#94a3b8'}">${excl>0?pctR+'%':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderSim(){
+  simBuildEvList('');
+  simCalc();
 }
 
 (function init(){
