@@ -238,8 +238,8 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     </div>
     <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Limiar mín. (R$)</label>
       <select class="sf" id="plant-lim" onchange="renderPlant()">
-        <option value="0">Todos</option>
-        <option value="10000" selected>Acima de R$ 10k</option>
+        <option value="0" selected>Todos</option>
+        <option value="10000">Acima de R$ 10k</option>
         <option value="20000">Acima de R$ 20k</option>
         <option value="30000">Acima de R$ 30k</option>
       </select>
@@ -698,7 +698,7 @@ const PLANT_PG=25;
 function renderPlant(){
   const tipo=(document.getElementById('plant-tipo')||{value:''}).value.toUpperCase();
   const mes=Number((document.getElementById('plant-mes')||{value:''}).value)||0;
-  const lim=Number((document.getElementById('plant-lim')||{value:'0'}).value)||0;
+  const lim=Number((document.getElementById('plant-lim')||{value:'0'}).value);
   const q=((document.getElementById('plant-busca')||{value:''}).value).toLowerCase();
 
   plantRows=filtA2().filter(r=>{
@@ -716,8 +716,12 @@ function renderPlantPage(){
   const rows=plantRows;
   const slice=rows.slice((plantPgN-1)*PLANT_PG,plantPgN*PLANT_PG);
   document.getElementById('plant-info').textContent=rows.length+' registros';
+  const totalPgs=Math.ceil(rows.length/PLANT_PG)||1;
   document.getElementById('plant-pgi').textContent=
-    rows.length?`${(plantPgN-1)*PLANT_PG+1}–${Math.min(plantPgN*PLANT_PG,rows.length)} de ${rows.length}`:'';
+    rows.length?`${(plantPgN-1)*PLANT_PG+1}–${Math.min(plantPgN*PLANT_PG,rows.length)} de ${rows.length} (pág. ${plantPgN}/${totalPgs})`:'';
+  document.querySelectorAll('.pgr-b .pb').forEach((b,i)=>{
+    b.disabled=(i===0&&plantPgN<=1)||(i===1&&plantPgN>=totalPgs);
+  });
   document.getElementById('plant-body').innerHTML=slice.map(r=>{
     const alerta=r[A2_VAL]>20000;
     return`<tr>
