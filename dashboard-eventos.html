@@ -1880,10 +1880,10 @@ function renderCargoLei(){
     data:{
       labels:ccData.map(d=>d.nivel),
       datasets:[
-        {label:'Previsto na Lei',data:ccData.map(d=>d.lei),backgroundColor:'#05966940',borderColor:'#059669',borderWidth:1.5,borderRadius:3},
+        {label:'Previsto na Lei',data:ccData.map(d=>d.lei),backgroundColor:'#bbf7d0',borderColor:'#059669',borderWidth:2,borderRadius:3},
         {label:'Contratado',data:ccData.map(d=>d.cont),
-          backgroundColor:ccData.map(d=>d.cont>d.lei?'#dc262680':'#4f46e540'),
-          borderColor:ccData.map(d=>d.cont>d.lei?'#dc2626':'#4f46e5'),borderWidth:1.5,borderRadius:3},
+          backgroundColor:ccData.map(d=>d.cont>d.lei?'#fca5a5':'#a5b4fc'),
+          borderColor:ccData.map(d=>d.cont>d.lei?'#dc2626':'#4f46e5'),borderWidth:2,borderRadius:3},
       ]
     },
     options:{plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},
@@ -1902,7 +1902,7 @@ function renderCargoLei(){
       datasets:[{
         label:'Saldo (contratado − lei)',
         data:secComp.map(d=>d.saldo),
-        backgroundColor:secComp.map(d=>d.saldo>0?'#dc262670':'#05966970'),
+        backgroundColor:secComp.map(d=>d.saldo>0?'#fca5a5':'#bbf7d0'),
         borderColor:secComp.map(d=>d.saldo>0?'#dc2626':'#059669'),
         borderWidth:1.5,borderRadius:3
       }]
