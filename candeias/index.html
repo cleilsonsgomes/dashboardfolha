@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Painel de Auditoria — Candeias-BA</title>
+<style>
+:root{
+  --ac:#4f46e5;--ac2:#7c3aed;--ac3:#0891b2;
+  --dark:#0f172a;--mu:#64748b;--bd:#e2e8f0;--bg:#f8fafc;--wh:#fff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--dark);min-height:100vh}
+
+/* HERO */
+.hero{
+  background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4f46e5 100%);
+  padding:64px 24px 80px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+  border-radius:20px;padding:5px 14px;font-size:11px;font-weight:600;
+  color:rgba(255,255,255,.9);letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:20px;
+}
+.hero h1{
+  font-size:clamp(28px,5vw,48px);font-weight:800;color:#fff;
+  line-height:1.15;margin-bottom:14px;letter-spacing:-.5px;
+}
+.hero h1 span{color:#a5b4fc}
+.hero p{
+  font-size:clamp(14px,2vw,18px);color:rgba(255,255,255,.75);
+  max-width:560px;margin:0 auto 32px;line-height:1.6;
+}
+.hero-meta{
+  display:flex;justify-content:center;gap:24px;flex-wrap:wrap;
+  font-size:12px;color:rgba(255,255,255,.6);
+}
+.hero-meta span{display:flex;align-items:center;gap:6px}
+
+/* WAVE */
+.wave{display:block;margin-top:-2px;background:var(--bg)}
+
+/* SECTION */
+.section{max-width:1100px;margin:0 auto;padding:60px 24px 80px}
+.section-label{
+  font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;
+  letter-spacing:1px;text-align:center;margin-bottom:10px;
+}
+.section-title{
+  font-size:clamp(22px,3vw,32px);font-weight:800;text-align:center;
+  margin-bottom:8px;color:var(--dark);
+}
+.section-sub{font-size:15px;color:var(--mu);text-align:center;margin-bottom:48px}
+
+/* CARDS */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.card{
+  background:#fff;border-radius:20px;border:1px solid var(--bd);
+  box-shadow:0 4px 20px rgba(0,0,0,.06);overflow:hidden;
+  display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;
+}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.1)}
+.card-top{padding:28px 28px 20px;flex:1}
+.card-icon{
+  width:56px;height:56px;border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin-bottom:18px;
+}
+.card-tag{
+  display:inline-block;padding:3px 10px;border-radius:20px;
+  font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:12px;
+}
+.card h2{font-size:20px;font-weight:800;margin-bottom:8px;line-height:1.25}
+.card p{font-size:13.5px;color:var(--mu);line-height:1.6;margin-bottom:16px}
+.card-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.chip{
+  padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600;
+  background:#f1f5f9;color:#475569;
+}
+.card-bottom{
+  padding:20px 28px;border-top:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.card-stat{font-size:11px;color:var(--mu)}
+.card-stat strong{font-size:15px;font-weight:700;color:var(--dark);display:block}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;
+  text-decoration:none;transition:opacity .15s,transform .1s;white-space:nowrap;
+}
+.btn:hover{opacity:.88;transform:scale(1.02)}
+.btn-primary{color:#fff}
+.btn svg{width:16px;height:16px;flex-shrink:0}
+
+/* HOW-TO */
+.howto{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px}
+.howto-item{display:flex;gap:14px;align-items:flex-start}
+.howto-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+
+/* DIVIDER */
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--bd),transparent);margin:0 24px}
+
+/* FOOTER */
+footer{
+  background:#0f172a;color:rgba(255,255,255,.5);
+  text-align:center;padding:28px 24px;font-size:12px;line-height:1.8;
+}
+footer strong{color:rgba(255,255,255,.8)}
+
+@media(max-width:600px){
+  .hero{padding:48px 20px 64px}
+  .card-bottom{flex-direction:column;align-items:flex-start}
+  .hero-meta{gap:12px}
+}
+
+/* AUTH OVERLAY */
+#auth-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4f46e5 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+#auth-overlay::before{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.auth-box{
+  position:relative;background:#fff;border-radius:24px;
+  padding:48px 40px 40px;width:100%;max-width:400px;
+  box-shadow:0 25px 60px rgba(0,0,0,.35);
+  animation:authIn .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes authIn{from{opacity:0;transform:translateY(24px) scale(.95)}to{opacity:1;transform:none}}
+.auth-logo{
+  width:56px;height:56px;border-radius:16px;
+  background:linear-gradient(135deg,#4f46e5,#7c3aed);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin:0 auto 20px;
+}
+.auth-box h2{font-size:22px;font-weight:800;text-align:center;color:#0f172a;margin-bottom:4px}
+.auth-box p{font-size:13px;color:#64748b;text-align:center;margin-bottom:28px}
+.auth-field{margin-bottom:16px}
+.auth-field label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.auth-field input{
+  width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
+  font-size:14px;color:#0f172a;outline:none;transition:border-color .15s;
+  font-family:inherit;
+}
+.auth-field input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px #4f46e520}
+.auth-btn{
+  width:100%;padding:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);
+  color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;
+  cursor:pointer;margin-top:8px;transition:opacity .15s,transform .1s;
+  font-family:inherit;
+}
+.auth-btn:hover{opacity:.9;transform:scale(1.01)}
+.auth-btn:active{transform:scale(.99)}
+.auth-error{
+  background:#fee2e2;color:#991b1b;border-radius:8px;
+  padding:10px 14px;font-size:13px;margin-top:14px;text-align:center;
+  display:none;
+}
+.auth-footer{font-size:11px;color:#94a3b8;text-align:center;margin-top:20px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">🔒</div>
+    <h2>Painel de Auditoria</h2>
+    <p>Município de Candeias — BA<br>Acesso restrito a usuários autorizados</p>
+    <div class="auth-field">
+      <label>Usuário</label>
+      <input type="text" id="auth-user" placeholder="Digite seu usuário" autocomplete="username" autocapitalize="none">
+    </div>
+    <div class="auth-field">
+      <label>Senha</label>
+      <input type="password" id="auth-pass" placeholder="Digite sua senha" autocomplete="current-password">
+    </div>
+    <button class="auth-btn" onclick="authLogin()">Entrar</button>
+    <div class="auth-error" id="auth-error">Usuário ou senha incorretos.</div>
+    <div class="auth-footer">Sistema de Auditoria Municipal · Dados Dez/2025–Abr/2026</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Usuários autorizados: {usuario: hash_senha}
+  // Senha padrão: audit@2026
+  const PWD_HASH = '6b4cf7a7e75b02e6a614ff6c2f53b2fb'; // MD5 simplificado — veja abaixo
+  const USERS = ['alberdran','fabiana','cleilson','mario'];
+  const SESSION_KEY = 'dash_auth_v1';
+  const SESSION_TTL = 8 * 3600 * 1000; // 8 horas
+
+  // Hash simples (não criptográfico — apenas ofuscação para UI gate)
+  function simpleHash(s){
+    let h=0x811c9dc5;
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*0x01000193)>>>0;}
+    return h.toString(16);
+  }
+  const PWD_SH = simpleHash('audit@2026');
+
+  window.authLogin = function(){
+    const user = document.getElementById('auth-user').value.trim().toLowerCase();
+    const pass = document.getElementById('auth-pass').value;
+    const err  = document.getElementById('auth-error');
+    if(USERS.includes(user) && simpleHash(pass) === PWD_SH){
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({user, exp: Date.now() + SESSION_TTL}));
+      document.getElementById('auth-overlay').style.display='none';
+      err.style.display='none';
+    } else {
+      err.style.display='block';
+      document.getElementById('auth-pass').value='';
+      document.getElementById('auth-pass').focus();
+    }
+  };
+
+  // Enter key support
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && document.getElementById('auth-overlay').style.display!=='none') authLogin();
+  });
+
+  // Check existing session
+  try{
+    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY)||'{}');
+    if(s.user && Date.now() < s.exp){
+      document.getElementById('auth-overlay').style.display='none';
+    }
+  } catch(e){}
+})();
+</script>
+
+<header class="hero">
+  <div class="hero-badge">📍 Município de Candeias – BA</div>
+  <h1>Painel de <span>Auditoria</span><br>da Folha de Pagamento</h1>
+  <p>Análise de dados públicos da execução orçamentária municipal — folha de pessoal, pagamentos a fornecedores e eventos por rubrica.</p>
+  <div class="hero-meta">
+    <span>📅 Dados: Dez/2025–Abr/2026</span>
+    <span>🔒 Nomes anonimizados (LGPD)</span>
+    <span>📊 Fonte: Sistema Municipal</span>
+  </div>
+</header>
+
+<svg class="wave" viewBox="0 0 1440 48" preserveAspectRatio="none" height="48" xmlns="http://www.w3.org/2000/svg">
+  <path fill="#4f46e5" d="M0,32 C360,0 1080,64 1440,32 L1440,0 L0,0 Z" opacity=".12"/>
+  <path fill="#f8fafc" d="M0,48 C480,16 960,48 1440,24 L1440,48 Z"/>
+</svg>
+
+<section class="section">
+  <div class="section-label">Ferramentas disponíveis</div>
+  <div class="section-title">Selecione o painel que deseja acessar</div>
+  <p class="section-sub">Cada painel oferece análises específicas com filtros interativos, gráficos e tabelas detalhadas.</p>
+
+  <div class="cards">
+
+    <!-- CARD 1: FOLHA -->
+    <div class="card">
+      <div class="card-top">
+        <div class="card-icon" style="background:#eef2ff">📋</div>
+        <div class="card-tag" style="background:#eef2ff;color:#4f46e5">Auditoria de Pessoal</div>
+        <h2>Folha de Pagamento</h2>
+        <p>Análise completa da folha de pessoal por secretaria, cargo e regime. Identifica anomalias, servidores acumulados, crescimento desproporcional e centros de custo suspeitos.</p>
+        <div class="card-chips">
+          <span class="chip">🔍 Auditorias A–G</span>
+          <span class="chip">📊 Evolução mensal</span>
+          <span class="chip">👤 Drill-down servidor</span>
+          <span class="chip">🏛️ Por secretaria</span>
+        </div>
+      </div>
+      <div class="card-bottom">
+        <div class="card-stat">
+          <strong>7.482</strong>servidores analisados
+        </div>
+        <a href="dashboard-folha.html" class="btn btn-primary" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
+          Acessar
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- CARD 2: PAGAMENTOS -->
+    <div class="card">
+      <div class="card-top">
+        <div class="card-icon" style="background:#fef3c7">💳</div>
+        <div class="card-tag" style="background:#fef3c7;color:#d97706">Auditoria Financeira</div>
+        <h2>Pagamentos a Fornecedores</h2>
+        <p>Análise dos pagamentos realizados a credores em 2026. Detecta duplicidades, pagamentos sem licitação, fracionamento de despesas e alertas de irregularidade.</p>
+        <div class="card-chips">
+          <span class="chip">⚠️ 571 duplicatas</span>
+          <span class="chip">🔎 Sem licitação</span>
+          <span class="chip">📦 Fracionamento</span>
+          <span class="chip">🚨 Alertas críticos</span>
+        </div>
+      </div>
+      <div class="card-bottom">
+        <div class="card-stat">
+          <strong>5.046</strong>registros de pagamento
+        </div>
+        <a href="dashboard-pagamentos.html" class="btn btn-primary" style="background:linear-gradient(135deg,#d97706,#f59e0b)">
+          Acessar
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- CARD 3: EVENTOS -->
+    <div class="card">
+      <div class="card-top">
+        <div class="card-icon" style="background:#ecfdf5">📈</div>
+        <div class="card-tag" style="background:#ecfdf5;color:#059669">Análise por Rubrica</div>
+        <h2>Eventos da Folha</h2>
+        <p>Detalhe por rubrica de pagamento com 9 abas: composição, crescimento, plantões, hora extra, gratificações, insalubridade, drill-down por servidor e simulador de planejamento.</p>
+        <div class="card-chips">
+          <span class="chip">🧮 Simulador</span>
+          <span class="chip">💰 Gratificações</span>
+          <span class="chip">🏥 Plantões/HE</span>
+          <span class="chip">⚗️ Insalubridade</span>
+        </div>
+      </div>
+      <div class="card-bottom">
+        <div class="card-stat">
+          <strong>393.711</strong>registros · 211 eventos
+        </div>
+        <a href="dashboard-eventos.html" class="btn btn-primary" style="background:linear-gradient(135deg,#059669,#0891b2)">
+          Acessar
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section style="max-width:1100px;margin:0 auto;padding:48px 24px 60px">
+  <div class="section-label" style="margin-bottom:28px">Como usar</div>
+  <div class="howto">
+    <div class="howto-item">
+      <div class="howto-icon" style="background:#eef2ff">1️⃣</div>
+      <div>
+        <strong style="font-size:14px;display:block;margin-bottom:4px">Escolha o painel</strong>
+        <p style="font-size:13px;color:var(--mu);line-height:1.6">Selecione a análise conforme o tipo de dado que deseja auditar.</p>
+      </div>
+    </div>
+    <div class="howto-item">
+      <div class="howto-icon" style="background:#fef3c7">2️⃣</div>
+      <div>
+        <strong style="font-size:14px;display:block;margin-bottom:4px">Aplique os filtros</strong>
+        <p style="font-size:13px;color:var(--mu);line-height:1.6">Filtre por ano, regime, secretaria ou evento para refinar a análise.</p>
+      </div>
+    </div>
+    <div class="howto-item">
+      <div class="howto-icon" style="background:#ecfdf5">3️⃣</div>
+      <div>
+        <strong style="font-size:14px;display:block;margin-bottom:4px">Explore as abas</strong>
+        <p style="font-size:13px;color:var(--mu);line-height:1.6">Navegue entre as abas temáticas para diferentes perspectivas dos dados.</p>
+      </div>
+    </div>
+    <div class="howto-item">
+      <div class="howto-icon" style="background:#fce7f3">4️⃣</div>
+      <div>
+        <strong style="font-size:14px;display:block;margin-bottom:4px">Identifique anomalias</strong>
+        <p style="font-size:13px;color:var(--mu);line-height:1.6">Use as abas de auditoria e alertas para detectar irregularidades.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <strong>Painel de Auditoria — Município de Candeias, Bahia</strong><br>
+  Dados extraídos do sistema de gestão municipal · Uso interno para fins de controle e planejamento<br>
+  Nomes de servidores anonimizados conforme a LGPD (Lei 13.709/2018)
+</footer>
+
+</body>
+</html>
