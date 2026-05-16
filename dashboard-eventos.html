@@ -920,9 +920,7 @@ function applyFilters(){
 }
 function resetFilters(){
   msClear('ano'); [2025,2026].forEach(v=>MS['ano'].selected.add(v)); msLabel('ano');
-  msClear('reg');
-  const ri_com=regimes.findIndex(r=>/COMISSION/i.test(r));
-  if(ri_com>=0) MS['reg'].selected.add(ri_com); msLabel('reg');
+  msClear('reg'); msLabel('reg');
   msClear('sec'); msLabel('sec');
   msClear('ev'); msLabel('ev');
   if(MS['competencia']){msAll('competencia');}
@@ -2694,8 +2692,7 @@ function renderEstag(){
   }
 
   // Default: 2025+2026 e Cargos em Comissão
-  const ri_com=regimes.findIndex(r=>/COMISSION/i.test(r));
-  if(ri_com>=0){MS['reg'].selected.add(ri_com);msLabel('reg');}
+  // ri_com auto-select removido — mantém todos os regimes por padrão
   applyFilters();
 
   // Inicializa Mês no filtro de plantões
