@@ -749,8 +749,10 @@ function renderHE(){
   let heEvs=ev_names.map((n,i)=>({i,n})).filter(x=>/HORA EXTRA/.test(x.n));
   if(heTipo) heEvs=heEvs.filter(x=>x.n.includes(heTipo));
   const heNames=heEvs.map(x=>x.i);
-  
+  const anosF=ANOS_ALL.filter(a=>FS.anos.size===0||FS.anos.has(a));
+
   const rows=agg1.filter(r=>heNames.includes(r[A1_EI])&&
+    (FS.anos.size===0||FS.anos.has(r[A1_ANO]))&&
     (FS.ris.size===0||FS.ris.has(r[A1_RI]))&&
     (FS.sis.size===0||FS.sis.has(r[A1_SI])));
 
@@ -761,30 +763,43 @@ function renderHE(){
     byAno[r[A1_ANO]]=(byAno[r[A1_ANO]]||0)+r[A1_VAL];
   });
 
-  let secSorted=Object.entries(bySec).map(([si,anos])=>({si:Number(si),total:Object.values(anos).reduce((s,v)=>s+v)})).sort((a,b)=>b.total-a.total);
+  const fK=v=>v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1000?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0);
+
+  // Total por secretaria apenas nos anos filtrados
+  let secSorted=Object.entries(bySec).map(([si,anos])=>({
+    si:Number(si),
+    total:anosF.reduce((s,a)=>s+(anos[a]||0),0)
+  })).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
   if(heLim>0) secSorted=secSorted.filter(x=>x.total>=heLim);
   secSorted=secSorted.slice(0,15);
-  const heInfoEl=document.getElementById('he-info'); if(heInfoEl) heInfoEl.textContent=secSorted.length+' secretarias';
+  const heInfoEl=document.getElementById('he-info');
+  if(heInfoEl) heInfoEl.textContent=secSorted.length+' secretarias · '+fK(secSorted.reduce((s,x)=>s+x.total,0));
 
   destroyChart('ch-he-sec');
   charts['ch-he-sec']=new Chart(document.getElementById('ch-he-sec'),{type:'bar',
     data:{labels:secSorted.map(x=>secs[x.si].replace(/^\d+ - /,'').substring(0,35)),
           datasets:[{label:'Total HE',data:secSorted.map(x=>x.total),backgroundColor:'#dc262680',borderColor:'#dc2626',borderWidth:1.5,borderRadius:4}]},
-    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'R$'+(v/1e3).toFixed(0)+'k'}}}}});
+    options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fK(ctx.raw)}}},
+             scales:{x:{ticks:{callback:v=>fK(v)}}}}});
 
-  const anosAll=ANOS_ALL;
   destroyChart('ch-he-ev');
   charts['ch-he-ev']=new Chart(document.getElementById('ch-he-ev'),{type:'bar',
-    data:{labels:anosAll.map(String),datasets:[{label:'Hora Extra',data:anosAll.map(a=>byAno[a]||0),backgroundColor:'#f97316bb',borderColor:'#f97316',borderWidth:1.5,borderRadius:4}]},
-    options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'R$'+(v/1e6).toFixed(2)+'M'}}}}});
+    data:{labels:anosF.map(String),
+          datasets:[{label:'Hora Extra',data:anosF.map(a=>byAno[a]||0),backgroundColor:'#f97316bb',borderColor:'#f97316',borderWidth:1.5,borderRadius:4}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fK(ctx.raw)}}},
+             scales:{y:{ticks:{callback:v=>fK(v)}}}}});
 
   // Tabela
-  const hdr=`<tr style="background:#f8fafc;border-bottom:2px solid var(--bd)"><th>Secretaria</th>${anosAll.map(a=>`<th class="r">${a}</th>`).join('')}<th class="r">Total</th></tr>`;
+  const hdr=`<tr style="background:#f8fafc;border-bottom:2px solid var(--bd)"><th>Secretaria</th>${anosF.map(a=>`<th class="r">${a}</th>`).join('')}<th class="r">Total</th></tr>`;
   document.getElementById('he-thead').innerHTML=hdr;
+  if(secSorted.length===0){
+    document.getElementById('he-tbody').innerHTML=`<tr><td colspan="${anosF.length+2}" style="text-align:center;padding:20px;color:var(--mu)">Nenhum registro de hora extra no período filtrado</td></tr>`;
+    return;
+  }
   document.getElementById('he-tbody').innerHTML=secSorted.map(x=>{
-    const tot=Object.values(bySec[x.si]).reduce((s,v)=>s+v);
+    const tot=anosF.reduce((s,a)=>s+(bySec[x.si][a]||0),0);
     return`<tr><td style="font-size:11px">${secs[x.si].replace(/^\d+ - /,'')}</td>
-      ${anosAll.map(a=>`<td class="r" style="font-size:11px">${bySec[x.si][a]?'R$'+(bySec[x.si][a]/1e3).toFixed(0)+'k':'—'}</td>`).join('')}
+      ${anosF.map(a=>`<td class="r" style="font-size:11px">${bySec[x.si][a]?fK(bySec[x.si][a]):'—'}</td>`).join('')}
       <td class="r" style="font-weight:600">${fR(tot)}</td></tr>`;
   }).join('');
 }
