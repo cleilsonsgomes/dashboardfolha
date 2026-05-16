@@ -583,6 +583,46 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       </table>
     </div>
   </div>
+  <div style="border-top:2px solid var(--bd);margin-top:28px;padding-top:24px">
+    <div style="font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+      Conformidade Legal — LC nº 10/2025 + Emenda 23/12/2025
+    </div>
+    <div class="info-box" style="background:#f0f9ff;border-color:#bae6fd;color:#0c4a6e;margin-bottom:16px">
+      ⚖️ Comparativo entre as vagas <strong>previstas em lei</strong> e os servidores <strong>efetivamente contratados</strong> no regime Comissão.
+      Respeita os filtros de <strong>Competência</strong> e <strong>Ano</strong> selecionados acima — use-os para analisar um mês específico.
+    </div>
+    <div id="lei-comp-info" style="font-size:12px;color:var(--mu);margin-bottom:12px"></div>
+    <div class="kpi-grid" id="kpi-lei"></div>
+    <div class="g2" style="margin-top:18px">
+      <div class="cc">
+        <div class="ch">Lei × Contratado por Nível de Cargo (CC)</div>
+        <div class="cs">Vagas autorizadas vs. vínculos ativos no período selecionado</div>
+        <canvas id="ch-lei-cc" height="280"></canvas>
+      </div>
+      <div class="cc">
+        <div class="ch">Conformidade por Secretaria</div>
+        <div class="cs">Vagas autorizadas vs. contratados — verde = dentro do limite, vermelho = excesso</div>
+        <canvas id="ch-lei-sec" height="280"></canvas>
+      </div>
+    </div>
+    <div class="cc" style="margin-top:0;padding:0;overflow:hidden">
+      <div style="padding:14px 18px 8px;font-weight:700;font-size:13px">Detalhe por Secretaria — Lei × Contratado</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Secretaria</th>
+            <th class="r">Vagas na Lei</th>
+            <th class="r">Contratados</th>
+            <th class="r">Saldo</th>
+            <th class="r">% do Limite</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="lei-sec-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 
@@ -1550,6 +1590,46 @@ function renderSim(){
   simCalc();
 }
 
+
+// ════════════════════════════════════════════════════════════
+// DADOS DA LEI — LC nº 10/2025 + Emenda 23/12/2025
+// ════════════════════════════════════════════════════════════
+const LEI_SEC = {
+  'Gabinete do Prefeito': 39,
+  'Gabinete do Vice-Prefeito - GVP': 6,
+  'Ouvidoria': 3,
+  'Assessoria de Comunicação': 7,
+  'Procuradoria Geral do Município - PGM': 19,
+  'Controladoria Geral do Município - CGM': 11,
+  'Secretaria Municipal da Fazenda - SEFAZ': 48,
+  'Secretaria de Administração Municipal - SEAM': 49,
+  'Secretaria Municipal de Tecnologia e Inovação - SMTI': 29,
+  'Secretaria Municipal da Saude - SMS': 138,
+  'Secretaria Municipal de Desenvolvimento Social e Cidadania - SEDES': 81,
+  'Secretaria Municipal de Política Para a Mulher e Cidadania - SMPMC': 13,
+  'Secretaria Municipal de Infraestrutura e Planejamento Urbano - SEINFRA': 51,
+  'Secretaria Municipal de Educação - SME': 31,
+  'Secretaria Municipal de Desenvolvimento Rural - SDR': 37,
+  'Secretaria Municipal de Meio Ambiente e Serviços Públicos - SEMMASP': 79,
+  'Secretaria Municipal de Turismo, Indústria e Comércio - SETIC': 36,
+  'Secretaria Municipal de Cultura e Esporte - SECULTE': 32,
+  'Secretaria de Planejamento Estratégico – SEPLANE': 10,
+  'Secretaria Municipal de Ordem Pública e Segurança Cidadã-SMOP': 16,
+};
+const LEI_CC = [
+  {nivel:'SM – Secretário',      lei:18,  aliases:['Secretario (a) Municipal','SECRETARIO(A) EXECUTIVO','Secretario Municipal']},
+  {nivel:'CC2 – Subsecretário',  lei:14,  aliases:['Subsecretario (a)','SUBSECRETARIO']},
+  {nivel:'CC3 – Superintendente',lei:49,  aliases:['Superintendente','SUPERINTENDENTE']},
+  {nivel:'CC4 – Assessor Superior',lei:47,aliases:['Assessor (a) Superior','ASSESSOR SUPERIOR','ASSESSOR ESPECIAL DE NIVEL SUPERIOR']},
+  {nivel:'CC5 – Coordenador',    lei:146, aliases:['Coordenador (a)','COORDENADOR']},
+  {nivel:'CC6 – Assessoria Téc.',lei:70,  aliases:['Assessor (a) Tecnico (a)','ASSESSOR TECNICO']},
+  {nivel:'CC7 – Supervisor',     lei:158, aliases:['Supervisor (a)','SUPERVISOR']},
+  {nivel:'CC8 – Aux. Técnico I', lei:88,  aliases:['Auxiliar Tecnico (a)','AUXILIAR TECNICO']},
+  {nivel:'CC9 – Aux. Técnico II',lei:136, aliases:['Auxiliar Tecnico (a) II','AUXILIAR TECNICO II']},
+];
+const LEI_TOTAL = 735;
+
+
 function renderHELegal(heNames,heRegFlt,fK){
   const srvStats={};
   agg2.filter(r=>heNames.has(r[A2_EI])&&
@@ -1711,6 +1791,7 @@ function renderCargo(){
   }).join('');
 
   // Table: operational cargos in Comissão
+  renderCargoLei();
   document.getElementById('cargo-op-body').innerHTML=opInCom
     .map(([c,rs])=>{
       const nCom=rs[riCom]||0;
@@ -1728,6 +1809,124 @@ function renderCargo(){
       // sort by nCom descending — already done via filter order
       return 0;
     }).join('');
+}
+
+
+
+function renderCargoLei(){
+  const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+  const fK=v=>v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1000?'R$'+(v/1e3).toFixed(0)+'k':String(v);
+
+  // Servidores únicos comissionados — agg4 (ano) + refinamento por competência via agg2
+  // agg4 tem cobertura completa por ano; agg2 tem cobertura parcial mas inclui mês
+  const miAno=new Set();
+  agg4.filter(r=>FS.anos.size===0||FS.anos.has(r[A4_ANO])).forEach(r=>miAno.add(r[A4_MI]));
+
+  // Se há filtro de competência ativo, refina com agg2 (interseção)
+  const temFiltroComp=FS.comps.size>0&&FS.comps.size<(()=>{const s=new Set();agg1.forEach(r=>s.add(r[A1_ANO]*100+r[A1_MES]));return s.size;})();
+  let miSet;
+  if(temFiltroComp){
+    const miComp=new Set();
+    agg2.filter(r=>FS.comps.has(r[A2_ANO]*100+r[A2_MES])).forEach(r=>miComp.add(r[A2_MI]));
+    // União: todos do ano + refinamento por quem aparece no mês selecionado
+    miSet=miComp.size>0?new Set([...miAno].filter(mi=>miComp.has(mi))):miAno;
+    if(miSet.size<10) miSet=miAno; // fallback se interseção trouxer poucos dados
+  } else {
+    miSet=miAno;
+  }
+
+  // Agrupa por secretaria e tipo de cargo
+  const bySec={}, byCargoType={};
+  miSet.forEach(mi=>{
+    const p=srv_profile[mi];
+    if(!p||p[2]!==riCom) return;
+    const s=secs[p[1]], c=cargos[p[0]];
+    bySec[s]=(bySec[s]||0)+1;
+    byCargoType[c]=(byCargoType[c]||0)+1;
+  });
+
+  const totalContratado=Object.values(bySec).reduce((s,n)=>s+n,0);
+  const excedente=totalContratado-LEI_TOTAL;
+  const secExcesso=Object.entries(LEI_SEC).filter(([s,lei])=>(bySec[s]||0)>lei).length;
+
+  // Info de período
+  const infoEl=document.getElementById('lei-comp-info');
+  if(infoEl){
+    const anosLabel=[...FS.anos].sort().join(', ');
+    const compLabel=temFiltroComp?` · ${FS.comps.size} competência(s) selecionada(s)`:'';
+    const meses=`Anos: ${anosLabel}${compLabel}`;
+    infoEl.textContent=`Período: ${meses} · ${miSet.size} servidores únicos identificados via lançamentos individuais`;
+  }
+
+  // KPIs
+  const kpiEl=document.getElementById('kpi-lei');
+  if(kpiEl) kpiEl.innerHTML=[
+    {l:'Vagas previstas na Lei',v:LEI_TOTAL,s:'LC nº 10/2025 + Emenda 23/12/2025',c:'#059669'},
+    {l:'Comissionados contratados',v:totalContratado,s:'servidores únicos no período',c:totalContratado>LEI_TOTAL?'#dc2626':'#059669'},
+    {l:'Excedente',v:(excedente>0?'+':'')+excedente,s:excedente>0?'acima do limite legal':'dentro do limite',c:excedente>0?'#dc2626':'#059669'},
+    {l:'Secretarias em excesso',v:secExcesso+'/'+Object.keys(LEI_SEC).length,s:'unidades acima da cota legal',c:secExcesso>0?'#b45309':'#059669'},
+  ].map(x=>`<div class="kpi"><div class="kpi-l">${x.l}</div><div class="kpi-v" style="color:${x.c}">${x.v}</div><div class="kpi-s">${x.s}</div></div>`).join('');
+
+  // Gráfico CC
+  const ccData=LEI_CC.map(({nivel,lei,aliases})=>{
+    const cont=aliases.reduce((s,a)=>s+(byCargoType[a]||0),0);
+    return {nivel,lei,cont};
+  });
+  destroyChart('ch-lei-cc');
+  charts['ch-lei-cc']=new Chart(document.getElementById('ch-lei-cc'),{type:'bar',
+    data:{
+      labels:ccData.map(d=>d.nivel),
+      datasets:[
+        {label:'Previsto na Lei',data:ccData.map(d=>d.lei),backgroundColor:'#05966940',borderColor:'#059669',borderWidth:1.5,borderRadius:3},
+        {label:'Contratado',data:ccData.map(d=>d.cont),
+          backgroundColor:ccData.map(d=>d.cont>d.lei?'#dc262680':'#4f46e540'),
+          borderColor:ccData.map(d=>d.cont>d.lei?'#dc2626':'#4f46e5'),borderWidth:1.5,borderRadius:3},
+      ]
+    },
+    options:{plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}`}}},
+      scales:{x:{ticks:{font:{size:10}}},y:{ticks:{stepSize:50}}}}});
+
+  // Gráfico secretaria (saldo: contratado - lei)
+  const secComp=Object.entries(LEI_SEC)
+    .map(([s,lei])=>({s:s.replace(/^Secretaria Municipal d[aeo] /,'').replace(/^Secretaria de /,'').replace(/ - \w+$/,'').trim(),
+      lei,cont:bySec[s]||0,saldo:(bySec[s]||0)-lei}))
+    .sort((a,b)=>b.saldo-a.saldo);
+  destroyChart('ch-lei-sec');
+  charts['ch-lei-sec']=new Chart(document.getElementById('ch-lei-sec'),{type:'bar',
+    data:{
+      labels:secComp.map(d=>d.s.length>28?d.s.substring(0,26)+'…':d.s),
+      datasets:[{
+        label:'Saldo (contratado − lei)',
+        data:secComp.map(d=>d.saldo),
+        backgroundColor:secComp.map(d=>d.saldo>0?'#dc262670':'#05966970'),
+        borderColor:secComp.map(d=>d.saldo>0?'#dc2626':'#059669'),
+        borderWidth:1.5,borderRadius:3
+      }]
+    },
+    options:{indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+        const d=secComp[ctx.dataIndex];
+        return `Lei: ${d.lei} | Contratado: ${d.cont} | Saldo: ${ctx.raw>0?'+':''}${ctx.raw}`;
+      }}}},
+      scales:{x:{ticks:{callback:v=>(v>0?'+':'')+v},grid:{color:ctx=>ctx.tick.value===0?'#64748b':'#f1f5f9'}}}
+    }});
+
+  // Tabela secretaria
+  const tbody=document.getElementById('lei-sec-body');
+  if(tbody) tbody.innerHTML=secComp.map(d=>{
+    const pct=d.lei>0?Math.round(d.cont/d.lei*100):0;
+    const ok=d.saldo<=0;
+    const badge=ok?'background:#dcfce7;color:#166534':'background:#fee2e2;color:#991b1b';
+    return`<tr>
+      <td style="font-size:12px">${secComp.find(x=>x.s===d.s)?.s||d.s}</td>
+      <td class="r">${d.lei}</td>
+      <td class="r" style="font-weight:600">${d.cont}</td>
+      <td class="r" style="font-weight:700;color:${ok?'#059669':'#dc2626'}">${d.saldo>0?'+':''}${d.saldo}</td>
+      <td class="r"><span class="badge" style="${badge}">${pct}%</span></td>
+      <td><span class="badge" style="${badge}">${ok?'✓ Dentro do limite':'✗ Excesso'}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 
