@@ -122,9 +122,125 @@ footer strong{color:rgba(255,255,255,.8)}
   .card-bottom{flex-direction:column;align-items:flex-start}
   .hero-meta{gap:12px}
 }
+
+/* AUTH OVERLAY */
+#auth-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4f46e5 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+#auth-overlay::before{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.auth-box{
+  position:relative;background:#fff;border-radius:24px;
+  padding:48px 40px 40px;width:100%;max-width:400px;
+  box-shadow:0 25px 60px rgba(0,0,0,.35);
+  animation:authIn .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes authIn{from{opacity:0;transform:translateY(24px) scale(.95)}to{opacity:1;transform:none}}
+.auth-logo{
+  width:56px;height:56px;border-radius:16px;
+  background:linear-gradient(135deg,#4f46e5,#7c3aed);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin:0 auto 20px;
+}
+.auth-box h2{font-size:22px;font-weight:800;text-align:center;color:#0f172a;margin-bottom:4px}
+.auth-box p{font-size:13px;color:#64748b;text-align:center;margin-bottom:28px}
+.auth-field{margin-bottom:16px}
+.auth-field label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.auth-field input{
+  width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
+  font-size:14px;color:#0f172a;outline:none;transition:border-color .15s;
+  font-family:inherit;
+}
+.auth-field input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px #4f46e520}
+.auth-btn{
+  width:100%;padding:13px;background:linear-gradient(135deg,#4f46e5,#7c3aed);
+  color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;
+  cursor:pointer;margin-top:8px;transition:opacity .15s,transform .1s;
+  font-family:inherit;
+}
+.auth-btn:hover{opacity:.9;transform:scale(1.01)}
+.auth-btn:active{transform:scale(.99)}
+.auth-error{
+  background:#fee2e2;color:#991b1b;border-radius:8px;
+  padding:10px 14px;font-size:13px;margin-top:14px;text-align:center;
+  display:none;
+}
+.auth-footer{font-size:11px;color:#94a3b8;text-align:center;margin-top:20px}
 </style>
 </head>
 <body>
+
+<!-- LOGIN OVERLAY -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">🔒</div>
+    <h2>Painel de Auditoria</h2>
+    <p>Município de Paulo Afonso — BA<br>Acesso restrito a usuários autorizados</p>
+    <div class="auth-field">
+      <label>Usuário</label>
+      <input type="text" id="auth-user" placeholder="Digite seu usuário" autocomplete="username" autocapitalize="none">
+    </div>
+    <div class="auth-field">
+      <label>Senha</label>
+      <input type="password" id="auth-pass" placeholder="Digite sua senha" autocomplete="current-password">
+    </div>
+    <button class="auth-btn" onclick="authLogin()">Entrar</button>
+    <div class="auth-error" id="auth-error">Usuário ou senha incorretos.</div>
+    <div class="auth-footer">Sistema de Auditoria Municipal · Dados 2023–2026</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Usuários autorizados: {usuario: hash_senha}
+  // Senha padrão: audit@2026
+  const PWD_HASH = '6b4cf7a7e75b02e6a614ff6c2f53b2fb'; // MD5 simplificado — veja abaixo
+  const USERS = ['alberdran','fabiana','cleilson'];
+  const SESSION_KEY = 'dash_auth_v1';
+  const SESSION_TTL = 8 * 3600 * 1000; // 8 horas
+
+  // Hash simples (não criptográfico — apenas ofuscação para UI gate)
+  function simpleHash(s){
+    let h=0x811c9dc5;
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*0x01000193)>>>0;}
+    return h.toString(16);
+  }
+  const PWD_SH = simpleHash('audit@2026');
+
+  window.authLogin = function(){
+    const user = document.getElementById('auth-user').value.trim().toLowerCase();
+    const pass = document.getElementById('auth-pass').value;
+    const err  = document.getElementById('auth-error');
+    if(USERS.includes(user) && simpleHash(pass) === PWD_SH){
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({user, exp: Date.now() + SESSION_TTL}));
+      document.getElementById('auth-overlay').style.display='none';
+      err.style.display='none';
+    } else {
+      err.style.display='block';
+      document.getElementById('auth-pass').value='';
+      document.getElementById('auth-pass').focus();
+    }
+  };
+
+  // Enter key support
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && document.getElementById('auth-overlay').style.display!=='none') authLogin();
+  });
+
+  // Check existing session
+  try{
+    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY)||'{}');
+    if(s.user && Date.now() < s.exp){
+      document.getElementById('auth-overlay').style.display='none';
+    }
+  } catch(e){}
+})();
+</script>
 
 <header class="hero">
   <div class="hero-badge">📍 Município de Paulo Afonso – BA</div>

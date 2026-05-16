@@ -156,6 +156,22 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:14px;border-t
 </style>
 </head>
 <body>
+<script>
+(function(){
+  const SESSION_KEY="dash_auth_v1";
+  try{
+    const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"{}");
+    if(!s.user||Date.now()>s.exp){sessionStorage.removeItem(SESSION_KEY);window.location.replace("index.html");return;}
+    document.addEventListener("DOMContentLoaded",function(){
+      const btn=document.createElement("button");
+      btn.textContent="⬅ Sair ("+s.user+")";
+      btn.style.cssText="position:fixed;top:12px;right:14px;z-index:9998;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;backdrop-filter:blur(4px);font-family:inherit";
+      btn.onclick=function(){sessionStorage.removeItem(SESSION_KEY);window.location.replace("index.html");};
+      document.body.appendChild(btn);
+    });
+  }catch(e){sessionStorage.removeItem(SESSION_KEY);window.location.replace("index.html");}
+})();
+</script>
 
 <div class="hero">
   <div class="hero-inner">
