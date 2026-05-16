@@ -921,7 +921,7 @@ function applyFilters(){
 function resetFilters(){
   msClear('ano'); [2025,2026].forEach(v=>MS['ano'].selected.add(v)); msLabel('ano');
   msClear('reg');
-  const ri_com=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+  const ri_com=regimes.findIndex(r=>/COMISSION/i.test(r));
   if(ri_com>=0) MS['reg'].selected.add(ri_com); msLabel('reg');
   msClear('sec'); msLabel('sec');
   msClear('ev'); msLabel('ev');
@@ -1911,7 +1911,7 @@ function renderHELegal(heNames,heRegFlt,fK){
 function renderCargo(){
   const regFlt=Number((document.getElementById('cargo-reg')||{value:''}).value)||0;
   const q=((document.getElementById('cargo-busca')||{value:''}).value).toLowerCase();
-  const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+  const riCom=regimes.findIndex(r=>/COMISSION/i.test(r));
   const fK=v=>v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1000?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0);
 
   // Build cargo counts from srv_profile (static, all servers)
@@ -2015,7 +2015,7 @@ function renderCargo(){
 
 
 function renderCargoLei(){
-  const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+  const riCom=regimes.findIndex(r=>/COMISSION/i.test(r));
   const [A1a,A1m,A1e,A1s,A1r,A1v,A1c]=[0,1,2,3,4,5,6]; // agg1 índices locais
 
   // Mapeamento por palavra-chave (mais específico primeiro)
@@ -2154,7 +2154,7 @@ function renderCargoLei(){
 }
 
 function renderAudit(){
-  const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+  const riCom=regimes.findIndex(r=>/COMISSION/i.test(r));
   const fM=v=>v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0);
   const fP=v=>(v>0?'+':'')+v+'%';
   const [A1a,A1m,A1e,A1s,A1r,A1v,A1c]=[0,1,2,3,4,5,6];
@@ -2553,7 +2553,7 @@ function estagScenario(key){
 }
 
 function renderEstag(){
-  const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+  const riCom=regimes.findIndex(r=>/COMISSION/i.test(r));
   const fM=v=>v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0);
 
   // Parâmetros
@@ -2694,7 +2694,7 @@ function renderEstag(){
   }
 
   // Default: 2025+2026 e Cargos em Comissão
-  const ri_com=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+  const ri_com=regimes.findIndex(r=>/COMISSION/i.test(r));
   if(ri_com>=0){MS['reg'].selected.add(ri_com);msLabel('reg');}
   applyFilters();
 
