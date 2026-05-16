@@ -631,6 +631,7 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   <div class="info-box" style="background:#fef3c7;border-color:#fde68a;color:#713f12;margin-bottom:18px">
     🔍 <strong>Diagnóstico Automático:</strong> achados calculados sobre os dados reais da folha, com base nos filtros globais ativos. Recomendações alinhadas às legislações vigentes.
   </div>
+  <div id="aud-comparativo" style="margin-bottom:18px"></div>
   <div class="kpi-grid" id="aud-kpi"></div>
   <div id="aud-sev-filter" style="display:flex;gap:8px;margin:16px 0 20px;flex-wrap:wrap"></div>
   <div id="aud-findings"></div>
@@ -1988,6 +1989,129 @@ function renderAudit(){
   const [A1a,A1m,A1e,A1s,A1r,A1v,A1c]=[0,1,2,3,4,5,6];
   const inComp=r=>FS.comps.size===0||FS.comps.has(r[A1a]*100+r[A1m]);
   const inAno=r=>FS.anos.size===0||FS.anos.has(r[A1a]);
+
+  // ── Helper: snapshot de métricas para um conjunto de competências ──
+  function computeSnap(compSet){
+    const ic=r=>compSet.size===0||compSet.has(r[A1a]*100+r[A1m]);
+    // Comissionados
+    let comT=0,bySC={};
+    if(compSet.size>0){
+      const sm={};
+      agg1.filter(r=>r[A1r]===riCom&&ic(r)).forEach(r=>{sm[r[A1s]]=Math.max(sm[r[A1s]]||0,r[A1c]);});
+      Object.entries(sm).forEach(([si,n])=>{bySC[secs[si]]=n;});
+      comT=Object.values(bySC).reduce((s,v)=>s+v,0);
+    } else {
+      const mis=new Set(); srv_profile.forEach((p,mi)=>{if(p&&p[2]===riCom)mis.add(mi);});
+      comT=mis.size; mis.forEach(mi=>{const p=srv_profile[mi];bySC[secs[p[1]]]=(bySC[secs[p[1]]]||0)+1;});
+    }
+    // Folha
+    let folha=0;
+    agg1.forEach(r=>{if(ic(r)) folha+=r[A1v];});
+    // HE
+    const heEvs=ev_names.map((n,i)=>({i,n})).filter(x=>/HORA EXTRA|HORAS EXTRAS?/i.test(x.n)).map(x=>x.i);
+    let he=0; agg1.filter(r=>ic(r)&&heEvs.includes(r[A1e])).forEach(r=>{he+=r[A1v];});
+    // Insalubridade
+    const inEvs=ev_names.map((n,i)=>({i,n})).filter(x=>/INSALUB/.test(x.n)).map(x=>x.i);
+    let ins=0; agg1.filter(r=>ic(r)&&inEvs.includes(r[A1e])).forEach(r=>{ins+=r[A1v];});
+    // Gratificações
+    const grEvs=ev_names.map((n,i)=>({i,n})).filter(x=>/GRATIF|GRAT\./.test(x.n)).map(x=>x.i);
+    let grat=0; agg1.filter(r=>ic(r)&&grEvs.includes(r[A1e])).forEach(r=>{grat+=r[A1v];});
+    // Secr em excesso
+    const secExcN=Object.entries(LEI_SEC).filter(([s,l])=>(bySC[s]||0)>l).length;
+    return {comT,folha,he,ins,grat,secExcN};
+  }
+
+  // ── Comparativo anual (mesmo mês, ano anterior) ───────────────────
+  const compEl=document.getElementById('aud-comparativo');
+  if(compEl&&FS.comps.size===1){
+    const [compKey]=[...FS.comps];
+    const mes=compKey%100, ano=Math.floor(compKey/100);
+    const compPrev=new Set([(ano-1)*100+mes]);
+    const mesNome=meses_str[mes];
+    const A=computeSnap(new Set([compKey]));
+    const B=computeSnap(compPrev);
+    const hasPrev=agg1.some(r=>r[A1m]===mes&&r[A1a]===(ano-1));
+    if(hasPrev){
+      const dl=(a,b,inv=false)=>{
+        const d=a-b; const pct=b>0?Math.round(d/b*100):0;
+        const up=inv?(d<0):(d>0);
+        const col=d===0?'#64748b':up?'#dc2626':'#059669';
+        return`<span style="color:${col};font-weight:700">${d>0?'+':''}${d>0||d<0?d+' ('+( pct>0?'+':'')+pct+'%)':'—'}</span>`;
+      };
+      const dlM=(a,b,inv=false)=>{
+        const d=a-b; const pct=b>0?Math.round(d/b*100):0;
+        const up=inv?(d<0):(d>0);
+        const col=d===0?'#64748b':up?'#dc2626':'#059669';
+        const fmt=v=>v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0);
+        return`<span style="color:${col};font-weight:700">${d>=0?'+':''}${fmt(d)} (${pct>0?'+':''})${pct}%</span>`;
+      };
+      compEl.innerHTML=`
+      <div style="border:1px solid #c7d2fe;border-radius:12px;overflow:hidden">
+        <div style="background:#4f46e5;color:#fff;padding:12px 18px;font-weight:700;font-size:13px">
+          📊 Comparativo: ${mesNome}/${ano} × ${mesNome}/${ano-1}
+        </div>
+        <div style="overflow-x:auto">
+          <table style="font-size:12px">
+            <thead><tr>
+              <th>Indicador</th>
+              <th class="r">${mesNome}/${ano-1}</th>
+              <th class="r">${mesNome}/${ano}</th>
+              <th class="r">Variação</th>
+              <th>Avaliação</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:600">Folha Total</td>
+                <td class="r">${fM(B.folha)}</td>
+                <td class="r" style="font-weight:700">${fM(A.folha)}</td>
+                <td class="r">${dlM(A.folha,B.folha,true)}</td>
+                <td>${A.folha>B.folha*1.1?'<span class="badge" style="background:#fee2e2;color:#991b1b">⚠️ Crescimento acima de 10%</span>':'<span class="badge" style="background:#dcfce7;color:#166534">✓ Estável</span>'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">Comissionados</td>
+                <td class="r">${B.comT}</td>
+                <td class="r" style="font-weight:700">${A.comT}</td>
+                <td class="r">${dl(A.comT,B.comT,true)}</td>
+                <td>${A.comT>LEI_TOTAL?'<span class="badge" style="background:#fee2e2;color:#991b1b">✗ Acima do limite ('+LEI_TOTAL+')</span>':'<span class="badge" style="background:#dcfce7;color:#166534">✓ Dentro do limite</span>'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">Secretarias em excesso</td>
+                <td class="r">${B.secExcN}/20</td>
+                <td class="r" style="font-weight:700">${A.secExcN}/20</td>
+                <td class="r">${dl(A.secExcN,B.secExcN,true)}</td>
+                <td>${A.secExcN>0?'<span class="badge" style="background:#fee2e2;color:#991b1b">✗ '+A.secExcN+' secretaria(s) em excesso</span>':'<span class="badge" style="background:#dcfce7;color:#166534">✓ Todas dentro da cota</span>'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">Horas Extras</td>
+                <td class="r">${fM(B.he)}</td>
+                <td class="r" style="font-weight:700">${fM(A.he)}</td>
+                <td class="r">${dlM(A.he,B.he,true)}</td>
+                <td>${A.he>B.he*1.15?'<span class="badge" style="background:#fef3c7;color:#92400e">⚠️ Alta em +15%</span>':'<span class="badge" style="background:#dcfce7;color:#166534">✓ Estável</span>'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">Insalubridade</td>
+                <td class="r">${fM(B.ins)}</td>
+                <td class="r" style="font-weight:700">${fM(A.ins)}</td>
+                <td class="r">${dlM(A.ins,B.ins,true)}</td>
+                <td>${A.ins>B.ins*1.15?'<span class="badge" style="background:#fef3c7;color:#92400e">⚠️ Alta em +15%</span>':'<span class="badge" style="background:#dcfce7;color:#166534">✓ Estável</span>'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">Gratificações</td>
+                <td class="r">${fM(B.grat)}</td>
+                <td class="r" style="font-weight:700">${fM(A.grat)}</td>
+                <td class="r">${dlM(A.grat,B.grat,true)}</td>
+                <td>${A.grat>B.grat*1.1?'<span class="badge" style="background:#fef3c7;color:#92400e">⚠️ Alta em +10%</span>':'<span class="badge" style="background:#dcfce7;color:#166534">✓ Estável</span>'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    } else {
+      compEl.innerHTML='<div style="font-size:12px;color:var(--mu);padding:8px">Dados do mesmo mês do ano anterior não disponíveis para comparação.</div>';
+    }
+  } else if(compEl){
+    compEl.innerHTML='';
+  }
 
   // ── Comissionados vs Lei ──────────────────────────
   let comTotal,bySecCom={};
