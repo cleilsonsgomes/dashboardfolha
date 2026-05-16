@@ -1620,15 +1620,15 @@ const LEI_SEC = {
   'Secretaria Municipal de Ordem Pública e Segurança Cidadã-SMOP': 16,
 };
 const LEI_CC = [
-  {nivel:'SM – Secretário',      lei:18,  aliases:['Secretario (a) Municipal','SECRETARIO(A) EXECUTIVO','Secretario Municipal']},
-  {nivel:'CC2 – Subsecretário',  lei:14,  aliases:['Subsecretario (a)','SUBSECRETARIO']},
-  {nivel:'CC3 – Superintendente',lei:49,  aliases:['Superintendente','SUPERINTENDENTE']},
-  {nivel:'CC4 – Assessor Superior',lei:47,aliases:['Assessor (a) Superior','ASSESSOR SUPERIOR','ASSESSOR ESPECIAL DE NIVEL SUPERIOR']},
-  {nivel:'CC5 – Coordenador',    lei:146, aliases:['Coordenador (a)','COORDENADOR']},
-  {nivel:'CC6 – Assessoria Téc.',lei:70,  aliases:['Assessor (a) Tecnico (a)','ASSESSOR TECNICO']},
-  {nivel:'CC7 – Supervisor',     lei:158, aliases:['Supervisor (a)','SUPERVISOR']},
-  {nivel:'CC8 – Aux. Técnico I', lei:88,  aliases:['Auxiliar Tecnico (a)','AUXILIAR TECNICO']},
-  {nivel:'CC9 – Aux. Técnico II',lei:136, aliases:['Auxiliar Tecnico (a) II','AUXILIAR TECNICO II']},
+  {nivel:'SM – Secretário',        lei:18,  key:'SM'},
+  {nivel:'CC2 – Subsecretário',    lei:14,  key:'CC2'},
+  {nivel:'CC3 – Superintendente',  lei:49,  key:'CC3'},
+  {nivel:'CC4 – Assessor Superior',lei:47,  key:'CC4'},
+  {nivel:'CC5 – Coordenador',      lei:146, key:'CC5'},
+  {nivel:'CC6 – Assessoria Téc.',  lei:70,  key:'CC6'},
+  {nivel:'CC7 – Supervisor',       lei:158, key:'CC7'},
+  {nivel:'CC8 – Aux. Técnico I',   lei:88,  key:'CC8'},
+  {nivel:'CC9 – Aux. Técnico II',  lei:136, key:'CC9'},
 ];
 const LEI_TOTAL = 735;
 
@@ -1818,34 +1818,43 @@ function renderCargo(){
 
 function renderCargoLei(){
   const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
-  const fK=v=>v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1000?'R$'+(v/1e3).toFixed(0)+'k':String(v);
 
-  // Servidores únicos comissionados — agg4 (ano) + refinamento por competência via agg2
-  // agg4 tem cobertura completa por ano; agg2 tem cobertura parcial mas inclui mês
-  const miAno=new Set();
-  agg4.filter(r=>FS.anos.size===0||FS.anos.has(r[A4_ANO])).forEach(r=>miAno.add(r[A4_MI]));
-
-  // Se há filtro de competência ativo, refina com agg2 (interseção)
-  const temFiltroComp=FS.comps.size>0&&FS.comps.size<(()=>{const s=new Set();agg1.forEach(r=>s.add(r[A1_ANO]*100+r[A1_MES]));return s.size;})();
-  let miSet;
-  if(temFiltroComp){
-    const miComp=new Set();
-    agg2.filter(r=>FS.comps.has(r[A2_ANO]*100+r[A2_MES])).forEach(r=>miComp.add(r[A2_MI]));
-    // União: todos do ano + refinamento por quem aparece no mês selecionado
-    miSet=miComp.size>0?new Set([...miAno].filter(mi=>miComp.has(mi))):miAno;
-    if(miSet.size<10) miSet=miAno; // fallback se interseção trouxer poucos dados
-  } else {
-    miSet=miAno;
+  // Mapeamento por palavra-chave (mais específico primeiro)
+  // Tolera erros de digitação comuns nos dados (SUPERITEND, SUPERVIS0R, SUPERVIDOR)
+  function matchCC(cargo){
+    const c=cargo.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/SUPERVIS0R/g,'SUPERVISOR').replace(/SUPERVIDOR/g,'SUPERVISOR')
+      .replace(/SUPERITEND/g,'SUPERINTEND').replace(/SUPERINTENCIA/g,'SUPERINTENDENCIA');
+    if(/AUXILIAR TECNICO.{0,5}II/.test(c)) return 'CC9';
+    if(/AUXILIAR TECNICO/.test(c)) return 'CC8';
+    if(/SUBSECRETAR/.test(c)) return 'CC2';
+    if(/ASSESSOR SUPERIOR|ASSESSOR ESPECIAL|ASSESSOR JURIDICO|SUBPROCURADOR|CORREGEDOR/.test(c)) return 'CC4';
+    if(/SUPERINTEND|GERENTE|GERENCIA|GESTOR/.test(c)) return 'CC3';
+    if(/SECRETAR|PROCURADOR GERAL|CONTROLADOR GERAL|OUVIDOR|OFICIAL DE GABINETE|DIRETOR/.test(c)) return 'SM';
+    if(/COORDENAD/.test(c)) return 'CC5';
+    if(/ASSESSOR TECNICO|ASSESSOR INTERMEDIARIO|ASSESSOR/.test(c)) return 'CC6';
+    if(/SUPERVISOR|CHEFE|ENCARREGADO|CHEFIA/.test(c)) return 'CC7';
+    return null;
   }
 
-  // Agrupa por secretaria e tipo de cargo
-  const bySec={}, byCargoType={};
+  // Constrói conjunto de comissionados direto do srv_profile (cobertura completa)
+  // filtrando por ano via agg4
+  const miAno4=new Set(agg4.filter(r=>FS.anos.size===0||FS.anos.has(r[A4_ANO])).map(r=>r[A4_MI]));
+  const miSet=new Set();
+  srv_profile.forEach((p,mi)=>{if(p&&p[2]===riCom&&miAno4.has(mi)) miSet.add(mi);});
+
+  // agg2 não cobre comissionados individualmente; nota se filtro de competência ativo
+  const totalComps=(()=>{const s=new Set();agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[A1_ANO]*100+r[A1_MES]))s.add(r[A1_ANO]*100+r[A1_MES]);});return s.size;})();
+  const temFiltroComp=FS.comps.size>0&&FS.comps.size<totalComps;
+
+  // Agrupa por secretaria e nível CC
+  const bySec={}, byCCNivel={};
   miSet.forEach(mi=>{
     const p=srv_profile[mi];
-    if(!p||p[2]!==riCom) return;
     const s=secs[p[1]], c=cargos[p[0]];
     bySec[s]=(bySec[s]||0)+1;
-    byCargoType[c]=(byCargoType[c]||0)+1;
+    const nivel=matchCC(c);
+    if(nivel) byCCNivel[nivel]=(byCCNivel[nivel]||0)+1;
   });
 
   const totalContratado=Object.values(bySec).reduce((s,n)=>s+n,0);
@@ -1856,9 +1865,8 @@ function renderCargoLei(){
   const infoEl=document.getElementById('lei-comp-info');
   if(infoEl){
     const anosLabel=[...FS.anos].sort().join(', ');
-    const compLabel=temFiltroComp?` · ${FS.comps.size} competência(s) selecionada(s)`:'';
-    const meses=`Anos: ${anosLabel}${compLabel}`;
-    infoEl.textContent=`Período: ${meses} · ${miSet.size} servidores únicos identificados via lançamentos individuais`;
+    const compNote=temFiltroComp?' · ⚠️ Filtro de competência não se aplica a comissionados (dado anual)':'';
+    infoEl.textContent=`Anos: ${anosLabel} · ${miSet.size} comissionados únicos identificados${compNote}`;
   }
 
   // KPIs
@@ -1870,11 +1878,8 @@ function renderCargoLei(){
     {l:'Secretarias em excesso',v:secExcesso+'/'+Object.keys(LEI_SEC).length,s:'unidades acima da cota legal',c:secExcesso>0?'#b45309':'#059669'},
   ].map(x=>`<div class="kpi"><div class="kpi-l">${x.l}</div><div class="kpi-v" style="color:${x.c}">${x.v}</div><div class="kpi-s">${x.s}</div></div>`).join('');
 
-  // Gráfico CC
-  const ccData=LEI_CC.map(({nivel,lei,aliases})=>{
-    const cont=aliases.reduce((s,a)=>s+(byCargoType[a]||0),0);
-    return {nivel,lei,cont};
-  });
+  // Gráfico CC — usa matching por palavra-chave
+  const ccData=LEI_CC.map(({nivel,lei,key})=>({nivel,lei,cont:byCCNivel[key]||0}));
   destroyChart('ch-lei-cc');
   charts['ch-lei-cc']=new Chart(document.getElementById('ch-lei-cc'),{type:'bar',
     data:{
@@ -1892,7 +1897,7 @@ function renderCargoLei(){
 
   // Gráfico secretaria (saldo: contratado - lei)
   const secComp=Object.entries(LEI_SEC)
-    .map(([s,lei])=>({s:s.replace(/^Secretaria Municipal d[aeo] /,'').replace(/^Secretaria de /,'').replace(/ - \w+$/,'').trim(),
+    .map(([s,lei])=>({s:s.replace(/^Secretaria Municipal d[aeo] /,'').replace(/^Secretaria de /,'').replace(/ [-–] \w+$/,'').trim(),
       lei,cont:bySec[s]||0,saldo:(bySec[s]||0)-lei}))
     .sort((a,b)=>b.saldo-a.saldo);
   destroyChart('ch-lei-sec');
@@ -1922,7 +1927,7 @@ function renderCargoLei(){
     const ok=d.saldo<=0;
     const badge=ok?'background:#dcfce7;color:#166534':'background:#fee2e2;color:#991b1b';
     return`<tr>
-      <td style="font-size:12px">${secComp.find(x=>x.s===d.s)?.s||d.s}</td>
+      <td style="font-size:12px">${d.s}</td>
       <td class="r">${d.lei}</td>
       <td class="r" style="font-weight:600">${d.cont}</td>
       <td class="r" style="font-weight:700;color:${ok?'#059669':'#dc2626'}">${d.saldo>0?'+':''}${d.saldo}</td>
