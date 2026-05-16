@@ -136,6 +136,17 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       <div class="ms-list" id="flist-ev"></div>
     </div>
   </div>
+  <div class="fg">
+    <label>Competência</label>
+    <button class="ms-btn" id="fbtn-competencia" onclick="msToggle('competencia')" style="min-width:160px">
+      <span class="ms-label" id="flbl-competencia">Todas</span><span>▾</span>
+    </button>
+    <div class="ms-dd" id="fdd-competencia" style="min-width:200px">
+      <input class="ms-search" placeholder="Buscar competência…" oninput="msFilter('competencia',this.value)">
+      <div class="ms-acts"><a onclick="msAll('competencia')">Todas</a><span>·</span><a onclick="msClear('competencia')">Limpar</a></div>
+      <div class="ms-list" id="flist-competencia"></div>
+    </div>
+  </div>
     <button class="btn-apply" onclick="applyFilters()">Aplicar</button>
   <button class="btn-clr" onclick="resetFilters()">Redefinir</button>
 </div>
@@ -543,7 +554,7 @@ const meses_str=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out',
 // ════════════════════════════════════════════════════════════════
 // MULTI-SELECT FILTER SYSTEM
 // ════════════════════════════════════════════════════════════════
-const FS={anos:new Set([2025,2026]),ris:new Set(),sis:new Set(),eis:new Set()};
+const FS={anos:new Set([2025,2026]),ris:new Set(),sis:new Set(),eis:new Set(),comps:new Set()};
 let MS={};
 
 function msInit(key,vals,defaults,ids_fld){
@@ -600,6 +611,7 @@ function applyFilters(){
   FS.ris=MS['reg'].selected.size===MS['reg'].all.length?new Set():new Set(MS['reg'].selected);
   FS.sis=MS['sec'].selected.size===MS['sec'].all.length?new Set():new Set(MS['sec'].selected);
   FS.eis=MS['ev'].selected.size===0||MS['ev'].selected.size===MS['ev'].all.length?new Set():new Set(MS['ev'].selected);
+  FS.comps=MS['competencia']&&(MS['competencia'].selected.size===0||MS['competencia'].selected.size===MS['competencia'].all.length)?new Set():MS['competencia']?new Set(MS['competencia'].selected):new Set();
   rerenderAll();
 }
 function resetFilters(){
@@ -609,6 +621,7 @@ function resetFilters(){
   if(ri_com>=0) MS['reg'].selected.add(ri_com); msLabel('reg');
   msClear('sec'); msLabel('sec');
   msClear('ev'); msLabel('ev');
+  if(MS['competencia']){msAll('competencia');}
   applyFilters();
 }
 
@@ -616,6 +629,7 @@ function resetFilters(){
 function filtA1(){
   return agg1.filter(r=>
     (FS.anos.size===0||FS.anos.has(r[A1_ANO]))&&
+    (FS.comps.size===0||FS.comps.has(r[A1_ANO]*100+r[A1_MES]))&&
     (FS.ris.size===0||FS.ris.has(r[A1_RI]))&&
     (FS.sis.size===0||FS.sis.has(r[A1_SI]))&&
     (FS.eis.size===0||FS.eis.has(r[A1_EI]))
@@ -624,6 +638,7 @@ function filtA1(){
 function filtA2(){
   return agg2.filter(r=>
     (FS.anos.size===0||FS.anos.has(r[A2_ANO]))&&
+    (FS.comps.size===0||FS.comps.has(r[A2_ANO]*100+r[A2_MES]))&&
     (FS.ris.size===0||FS.ris.has(r[A2_RI]))&&
     (FS.sis.size===0||FS.sis.has(r[A2_SI]))&&
     (FS.eis.size===0||FS.eis.has(r[A2_EI]))
@@ -1471,6 +1486,14 @@ function renderSim(){
   msInit('reg', regimes.map(r=>r.replace(/^\d+ - /,'')), [], regimes.map((_,i)=>i));
   msInit('sec', secs.map(s=>s.replace(/^\d+ - /,'')), [], secs.map((_,i)=>i));
   msInit('ev', ev_names, [], eventos.map((_,i)=>i));
+  // Inicializa filtro de Competência com todos os meses disponíveis nos dados
+  {
+    const compSet=new Set();
+    agg1.forEach(r=>compSet.add(r[A1_ANO]*100+r[A1_MES]));
+    const compList=[...compSet].sort();
+    const compLabels=compList.map(k=>meses_str[k%100]+'/'+Math.floor(k/100));
+    msInit('competencia',compLabels,compList,compList);
+  }
 
   // Populate he-reg select
   const heRegSel=document.getElementById('he-reg');
