@@ -154,6 +154,26 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 
 <!-- TAB 1: Composição -->
 <div class="con" id="tab-comp">
+  <div class="sf-row">
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Categoria</label>
+      <select class="sf" id="comp-cat" onchange="renderComp()">
+        <option value="">Todas</option>
+        <option value="0">Base Salarial</option>
+        <option value="1">Gratificações</option>
+        <option value="2">Extras/Plantões</option>
+        <option value="3">Férias</option>
+        <option value="4">Outros</option>
+      </select>
+    </div>
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Top Secretarias</label>
+      <select class="sf" id="comp-topn" onchange="renderComp()">
+        <option value="12" selected>Top 12</option>
+        <option value="20">Top 20</option>
+        <option value="50">Top 50</option>
+        <option value="999">Todas</option>
+      </select>
+    </div>
+  </div>
   <div class="kpi-grid" id="kpi-comp"></div>
   <div class="g2">
     <div class="cc"><div class="ch">Composição por Categoria</div><div class="cs">Distribuição do valor total no período filtrado</div><canvas id="ch-comp-cat" height="240"></canvas></div>
@@ -165,6 +185,16 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 <!-- TAB 2: Crescimento de Eventos -->
 <div class="con" id="tab-cresc" style="display:none">
   <div class="sf-row">
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Categoria</label>
+      <select class="sf" id="cresc-cat" onchange="renderCresc()">
+        <option value="">Todas</option>
+        <option value="0">Base Salarial</option>
+        <option value="1">Gratificações</option>
+        <option value="2">Extras/Plantões</option>
+        <option value="3">Férias</option>
+        <option value="4">Outros</option>
+      </select>
+    </div>
     <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Comparar</label>
       <select class="sf" id="cresc-cmp" onchange="renderCresc()">
         <option value="2023-2024">2023 → 2024</option>
@@ -235,6 +265,24 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 
 <!-- TAB 4: Hora Extra por Secretaria -->
 <div class="con" id="tab-he" style="display:none">
+  <div class="sf-row">
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Tipo HE</label>
+      <select class="sf" id="he-tipo" onchange="renderHE()">
+        <option value="">HE 50% + 100%</option>
+        <option value="50%">Apenas HE 50%</option>
+        <option value="100%">Apenas HE 100%</option>
+      </select>
+    </div>
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Limiar mín.</label>
+      <select class="sf" id="he-lim" onchange="renderHE()">
+        <option value="0">Todos</option>
+        <option value="5000">Acima R$ 5k</option>
+        <option value="10000">Acima R$ 10k</option>
+        <option value="20000">Acima R$ 20k</option>
+      </select>
+    </div>
+    <span id="he-info" style="font-size:12px;color:var(--mu);margin-left:auto"></span>
+  </div>
   <div class="g2">
     <div class="cc"><div class="ch">Hora Extra por Secretaria</div><div class="cs">Total de HE 50% e 100% por secretaria no período</div><canvas id="ch-he-sec" height="300"></canvas></div>
     <div class="cc"><div class="ch">Evolução Anual de Horas Extras</div><div class="cs">HE 50% vs HE 100% por ano</div><canvas id="ch-he-ev" height="300"></canvas></div>
@@ -246,6 +294,19 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 
 <!-- TAB 5: Duplicidades -->
 <div class="con" id="tab-dup" style="display:none">
+  <div class="sf-row">
+    <input class="tsearch" id="dup-busca" placeholder="Buscar servidor ou evento…" oninput="renderDup()" style="min-width:260px">
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Ano</label>
+      <select class="sf" id="dup-ano" onchange="renderDup()">
+        <option value="">Todos</option>
+        <option value="2023">2023</option>
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026">2026</option>
+      </select>
+    </div>
+    <span id="dup-info" style="font-size:12px;color:var(--mu)"></span>
+  </div>
   <div class="info-box">⚠️ <strong>Metodologia:</strong> Servidor que aparece 2× ou mais vezes com o mesmo evento no mesmo mês/ano — indica possível lançamento duplicado. Verificar empenhos individuais no sistema de origem.</div>
   <div class="cc" style="padding:0;overflow:hidden">
     <div style="overflow-x:auto">
@@ -286,6 +347,24 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 
 <!-- TAB 7: Insalubridade -->
 <div class="con" id="tab-ins" style="display:none">
+  <div class="sf-row">
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Tipo Adicional</label>
+      <select class="sf" id="ins-tipo" onchange="renderIns()">
+        <option value="">Todos</option>
+        <option value="INSALUB">Insalubridade</option>
+        <option value="NOTURNO">Ad. Noturno</option>
+        <option value="PERICULOSIDADE">Periculosidade</option>
+      </select>
+    </div>
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Limiar mín.</label>
+      <select class="sf" id="ins-lim" onchange="renderIns()">
+        <option value="0" selected>Todos</option>
+        <option value="5000">Acima R$ 5k</option>
+        <option value="10000">Acima R$ 10k</option>
+      </select>
+    </div>
+    <span id="ins-info" style="font-size:12px;color:var(--mu);margin-left:auto"></span>
+  </div>
   <div class="kpi-grid" id="kpi-ins"></div>
   <div class="g2">
     <div class="cc"><div class="ch">Evolução Anual por Adicional</div><div class="cs">Insalubridade, Adicional Noturno, Periculosidade, HE</div><canvas id="ch-ins-ev" height="260"></canvas></div>
@@ -302,6 +381,29 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 </div>
 
 <div class="con" id="tab-grat" style="display:none">
+  <div class="sf-row">
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Subcategoria</label>
+      <select class="sf" id="grat-cat" onchange="renderGrat()">
+        <option value="">Todas</option>
+        <option value="Gratificações">Gratificações</option>
+        <option value="Adicionais">Adicionais</option>
+        <option value="Insalubridade">Insalubridade</option>
+        <option value="Ad. Noturno">Ad. Noturno</option>
+        <option value="Produtividade">Produtividade</option>
+        <option value="Periculosidade">Periculosidade</option>
+        <option value="Outros Grat.">Outros</option>
+      </select>
+    </div>
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Limiar Top Serv.</label>
+      <select class="sf" id="grat-lim" onchange="renderGrat()">
+        <option value="0" selected>Todos</option>
+        <option value="10000">Acima R$ 10k</option>
+        <option value="30000">Acima R$ 30k</option>
+        <option value="50000">Acima R$ 50k</option>
+      </select>
+    </div>
+    <input class="tsearch" id="grat-busca" placeholder="Buscar servidor na tabela…" oninput="renderGrat()" style="min-width:220px;margin-left:auto">
+  </div>
   <div class="kpi-grid" id="kpi-grat"></div>
   <div class="g2">
     <div class="cc"><div class="ch">Top Rubricas de Gratificação</div><div class="cs">Valor total por tipo (período filtrado)</div><canvas id="ch-grat-top" height="260"></canvas></div>
@@ -473,7 +575,10 @@ function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];
 // TAB 1 — COMPOSIÇÃO
 // ════════════════════════════════════════════════════════════════
 function renderComp(){
-  const rows=filtA1();
+  const catFlt=(document.getElementById('comp-cat')||{value:''}).value;
+  const topN=Number((document.getElementById('comp-topn')||{value:'12'}).value)||12;
+  const baseRows=filtA1();
+  const rows=catFlt===''?baseRows:baseRows.filter(r=>evCat(r[A1_EI])===Number(catFlt));
   const catTot=[0,0,0,0,0];
   const bySec={};
   const byAno={};
@@ -516,7 +621,7 @@ function renderComp(){
     options:{scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>'R$'+(v/1e6).toFixed(0)+'M'}}},
              plugins:{legend:{position:'bottom',labels:{boxWidth:12}}}}});
 
-  const secSorted=Object.entries(bySec).sort((a,b)=>b[1].reduce((s,v)=>s+v)-a[1].reduce((s,v)=>s+v)).slice(0,12);
+  const secSorted=Object.entries(bySec).sort((a,b)=>b[1].reduce((s,v)=>s+v)-a[1].reduce((s,v)=>s+v)).slice(0,topN);
   destroyChart('ch-comp-sec');
   charts['ch-comp-sec']=new Chart(document.getElementById('ch-comp-sec'),{type:'bar',
     data:{labels:secSorted.map(([si])=>secs[si].replace(/^\d+ - /,'').substring(0,40)),
@@ -533,6 +638,7 @@ function renderCresc(){
   const cmp=(document.getElementById('cresc-cmp')||{value:'2023-2025'}).value;
   const [a1s,a2s]=cmp.split('-').map(Number);
   const q=((document.getElementById('cresc-busca')||{value:''}).value).toLowerCase();
+  const catFlt2=(document.getElementById('cresc-cat')||{value:''}).value;
 
   // Agregar por evento, apenas com os regimes/secs filtrados mas TODOS os anos para comparar
   const byEvAno={};
@@ -558,6 +664,7 @@ function renderCresc(){
   }).filter(Boolean);
 
   if(q) rows=rows.filter(r=>r.nome.toLowerCase().includes(q));
+  if(catFlt2!=='') rows=rows.filter(r=>r.cat===Number(catFlt2));
   rows.sort((a,b)=>{
     if(a.pct===null&&b.pct===null)return b.dv-a.dv;
     if(a.pct===null)return 1;
@@ -633,8 +740,11 @@ function plantPg(d){
 // TAB 4 — HORA EXTRA POR SECRETARIA
 // ════════════════════════════════════════════════════════════════
 function renderHE(){
-  const EV_HE50=eventos.findIndex(e=>ev_names[eventos.indexOf(e)]==='HORA EXTRA 50%');
-  const heNames=ev_names.map((n,i)=>({i,n})).filter(x=>/HORA EXTRA/.test(x.n)).map(x=>x.i);
+  const heTipo=(document.getElementById('he-tipo')||{value:''}).value;
+  const heLim=Number((document.getElementById('he-lim')||{value:'0'}).value)||0;
+  let heEvs=ev_names.map((n,i)=>({i,n})).filter(x=>/HORA EXTRA/.test(x.n));
+  if(heTipo) heEvs=heEvs.filter(x=>x.n.includes(heTipo));
+  const heNames=heEvs.map(x=>x.i);
   
   const rows=agg1.filter(r=>heNames.includes(r[A1_EI])&&
     (FS.ris.size===0||FS.ris.has(r[A1_RI]))&&
@@ -647,7 +757,10 @@ function renderHE(){
     byAno[r[A1_ANO]]=(byAno[r[A1_ANO]]||0)+r[A1_VAL];
   });
 
-  const secSorted=Object.entries(bySec).map(([si,anos])=>({si:Number(si),total:Object.values(anos).reduce((s,v)=>s+v)})).sort((a,b)=>b.total-a.total).slice(0,12);
+  let secSorted=Object.entries(bySec).map(([si,anos])=>({si:Number(si),total:Object.values(anos).reduce((s,v)=>s+v)})).sort((a,b)=>b.total-a.total);
+  if(heLim>0) secSorted=secSorted.filter(x=>x.total>=heLim);
+  secSorted=secSorted.slice(0,15);
+  const heInfoEl=document.getElementById('he-info'); if(heInfoEl) heInfoEl.textContent=secSorted.length+' secretarias';
 
   destroyChart('ch-he-sec');
   charts['ch-he-sec']=new Chart(document.getElementById('ch-he-sec'),{type:'bar',
@@ -676,7 +789,13 @@ function renderHE(){
 // TAB 5 — DUPLICIDADES
 // ════════════════════════════════════════════════════════════════
 function renderDup(){
-  document.getElementById('dup-body').innerHTML=dup3.map(r=>`<tr>
+  const dupQ=((document.getElementById('dup-busca')||{value:''}).value).toLowerCase();
+  const dupAno=(document.getElementById('dup-ano')||{value:''}).value;
+  let dupRows=dup3;
+  if(dupQ) dupRows=dupRows.filter(r=>nomes[r[D3_MI]].toLowerCase().includes(dupQ)||ev_names[r[D3_EI]].toLowerCase().includes(dupQ));
+  if(dupAno) dupRows=dupRows.filter(r=>r[D3_ANO]===Number(dupAno));
+  const dupInfoEl=document.getElementById('dup-info'); if(dupInfoEl) dupInfoEl.textContent=dupRows.length+' ocorrências';
+  document.getElementById('dup-body').innerHTML=dupRows.map(r=>`<tr>
     <td style="font-weight:500">${nomes[r[D3_MI]]}</td>
     <td style="color:#64748b;font-size:11px">${mats[r[D3_MI]]}</td>
     <td>${ev_names[r[D3_EI]]}</td>
@@ -760,8 +879,11 @@ function srvSelect(mi){
 // TAB 7 — INSALUBRIDADE E ADICIONAIS
 // ════════════════════════════════════════════════════════════════
 function renderIns(){
-  const INS_EVS=ev_names.map((n,i)=>({i,n})).filter(x=>/INSALUB|NOTURNO|PERICULOSIDADE/.test(x.n)).map(x=>x.i);
-  const rows=agg1.filter(r=>INS_EVS.includes(r[A1_EI])&&
+  const insTipo=(document.getElementById('ins-tipo')||{value:''}).value;
+  const insLim=Number((document.getElementById('ins-lim')||{value:'0'}).value)||0;
+  const insPat=insTipo?new RegExp(insTipo):/INSALUB|NOTURNO|PERICULOSIDADE/;
+  const INS_EVS=ev_names.map((n,i)=>({i,n})).filter(x=>insPat.test(x.n)).map(x=>x.i);
+  let rows=agg1.filter(r=>INS_EVS.includes(r[A1_EI])&&
     (FS.ris.size===0||FS.ris.has(r[A1_RI]))&&
     (FS.sis.size===0||FS.sis.has(r[A1_SI])));
 
@@ -780,6 +902,7 @@ function renderIns(){
 
   const total=rows.reduce((s,r)=>s+r[A1_VAL],0);
   const srvCnt=new Set(rows.map(r=>r[A1_SI]+'_'+r[A1_ANO])).size;
+  const insInfoEl=document.getElementById('ins-info'); if(insInfoEl) insInfoEl.textContent=INS_EVS.length+' rubricas · '+fM(total);
   const growthBase=byEvAno['Insalubridade']?.[2023]||0;
   const growthNow=byEvAno['Insalubridade']?.[2025]||0;
 
@@ -831,7 +954,22 @@ function renderIns(){
 // TAB 8 — GRATIFICAÇÕES
 // ════════════════════════════════════════════════════════════════
 function renderGrat(){
-  const rows = filtA1().filter(r => EV_GRAT.has(r[A1_EI]));
+  const gratCatFlt=(document.getElementById('grat-cat')||{value:''}).value;
+  const gratLim=Number((document.getElementById('grat-lim')||{value:'0'}).value)||0;
+  const gratQ=((document.getElementById('grat-busca')||{value:''}).value).toLowerCase();
+  const evToGCat2={};
+  Array.from(EV_GRAT).forEach(ei=>{
+    const nm=ev_names[ei].toUpperCase();
+    if(/GRATIF/.test(nm)) evToGCat2[ei]='Gratificações';
+    else if(/ADICIONAL/.test(nm)) evToGCat2[ei]='Adicionais';
+    else if(/INSALUB/.test(nm)) evToGCat2[ei]='Insalubridade';
+    else if(/NOTURNO/.test(nm)) evToGCat2[ei]='Ad. Noturno';
+    else if(/PRODUT/.test(nm)) evToGCat2[ei]='Produtividade';
+    else if(/PERICULOSID/.test(nm)) evToGCat2[ei]='Periculosidade';
+    else evToGCat2[ei]='Outros Grat.';
+  });
+  let rows = filtA1().filter(r => EV_GRAT.has(r[A1_EI]));
+  if(gratCatFlt) rows=rows.filter(r=>(evToGCat2[r[A1_EI]]||'Outros Grat.')===gratCatFlt);
 
   // KPIs
   let total=0, srvSet=new Set(), rubSet=new Set();
@@ -948,7 +1086,10 @@ function renderGrat(){
     srvRubs[r[A4_MI]].add(r[A4_EI]);
   });
 
-  const top30 = Object.entries(srvGrat).sort((a,b)=>b[1]-a[1]).slice(0,30);
+  let top30 = Object.entries(srvGrat).sort((a,b)=>b[1]-a[1]);
+  if(gratLim>0) top30=top30.filter(([mi,gv])=>gv>=gratLim);
+  if(gratQ) top30=top30.filter(([mi])=>(nomes[+mi]||String(mats[+mi])).toLowerCase().includes(gratQ));
+  top30=top30.slice(0,30);
   const tb=document.getElementById('grat-body');
   if(top30.length===0){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">Nenhum dado para o filtro atual</td></tr>';return;}
   tb.innerHTML=top30.map(([mi,gv],idx)=>{
