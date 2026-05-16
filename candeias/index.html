@@ -237,6 +237,17 @@ footer strong{color:rgba(255,255,255,.8)}
     const s = JSON.parse(sessionStorage.getItem(SESSION_KEY)||'{}');
     if(s.user && Date.now() < s.exp){
       document.getElementById('auth-overlay').style.display='none';
+      // Show logout button
+      document.addEventListener('DOMContentLoaded',function(){
+        const bar=document.createElement("div");
+        bar.style.cssText="position:fixed;top:12px;right:14px;z-index:9998;display:flex;gap:6px;font-family:inherit";
+        const bO=document.createElement("button");
+        bO.textContent="Sair ("+s.user+")";
+        bO.style.cssText="background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;backdrop-filter:blur(4px);font-family:inherit";
+        bO.onclick=function(){sessionStorage.removeItem(SESSION_KEY);window.location.reload();};
+        bar.appendChild(bO);
+        document.body.appendChild(bar);
+      });
     }
   } catch(e){}
 })();
