@@ -283,10 +283,24 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     </div>
     <span id="he-info" style="font-size:12px;color:var(--mu);margin-left:auto"></span>
   </div>
+  <div class="sf-row" id="he-sf2" style="border-top:1px solid var(--bd);padding-top:10px;margin-bottom:0">
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Regime</label>
+      <select class="sf" id="he-reg" onchange="renderHE()">
+        <option value="" selected>Todos os regimes</option>
+      </select>
+    </div>
+  </div>
   <div id="he-empty" class="info-box" style="display:none;background:#f0f9ff;border-color:#bae6fd;color:#0c4a6e">ℹ️ Nenhum registro de Hora Extra encontrado com os filtros atuais. O filtro de <strong>Regime</strong> está restrito — tente selecionar <strong>Todos</strong> os regimes para ver os dados de HE.</div>
   <div id="he-charts" class="g2">
     <div class="cc"><div class="ch">Hora Extra por Secretaria</div><div class="cs">Total de HE 50% e 100% por secretaria no período</div><canvas id="ch-he-sec" height="300"></canvas></div>
     <div class="cc"><div class="ch">Evolução Anual de Horas Extras</div><div class="cs">HE 50% vs HE 100% por ano</div><canvas id="ch-he-ev" height="300"></canvas></div>
+  </div>
+  <div class="g2" id="he-charts2">
+    <div class="cc"><div class="ch">HE por Regime</div><div class="cs">Distribuição total por vínculo funcional</div><canvas id="ch-he-reg" height="260"></canvas></div>
+    <div class="cc"><div class="ch">Evolução Mensal</div><div class="cs">Total de HE mês a mês nos anos filtrados</div><canvas id="ch-he-mes" height="260"></canvas></div>
+  </div>
+  <div class="cc" style="margin-top:0"><div class="ch">Top 20 Servidores — Maior HE</div><div class="cs">Soma acumulada de HE 50%+100% no período filtrado</div>
+    <div style="overflow-x:auto;margin-top:10px"><table><thead id="he-srv-thead"></thead><tbody id="he-srv-tbody"></tbody></table></div>
   </div>
   <div class="cc"><div class="ch">Tabela: Hora Extra por Secretaria × Ano</div><div class="cs">Valores totais de horas extras (50% + 100%) por secretaria</div>
     <div style="overflow-x:auto;margin-top:10px"><table><thead id="he-thead"></thead><tbody id="he-tbody"></tbody></table></div>
@@ -747,14 +761,16 @@ function plantPg(d){
 function renderHE(){
   const heTipo=(document.getElementById('he-tipo')||{value:''}).value;
   const heLim=Number((document.getElementById('he-lim')||{value:'0'}).value)||0;
+  const heRegFlt=(document.getElementById('he-reg')||{value:''}).value;
   let heEvs=ev_names.map((n,i)=>({i,n})).filter(x=>/HORA EXTRA/.test(x.n));
   if(heTipo) heEvs=heEvs.filter(x=>x.n.includes(heTipo));
   const heNames=heEvs.map(x=>x.i);
   const anosF=ANOS_ALL.filter(a=>FS.anos.size===0||FS.anos.has(a));
 
+  // HE tab ignores global regime filter — uses own local regime select
   const rows=agg1.filter(r=>heNames.includes(r[A1_EI])&&
     (FS.anos.size===0||FS.anos.has(r[A1_ANO]))&&
-    (FS.ris.size===0||FS.ris.has(r[A1_RI]))&&
+    (heRegFlt===''||r[A1_RI]===Number(heRegFlt))&&
     (FS.sis.size===0||FS.sis.has(r[A1_SI])));
 
   const bySec={}, byAno={};
@@ -777,15 +793,19 @@ function renderHE(){
   if(heInfoEl) heInfoEl.textContent=secSorted.length+' secretarias · '+fK(secSorted.reduce((s,x)=>s+x.total,0));
   const heEmpty=document.getElementById('he-empty');
   const heCharts=document.getElementById('he-charts');
+  const heCharts2=document.getElementById('he-charts2');
   if(secSorted.length===0){
     if(heEmpty) heEmpty.style.display='';
     if(heCharts) heCharts.style.display='none';
+    if(heCharts2) heCharts2.style.display='none';
     document.getElementById('he-thead').innerHTML='';
+    document.getElementById('he-srv-tbody').innerHTML='';
     document.getElementById('he-tbody').innerHTML=`<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--mu)">Sem dados</td></tr>`;
     return;
   }
   if(heEmpty) heEmpty.style.display='none';
   if(heCharts) heCharts.style.display='';
+  if(heCharts2) heCharts2.style.display='';
 
   destroyChart('ch-he-sec');
   charts['ch-he-sec']=new Chart(document.getElementById('ch-he-sec'),{type:'bar',
@@ -801,7 +821,53 @@ function renderHE(){
     options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fK(ctx.raw)}}},
              scales:{y:{ticks:{callback:v=>fK(v)}}}}});
 
-  // Tabela
+  // Gráfico: HE por Regime
+  const byReg={};
+  rows.forEach(r=>{ byReg[r[A1_RI]]=(byReg[r[A1_RI]]||0)+r[A1_VAL]; });
+  const regSorted=Object.entries(byReg).sort((a,b)=>b[1]-a[1]);
+  destroyChart('ch-he-reg');
+  charts['ch-he-reg']=new Chart(document.getElementById('ch-he-reg'),{type:'doughnut',
+    data:{
+      labels:regSorted.map(([ri])=>regimes[+ri].replace(/^\d+ - /,'')),
+      datasets:[{data:regSorted.map(([,v])=>v),
+        backgroundColor:['#4f46e5bb','#dc2626bb','#059669bb','#d97706bb','#7c3aedbb','#0891b2bb'],
+        borderWidth:2}]
+    },
+    options:{plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}},
+      tooltip:{callbacks:{label:ctx=>ctx.label+': '+fK(ctx.raw)+' ('+((ctx.raw/rows.reduce((s,r)=>s+r[A1_VAL],0))*100).toFixed(1)+'%)'}}}}});
+
+  // Gráfico: HE Mensal
+  const byMes={};
+  rows.forEach(r=>{ const k=r[A1_ANO]+'-'+String(r[A1_MES]).padStart(2,'0'); byMes[k]=(byMes[k]||0)+r[A1_VAL]; });
+  const mesSorted=Object.keys(byMes).sort();
+  destroyChart('ch-he-mes');
+  charts['ch-he-mes']=new Chart(document.getElementById('ch-he-mes'),{type:'line',
+    data:{labels:mesSorted.map(k=>{const [a,m]=k.split('-');return meses_str[+m]+'/'+a;}),
+          datasets:[{label:'HE',data:mesSorted.map(k=>byMes[k]),fill:true,
+            backgroundColor:'#dc262620',borderColor:'#dc2626',borderWidth:2,pointRadius:3,tension:0.3}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>fK(v)}}}}});
+
+  // Top 20 servidores (via agg2)
+  const srvHE={};
+  agg2.filter(r=>heNames.includes(r[A2_EI])&&
+    (FS.anos.size===0||FS.anos.has(r[A2_ANO]))&&
+    (heRegFlt===''||r[A2_RI]===Number(heRegFlt))&&
+    (FS.sis.size===0||FS.sis.has(r[A2_SI]))
+  ).forEach(r=>{ srvHE[r[A2_MI]]=(srvHE[r[A2_MI]]||0)+r[A2_VAL]; });
+  const top20=Object.entries(srvHE).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  const srvHdr=`<tr style="background:#f8fafc;border-bottom:2px solid var(--bd)"><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Total HE</th></tr>`;
+  document.getElementById('he-srv-thead').innerHTML=srvHdr;
+  document.getElementById('he-srv-tbody').innerHTML=top20.map(([mi,val],i)=>{
+    const prof=srv_profile[+mi]||[0,0,0];
+    return`<tr><td style="color:#94a3b8">${i+1}</td>
+      <td style="font-weight:500">${nomes[+mi]||mats[+mi]}</td>
+      <td style="font-size:11px;color:#64748b">${secs[prof[1]]?.replace(/^\d+ - /,'')||'-'}</td>
+      <td><span class="badge" style="background:#fee2e2;color:#dc2626">${regimes[prof[2]]?.replace(/^\d+ - /,'')||'-'}</span></td>
+      <td class="r" style="font-weight:700;color:#dc2626">${fR(val)}</td>
+    </tr>`;
+  }).join('');
+
+  // Tabela por Secretaria × Ano
   const hdr=`<tr style="background:#f8fafc;border-bottom:2px solid var(--bd)"><th>Secretaria</th>${anosF.map(a=>`<th class="r">${a}</th>`).join('')}<th class="r">Total</th></tr>`;
   document.getElementById('he-thead').innerHTML=hdr;
   document.getElementById('he-tbody').innerHTML=secSorted.map(x=>{
@@ -1141,6 +1207,12 @@ function renderGrat(){
   msInit('reg', regimes.map(r=>r.replace(/^\d+ - /,'')), [], regimes.map((_,i)=>i));
   msInit('sec', secs.map(s=>s.replace(/^\d+ - /,'')), [], secs.map((_,i)=>i));
   msInit('ev', ev_names, [], eventos.map((_,i)=>i));
+
+  // Populate he-reg select
+  const heRegSel=document.getElementById('he-reg');
+  if(heRegSel){
+    regimes.forEach((r,i)=>{const o=document.createElement('option');o.value=i;o.textContent=r.replace(/^\d+ - /,'');heRegSel.appendChild(o);});
+  }
 
   // Default: 2025+2026 e Cargos em Comissão
   const ri_com=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
