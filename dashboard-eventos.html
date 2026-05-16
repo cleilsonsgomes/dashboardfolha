@@ -1818,6 +1818,7 @@ function renderCargo(){
 
 function renderCargoLei(){
   const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+  const [A1a,A1m,A1e,A1s,A1r,A1v,A1c]=[0,1,2,3,4,5,6]; // agg1 índices locais
 
   // Mapeamento por palavra-chave (mais específico primeiro)
   // Tolera erros de digitação comuns nos dados (SUPERITEND, SUPERVIS0R, SUPERVIDOR)
@@ -1837,25 +1838,36 @@ function renderCargoLei(){
     return null;
   }
 
-  // Constrói conjunto de comissionados direto do srv_profile (cobertura completa)
-  // filtrando por ano via agg4
+  const totalCompsAll=(()=>{const s=new Set();agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[A1a]*100+r[A1m]))s.add(r[A1a]*100+r[A1m]);});return s.size;})();
+  const temFiltroComp=FS.comps.size>0&&FS.comps.size<totalCompsAll;
+
+  // CC chart: sempre do srv_profile (dado anual — único com info de cargo)
   const miAno4=new Set(agg4.filter(r=>FS.anos.size===0||FS.anos.has(r[A4_ANO])).map(r=>r[A4_MI]));
   const miSet=new Set();
   srv_profile.forEach((p,mi)=>{if(p&&p[2]===riCom&&miAno4.has(mi)) miSet.add(mi);});
+  const byCCNivel={};
+  miSet.forEach(mi=>{const p=srv_profile[mi];const n=matchCC(cargos[p[0]]);if(n) byCCNivel[n]=(byCCNivel[n]||0)+1;});
 
-  // agg2 não cobre comissionados individualmente; nota se filtro de competência ativo
-  const totalComps=(()=>{const s=new Set();agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[A1_ANO]*100+r[A1_MES]))s.add(r[A1_ANO]*100+r[A1_MES]);});return s.size;})();
-  const temFiltroComp=FS.comps.size>0&&FS.comps.size<totalComps;
-
-  // Agrupa por secretaria e nível CC
-  const bySec={}, byCCNivel={};
-  miSet.forEach(mi=>{
-    const p=srv_profile[mi];
-    const s=secs[p[1]], c=cargos[p[0]];
-    bySec[s]=(bySec[s]||0)+1;
-    const nivel=matchCC(c);
-    if(nivel) byCCNivel[nivel]=(byCCNivel[nivel]||0)+1;
-  });
+  // Por secretaria: mensal via agg1 MAX (evento mais abrangente = proxy headcount)
+  // quando competência filtrada; caso contrário usa srv_profile anual
+  let bySec={}, isMonthly=false;
+  if(temFiltroComp){
+    const bySecComp={};
+    agg1.filter(r=>r[A1r]===riCom&&!EXCLUIR_COMPS.has(r[A1a]*100+r[A1m])&&FS.comps.has(r[A1a]*100+r[A1m]))
+      .forEach(r=>{
+        const si=r[A1s],comp=r[A1a]*100+r[A1m];
+        if(!bySecComp[si]) bySecComp[si]={};
+        bySecComp[si][comp]=Math.max(bySecComp[si][comp]||0,r[A1c]);
+      });
+    const nC=FS.comps.size;
+    Object.entries(bySecComp).forEach(([si,cd])=>{
+      bySec[secs[si]]=Math.round(Object.values(cd).reduce((s,v)=>s+v,0)/nC);
+    });
+    isMonthly=Object.keys(bySec).length>0;
+    if(!isMonthly) miSet.forEach(mi=>{const p=srv_profile[mi];bySec[secs[p[1]]]=(bySec[secs[p[1]]]||0)+1;});
+  } else {
+    miSet.forEach(mi=>{const p=srv_profile[mi];bySec[secs[p[1]]]=(bySec[secs[p[1]]]||0)+1;});
+  }
 
   const totalContratado=Object.values(bySec).reduce((s,n)=>s+n,0);
   const excedente=totalContratado-LEI_TOTAL;
@@ -1865,8 +1877,14 @@ function renderCargoLei(){
   const infoEl=document.getElementById('lei-comp-info');
   if(infoEl){
     const anosLabel=[...FS.anos].sort().join(', ');
-    const compNote=temFiltroComp?' · ⚠️ Filtro de competência não se aplica a comissionados (dado anual)':'';
-    infoEl.textContent=`Anos: ${anosLabel} · ${miSet.size} comissionados únicos identificados${compNote}`;
+    let infoTxt;
+    if(temFiltroComp&&isMonthly){
+      const compsLabel=FS.comps.size===1?[...FS.comps].map(k=>meses_str[k%100]+'/'+Math.floor(k/100)).join(''):`média de ${FS.comps.size} competências`;
+      infoTxt=`${compsLabel} · ${totalContratado} comissionados (dados mensais da folha) · Gráfico CC = dado anual`;
+    } else {
+      infoTxt=`Anos: ${anosLabel} · ${miSet.size} comissionados únicos (dado anual)`;
+    }
+    infoEl.textContent=infoTxt;
   }
 
   // KPIs
