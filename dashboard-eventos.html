@@ -662,6 +662,7 @@ const meses_str=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out',
 // MULTI-SELECT FILTER SYSTEM
 // ════════════════════════════════════════════════════════════════
 const FS={anos:new Set([2025,2026]),ris:new Set(),sis:new Set(),eis:new Set(),comps:new Set()};
+const EXCLUIR_COMPS=new Set([202605]); // Mai/2026 excluído por dado incompleto
 let MS={};
 
 function msInit(key,vals,defaults,ids_fld){
@@ -735,6 +736,7 @@ function resetFilters(){
 // agg1 filter
 function filtA1(){
   return agg1.filter(r=>
+    !EXCLUIR_COMPS.has(r[A1_ANO]*100+r[A1_MES])&&
     (FS.anos.size===0||FS.anos.has(r[A1_ANO]))&&
     (FS.comps.size===0||FS.comps.has(r[A1_ANO]*100+r[A1_MES]))&&
     (FS.ris.size===0||FS.ris.has(r[A1_RI]))&&
@@ -744,6 +746,7 @@ function filtA1(){
 }
 function filtA2(){
   return agg2.filter(r=>
+    !EXCLUIR_COMPS.has(r[A2_ANO]*100+r[A2_MES])&&
     (FS.anos.size===0||FS.anos.has(r[A2_ANO]))&&
     (FS.comps.size===0||FS.comps.has(r[A2_ANO]*100+r[A2_MES]))&&
     (FS.ris.size===0||FS.ris.has(r[A2_RI]))&&
@@ -1938,7 +1941,7 @@ function renderCargoLei(){
   // Inicializa filtro de Competência com todos os meses disponíveis nos dados
   {
     const compSet=new Set();
-    agg1.forEach(r=>compSet.add(r[A1_ANO]*100+r[A1_MES]));
+    agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[A1_ANO]*100+r[A1_MES]))compSet.add(r[A1_ANO]*100+r[A1_MES]);});
     const compList=[...compSet].sort();
     const compLabels=compList.map(k=>meses_str[k%100]+'/'+Math.floor(k/100));
     msInit('competencia',compLabels,compList,compList);
