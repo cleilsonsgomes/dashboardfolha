@@ -452,8 +452,23 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 
 
 <div class="con" id="tab-sim" style="display:none">
-  <div class="info-box" style="background:#fefce8;border-color:#fde68a;color:#713f12;margin-bottom:18px">
-    🧮 <strong>Simulador de Planejamento:</strong> marque os eventos que deseja <em>excluir</em> da folha para estimar o impacto orçamentário. O cálculo usa os filtros globais (ano, regime, secretaria) ativos.
+  <div class="info-box" style="background:#fefce8;border-color:#fde68a;color:#713f12;margin-bottom:14px">
+    🧮 <strong>Simulador de Planejamento:</strong> selecione as competências e marque os eventos que deseja <em>excluir</em> da folha para estimar o impacto orçamentário.
+  </div>
+  <div class="sf-row" style="margin-bottom:14px">
+    <div class="fg">
+      <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Competência</label>
+      <button class="ms-btn" id="fbtn-comp" onclick="msToggle('comp')" style="min-width:200px">
+        <span class="ms-label" id="flbl-comp">Todas</span><span>▾</span>
+      </button>
+      <div class="ms-dd" id="fdd-comp" style="min-width:220px">
+        <input class="ms-search" placeholder="Buscar competência…" oninput="msFilter('comp',this.value)">
+        <div class="ms-acts"><a onclick="msAll('comp')">Todas</a><span>·</span><a onclick="msClear('comp')">Limpar</a></div>
+        <div class="ms-list" id="flist-comp"></div>
+      </div>
+    </div>
+    <button class="btn-apply" onclick="renderSim()" style="align-self:flex-end">Recalcular</button>
+    <span id="sim-comp-info" style="font-size:12px;color:var(--mu);align-self:flex-end"></span>
   </div>
   <!-- KPIs do simulador -->
   <div class="kpi-grid" style="margin-bottom:18px" id="kpi-sim"></div>
@@ -571,8 +586,13 @@ function msLabel(key){
   else if(s.size===1) el.textContent=a.find(x=>s.has(x.val))?.label||'1 selecionado';
   else el.textContent=s.size+' selecionados';
 }
+let _filterTimer=null;
 document.addEventListener('click',e=>{
-  if(!e.target.closest('.fg'))document.querySelectorAll('.ms-dd.open').forEach(d=>{d.classList.remove('open');d.previousElementSibling?.classList.remove('open');});
+  if(!e.target.closest('.fg')){
+    const wasOpen=[...document.querySelectorAll('.ms-dd.open')];
+    wasOpen.forEach(d=>{d.classList.remove('open');d.previousElementSibling?.classList.remove('open');});
+    if(wasOpen.length>0){clearTimeout(_filterTimer);_filterTimer=setTimeout(applyFilters,100);}
+  }
 });
 
 function applyFilters(){
@@ -1060,6 +1080,7 @@ function renderIns(){
   const insPat=insTipo?new RegExp(insTipo):/INSALUB|NOTURNO|PERICULOSIDADE/;
   const INS_EVS=ev_names.map((n,i)=>({i,n})).filter(x=>insPat.test(x.n)).map(x=>x.i);
   let rows=agg1.filter(r=>INS_EVS.includes(r[A1_EI])&&
+    (FS.anos.size===0||FS.anos.has(r[A1_ANO]))&&
     (FS.ris.size===0||FS.ris.has(r[A1_RI]))&&
     (FS.sis.size===0||FS.sis.has(r[A1_SI])));
 
@@ -1336,7 +1357,14 @@ function simClearAll(){
 function fK(v){ return v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1000?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0); }
 
 function simCalc(){
-  const rows=filtA1();
+  const selComps=MS['comp']?MS['comp'].selected:new Set();
+  const allComps=MS['comp']?MS['comp'].all.length:0;
+  const filterByComp=selComps.size>0&&selComps.size<allComps;
+  const baseRows=filtA1();
+  const rows=filterByComp?baseRows.filter(r=>selComps.has(r[A1_ANO]*100+r[A1_MES])):baseRows;
+  // Update info
+  const infoEl=document.getElementById('sim-comp-info');
+  if(infoEl) infoEl.textContent=selComps.size===allComps?allComps+' competências (todas)':selComps.size+' de '+allComps+' competências';
   let totalAtual=0, totalExcl=0;
   const byCatAtual=[0,0,0,0,0], byCatExcl=[0,0,0,0,0];
   const bySecAtual={}, bySecExcl={};
@@ -1417,6 +1445,23 @@ function simCalc(){
 }
 
 function renderSim(){
+  // Inicializa/atualiza lista de competências disponíveis com os filtros atuais
+  const baseRows=filtA1();
+  const compSet=new Set();
+  baseRows.forEach(r=>compSet.add(r[A1_ANO]*100+r[A1_MES]));
+  const compList=[...compSet].sort();
+  const compVals=compList.map(k=>({val:k,label:meses_str[k%100]+'/'+Math.floor(k/100)}));
+  // Preserve selection if possible
+  const prevSel=MS['comp']?new Set([...MS['comp'].selected]):new Set();
+  MS['comp']={all:compVals,selected:new Set()};
+  // Select all by default (or restore prev selection if valid)
+  if(prevSel.size===0||prevSel.size===compList.length){
+    compList.forEach(k=>MS['comp'].selected.add(k));
+  } else {
+    compList.forEach(k=>{ if(prevSel.has(k)) MS['comp'].selected.add(k); });
+    if(MS['comp'].selected.size===0) compList.forEach(k=>MS['comp'].selected.add(k));
+  }
+  msRender('comp',''); msLabel('comp');
   simBuildEvList('');
   simCalc();
 }
