@@ -2962,11 +2962,17 @@ function renderEstag(){
   const bolsaSup=+document.getElementById('bolsa-sup').value||0;
   const qtdSup  =+document.getElementById('qtd-sup').value||0;
 
+  const bolsaAdol=+document.getElementById('bolsa-adol').value||0;
+  const qtdAdol  =+document.getElementById('qtd-adol').value||0;
+
   const totalEstag=qtdMed+qtdTec+qtdSup;
   const custoMedMes=(bolsaMed+ESTAG_AUX)*qtdMed;
   const custoTecMes=(bolsaTec+ESTAG_AUX)*qtdTec;
   const custoSupMes=(bolsaSup+ESTAG_AUX)*qtdSup;
   const custoTotalMes=custoMedMes+custoTecMes+custoSupMes;
+  const custoAdol=(bolsaAdol+ESTAG_AUX)*qtdAdol;
+  const totalGeral=totalEstag+qtdAdol;
+  const custoTotalGeral=custoTotalMes+custoAdol;
 
   // Comissionados por secretaria respeitando filtros
   let bySecCom={};
