@@ -2974,43 +2974,38 @@ function renderEstag(){
   const totalGeral=totalEstag+qtdAdol;
   const custoTotalGeral=custoTotalMes+custoAdol;
 
-  // Comissionados por secretaria respeitando filtros
+  // Comissionados por secretaria — leitura direta do srv_profile (sem filtro extra)
   let bySecCom={};
   if(FS.comps.size>0){
     const sm={};
     agg1.filter(r=>r[A1r]===riCom&&inAno(r)&&inComp(r)).forEach(r=>{sm[r[A1s]]=Math.max(sm[r[A1s]]||0,r[A1c]);});
     Object.entries(sm).forEach(([si,n])=>{bySecCom[secs[si]]=n;});
   } else {
-    const miAno4=new Set(agg4.filter(r=>inAno(r)).map(r=>r[A4_MI]));
+    // Igual ao computeSnap da Tab 11: lê srv_profile sem intersecção com agg4
     const comMis=new Set();
-    srv_profile.forEach((p,mi)=>{if(p&&p[2]===riCom&&miAno4.has(mi))comMis.add(mi);});
+    srv_profile.forEach((p,mi)=>{if(p&&p[2]===riCom)comMis.add(mi);});
     comMis.forEach(mi=>{const p=srv_profile[mi];bySecCom[secs[p[1]]]=(bySecCom[secs[p[1]]]||0)+1;});
   }
+  const comTotal=Object.values(bySecCom).reduce((s,v)=>s+v,0);
 
-  const secExc=Object.entries(LEI_SEC)
-    .map(([s,lei])=>({s,lei,cont:bySecCom[s]||0,exc:Math.max(0,(bySecCom[s]||0)-lei)}))
-    .filter(d=>d.exc>0).sort((a,b)=>b.exc-a.exc);
-  const totalExc=secExc.reduce((s,d)=>s+d.exc,0);
+  // Excedente por secretaria (para coluna da tabela)
+  const excBySec={};
+  Object.entries(LEI_SEC).forEach(([s,lei])=>{excBySec[s]=Math.max(0,(bySecCom[s]||0)-lei);});
+  const totalExc=Object.values(excBySec).reduce((s,v)=>s+v,0);
 
   const custoMedioEstag=totalEstag>0?custoTotalMes/totalEstag:(bolsaMed+ESTAG_AUX);
-  const secDist=secExc.map(d=>{
-    const prop=totalExc>0?d.exc/totalExc:0;
-    const estag=Math.round(prop*totalEstag);
-    const custoEstag=estag*custoMedioEstag;
-    const custoAtual=d.exc*CUSTO_COM_MEDIO;
-    return {...d,estag,custoEstag,custoAtual,economia:custoAtual-custoEstag};
-  });
 
-  const economiaTotal=totalExc*CUSTO_COM_MEDIO-custoTotalMes;
-  const custoAtualTotal=totalExc*CUSTO_COM_MEDIO;
+  // KPIs: usa custo total dos comissionados vs programa (não só excedentes)
+  const custoAtualTotal=comTotal*CUSTO_COM_MEDIO;
+  const economiaTotal=custoAtualTotal-custoTotalGeral;
 
   // KPIs
   const kpiEl=document.getElementById('kpi-estag');
   if(kpiEl) kpiEl.innerHTML=[
     {l:'Total de estagiarios propostos',v:totalEstag,s:'Medio: '+qtdMed+' / Tecnico: '+qtdTec+' / Superior: '+qtdSup,c:'#4f46e5'},
     {l:'Custo mensal com estagiarios',v:fM(custoTotalMes),s:'bolsa + seguro + aux. estimado',c:'#2563eb'},
-    {l:'Custo atual (excedentes)',v:fM(custoAtualTotal),s:totalExc+' comissionados x R$ '+CUSTO_COM_MEDIO.toLocaleString('pt-BR')+'/mes est.',c:'#dc2626'},
-    {l:'Economia mensal estimada',v:economiaTotal>0?fM(economiaTotal):'Sem economia',s:economiaTotal>0?fM(economiaTotal*12)+' ao ano':'Custo supera excedente atual',c:economiaTotal>0?'#059669':'#b45309'},
+    {l:'Custo atual (comissionados)',v:fM(custoAtualTotal),s:comTotal+' comissionados x R$ '+CUSTO_COM_MEDIO.toLocaleString('pt-BR')+'/mes est.',c:'#dc2626'},
+    {l:'Economia mensal estimada',v:economiaTotal>0?fM(economiaTotal):'Custo supera folha atual',s:economiaTotal>0?fM(economiaTotal*12)+' ao ano ('+Math.round(economiaTotal/custoAtualTotal*100)+'% de reducao)':'programa custa mais que folha comissionada',c:economiaTotal>0?'#059669':'#b45309'},
   ].map(x=>`<div class="kpi"><div class="kpi-l">${x.l}</div><div class="kpi-v" style="color:${x.c}">${x.v}</div><div class="kpi-s">${x.s}</div></div>`).join('');
 
   // Alerta conformidade
@@ -3067,29 +3062,41 @@ function renderEstag(){
   // Tabela
   // Adolescent distribution (proportional, same base)
   const custoMedioAdol=qtdAdol>0?custoAdol/qtdAdol:(bolsaAdol+ESTAG_AUX);
+  // Tabela: usa ESTAG_DIST_BASE (20 secretarias sempre populadas)
+  const custoMedioAdol=qtdAdol>0?custoAdol/qtdAdol:(bolsaAdol+ESTAG_AUX);
   const tbody=document.getElementById('estag-sec-body');
-  if(tbody) tbody.innerHTML=secDist.map(d=>{
-    const prop=ESTAG_DIST_BASE.find(x=>x.s===d.s)||{cnt:1};
-    const adolVagas=Math.max(0,Math.round((prop.cnt/ESTAG_DIST_TOTAL)*qtdAdol));
-    const totalVagas=d.estag+adolVagas;
-    const custoAdolSec=adolVagas*custoMedioAdol;
-    const custoTotalSec=d.custoEstag+custoAdolSec;
-    const pct=d.exc>0?Math.round(d.estag/d.exc*100):0;
-    const ok=d.economia>=0;
-    return`<tr>
-      <td style="font-size:12px;max-width:180px">${d.s.replace(/^Secretaria Municipal d[aeo] /,'Sec. ').replace(/ - \w+$/,'').trim()}</td>
-      <td class="r" style="color:#dc2626;font-weight:700">+${d.exc}</td>
-      <td class="r" style="font-weight:700">${d.estag}</td>
-      <td class="r" style="color:#b45309;font-weight:700">${adolVagas||'—'}</td>
-      <td class="r" style="font-weight:700;color:#4f46e5">${totalVagas}</td>
-      <td class="r">${fM(custoTotalSec)}</td>
-      <td class="r" style="color:#dc2626">${fM(d.custoAtual)}</td>
-      <td class="r" style="font-weight:700;color:${ok?'#059669':'#dc2626'}">${ok?'+':'-'}${fM(Math.abs(d.economia))}</td>
-      <td><div style="background:#e2e8f0;border-radius:4px;height:8px;min-width:60px">
-        <div style="background:${pct>=80?'#059669':pct>=50?'#2563eb':'#f59e0b'};width:${Math.min(100,pct)}%;height:100%;border-radius:4px"></div>
-      </div><span style="font-size:10px;color:var(--mu)">${pct}%</span></td>
-    </tr>`;
-  }).join('');
+  if(tbody){
+    const rows=ESTAG_DIST_BASE.map(b=>{
+      const estag=Math.round((b.cnt/ESTAG_DIST_TOTAL)*totalEstag);
+      const adolVagas=Math.round((b.cnt/ESTAG_DIST_TOTAL)*qtdAdol);
+      const totalVagas=estag+adolVagas;
+      const custoEstagSec=estag*custoMedioEstag;
+      const custoAdolSec=adolVagas*custoMedioAdol;
+      const custoTotalSec=custoEstagSec+custoAdolSec;
+      const cont=bySecCom[b.s]||0;
+      const lei=LEI_SEC[b.s]||0;
+      const exc=Math.max(0,cont-lei);
+      const custoComSec=cont*CUSTO_COM_MEDIO;
+      const economia=custoComSec-custoTotalSec;
+      const pct=cont>0?Math.round(totalVagas/cont*100):0;
+      const ok=economia>=0;
+      const nomeShort=b.s.replace(/^Secretaria Municipal d[aeo] /,'Sec. ').replace(/^Secretaria de /,'Sec. ').replace(/ [-–] \w+$/,'').trim();
+      return`<tr>
+        <td style="font-size:12px;max-width:180px">${nomeShort}</td>
+        <td class="r" style="color:${exc>0?'#dc2626':'#64748b'};font-weight:700">${exc>0?'+'+exc:'—'}</td>
+        <td class="r" style="font-weight:700">${estag}</td>
+        <td class="r" style="color:#b45309;font-weight:700">${adolVagas||'—'}</td>
+        <td class="r" style="font-weight:700;color:#4f46e5">${totalVagas}</td>
+        <td class="r">${fM(custoTotalSec)}</td>
+        <td class="r" style="color:#dc2626">${fM(custoComSec)}</td>
+        <td class="r" style="font-weight:700;color:${ok?'#059669':'#dc2626'}">${ok?'+':'-'}${fM(Math.abs(economia))}</td>
+        <td><div style="background:#e2e8f0;border-radius:4px;height:8px;min-width:60px">
+          <div style="background:${pct>=80?'#059669':pct>=50?'#2563eb':'#f59e0b'};width:${Math.min(100,pct)}%;height:100%;border-radius:4px"></div>
+        </div><span style="font-size:10px;color:var(--mu)">${pct}%</span></td>
+      </tr>`;
+    });
+    tbody.innerHTML=rows.join('');
+  }
 }
 
 
