@@ -696,6 +696,31 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       </div>
     </div>
   </div>
+
+  <!-- Primeiro Emprego Adolescente -->
+  <div class="cc" style="padding:18px;border:2px solid #f59e0b;margin-bottom:18px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:1px">&#x1F7E0; Modalidade: Primeiro Emprego Adolescente (16-18 anos)</div>
+      <span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-weight:600">Jornada max. 4h/dia — ECA art. 67 + CF art. 7, XXXIII</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+      <div>
+        <label style="font-size:10px;color:var(--mu);font-weight:600">Bolsa mensal (R$)</label>
+        <input type="number" id="bolsa-adol" value="500" min="0" step="50"
+          style="width:100%;padding:7px 10px;border:1px solid #f59e0b;border-radius:8px;font-size:14px;font-weight:700;color:#b45309;margin-top:3px">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--mu);font-weight:600">Quantidade</label>
+        <input type="number" id="qtd-adol" value="40" min="0" step="5"
+          style="width:100%;padding:7px 10px;border:1px solid #f59e0b;border-radius:8px;font-size:14px;font-weight:700;margin-top:3px">
+      </div>
+      <div style="font-size:11px;color:var(--mu);grid-column:span 2;align-self:center;background:#fffbeb;border-radius:8px;padding:8px 12px">
+        &#x26A0;&#xFE0F; Exclusivo para estudantes de <strong>16 a 18 anos</strong>, prioritariamente da <strong>rede publica municipal</strong>.<br>
+        Seguro obrigatorio: R$ 30 &nbsp;|&nbsp; Aux. transporte: R$ 150 &nbsp;|&nbsp; Custo unit.: R$ <span id="custo-adol-unit">680</span>/mes
+      </div>
+    </div>
+  </div>
+  <div class="kpi-grid" id="kpi-estag-adol" style="margin-bottom:18px"></div>
   <div class="kpi-grid" id="kpi-estag" style="margin-bottom:18px"></div>
   <div id="estag-legal-alert" style="margin-bottom:18px"></div>
   <div class="g2" style="margin-bottom:18px">
@@ -716,9 +741,11 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     <div style="overflow-x:auto">
       <table>
         <thead><tr>
-          <th>Secretaria</th><th class="r">Excesso atual</th><th class="r">Estagiarios<br>propostos</th>
+          <th>Secretaria</th><th class="r">Excesso atual</th><th class="r">Estagiarios</th>
+          <th class="r" style="color:#b45309">1 Emprego<br>Adol.</th>
+          <th class="r">Total<br>vagas</th>
           <th class="r">Custo est.<br>mensal</th><th class="r">Custo com.<br>estimado</th>
-          <th class="r">Economia<br>mensal</th><th class="r">Economia<br>anual</th><th>Cobertura</th>
+          <th class="r">Economia<br>mensal</th><th>Cobertura</th>
         </tr></thead>
         <tbody id="estag-sec-body"></tbody>
       </table>
@@ -2523,11 +2550,19 @@ function gerarRelatorioPDF(){
   const qtdTec  =+document.getElementById('qtd-tec').value||60;
   const bolsaSup=+document.getElementById('bolsa-sup').value||1500;
   const qtdSup  =+document.getElementById('qtd-sup').value||50;
+  const bolsaAdol=+document.getElementById('bolsa-adol').value||500;
+  const qtdAdol  =+document.getElementById('qtd-adol').value||40;
   const totalEstag=qtdMed+qtdTec+qtdSup;
+  const totalGeral=totalEstag+qtdAdol;
   const custoMed=(bolsaMed+ESTAG_AUX)*qtdMed;
   const custoTec=(bolsaTec+ESTAG_AUX)*qtdTec;
   const custoSup=(bolsaSup+ESTAG_AUX)*qtdSup;
+  const custoAdol=(bolsaAdol+ESTAG_AUX)*qtdAdol;
   const custoTotal=custoMed+custoTec+custoSup;
+  const custoTotalGeral=custoTotal+custoAdol;
+  // Update unit cost display
+  const cuAdolEl=document.getElementById('custo-adol-unit');
+  if(cuAdolEl) cuAdolEl.textContent=(bolsaAdol+ESTAG_AUX).toLocaleString('pt-BR');
   const custoAnual=custoTotal*12;
   const custoMedio=totalEstag>0?custoTotal/totalEstag:0;
 
@@ -2563,7 +2598,7 @@ function gerarRelatorioPDF(){
   doc.setFont('helvetica','bold');
   doc.setFontSize(10);
   doc.setTextColor(...COR_AZUL);
-  doc.text('Cenario simulado: '+totalEstag+' estagiarios — Custo mensal: '+fM(custoTotal),ML,96);
+  doc.text('Cenario: '+totalEstag+' estagiarios + '+qtdAdol+' Primeiro Emprego = '+totalGeral+' vagas — Custo: '+fM(custoTotalGeral)+'/mes',ML,96);
 
   // linha separadora
   doc.setDrawColor(...COR_LINHA);
@@ -2578,7 +2613,9 @@ function gerarRelatorioPDF(){
     'instituindo o Programa Municipal de Estagio de Paulo Afonso–BA. O programa visa ampliar a',
     'insercao de jovens no mercado de trabalho, fortalecer parcerias com instituicoes de ensino e',
     'qualificar o atendimento ao cidadao nas secretarias municipais, em conformidade plena com a',
-    'Lei Federal n 11.788/2008 (Lei do Estagio).',
+    'Lei Federal n 11.788/2008 (Lei do Estagio) e normas de protecao ao adolescente trabalhador.',
+    '',
+    'Modalidades: Estagio Convencional ('+totalEstag+' vagas) + Primeiro Emprego Adolescente ('+qtdAdol+' vagas).',
   ];
   resumo.forEach((l,i)=>doc.text(l,ML,112+i*6));
 
@@ -2638,14 +2675,15 @@ function gerarRelatorioPDF(){
     styles:{fontSize:8.5,cellPadding:2.5,textColor:[71,85,105]},
     headStyles:{fillColor:COR_AZUL,textColor:[255,255,255],fontStyle:'bold'},
     alternateRowStyles:{fillColor:[248,250,252]},
-    head:[['Nivel','Vagas','Bolsa mensal','Seguro+Aux.','Custo unitario','Custo total/mes']],
+    head:[['Modalidade / Nivel','Vagas','Bolsa mensal','Seguro+Aux.','Custo unit.','Custo total/mes','Base Legal']],
     body:[
-      ['Medio',   qtdMed, 'R$ '+bolsaMed.toLocaleString('pt-BR'),  'R$ '+ESTAG_AUX, 'R$ '+(bolsaMed+ESTAG_AUX).toLocaleString('pt-BR'), fM(custoMed)],
-      ['Tecnico', qtdTec, 'R$ '+bolsaTec.toLocaleString('pt-BR'),  'R$ '+ESTAG_AUX, 'R$ '+(bolsaTec+ESTAG_AUX).toLocaleString('pt-BR'), fM(custoTec)],
-      ['Superior',qtdSup, 'R$ '+bolsaSup.toLocaleString('pt-BR'),  'R$ '+ESTAG_AUX, 'R$ '+(bolsaSup+ESTAG_AUX).toLocaleString('pt-BR'), fM(custoSup)],
-      ['TOTAL',   totalEstag, '—', '—', '—', fM(custoTotal)],
+      ['Estagio — Medio',   qtdMed, 'R$ '+bolsaMed.toLocaleString('pt-BR'),  'R$ '+ESTAG_AUX, 'R$ '+(bolsaMed+ESTAG_AUX).toLocaleString('pt-BR'), fM(custoMed),'Lei 11.788/08'],
+      ['Estagio — Tecnico', qtdTec, 'R$ '+bolsaTec.toLocaleString('pt-BR'),  'R$ '+ESTAG_AUX, 'R$ '+(bolsaTec+ESTAG_AUX).toLocaleString('pt-BR'), fM(custoTec),'Lei 11.788/08'],
+      ['Estagio — Superior',qtdSup, 'R$ '+bolsaSup.toLocaleString('pt-BR'),  'R$ '+ESTAG_AUX, 'R$ '+(bolsaSup+ESTAG_AUX).toLocaleString('pt-BR'), fM(custoSup),'Lei 11.788/08'],
+      ['1 Emprego Adolesc. (16-18a)',qtdAdol,'R$ '+bolsaAdol.toLocaleString('pt-BR'),'R$ '+ESTAG_AUX,'R$ '+(bolsaAdol+ESTAG_AUX).toLocaleString('pt-BR'),fM(custoAdol),'ECA art.67'],
+      ['TOTAL GERAL', totalGeral, '—', '—', '—', fM(custoTotalGeral),'—'],
     ],
-    columnStyles:{0:{fontStyle:'bold'},5:{fontStyle:'bold'}},
+    columnStyles:{0:{fontStyle:'bold'},6:{fontSize:7.5,textColor:[100,116,139]}},
   });
   y=doc.lastAutoTable.finalY+8;
 
@@ -2660,10 +2698,14 @@ function gerarRelatorioPDF(){
     alternateRowStyles:{fillColor:[248,250,252]},
     head:[['Indicador','Valor']],
     body:[
-      ['Total de estagiarios', totalEstag+' vagas'],
-      ['Custo mensal total', fM(custoTotal)],
+      ['Vagas de estagio (Medio+Tecnico+Superior)', totalEstag+' vagas'],
+      ['Vagas Primeiro Emprego Adolescente', qtdAdol+' vagas (16-18 anos)'],
+      ['TOTAL de vagas do programa', totalGeral+' vagas'],
+      ['Custo mensal — Estagio', fM(custoTotal)],
+      ['Custo mensal — Primeiro Emprego Adolescente', fM(custoAdol)],
+      ['Custo mensal total do programa', fM(custoTotalGeral)],
       ['Custo anual projetado (12 meses)', fM(custoAnual)],
-      ['Custo medio por vaga/mes', fM(custoMedio)],
+      ['Custo medio por vaga/mes', fM((custoMedio+custoMedioAdol)/2)],
     ],
     columnStyles:{0:{fontStyle:'bold'},1:{halign:'right'}},
   });
@@ -2672,8 +2714,10 @@ function gerarRelatorioPDF(){
   subTitle('Comparativo entre cenarios:');
   const scens=Object.entries(ESTAG_SCENARIOS).map(([k,s])=>{
     const tot=(s.qtdMed+s.qtdTec+s.qtdSup);
+    const totG=tot+(s.qtdAdol||0);
     const cm=((s.bolsaMed+ESTAG_AUX)*s.qtdMed+(s.bolsaTec+ESTAG_AUX)*s.qtdTec+(s.bolsaSup+ESTAG_AUX)*s.qtdSup);
-    return [k==='A'?'Conservador':k==='B'?'Referencia':'Amplo', tot+' vagas', fM(cm)+'/mes', fM(cm*12)+'/ano'];
+    const ca=((s.bolsaAdol||500)+ESTAG_AUX)*(s.qtdAdol||0);
+    return [k==='A'?'Conservador':k==='B'?'Referencia':'Amplo', tot+' vagas', (s.qtdAdol||0)+' vagas', totG+' total', fM(cm+ca)+'/mes', fM((cm+ca)*12)+'/ano'];
   });
   doc.autoTable({
     startY:y,
@@ -2681,9 +2725,9 @@ function gerarRelatorioPDF(){
     styles:{fontSize:8.5,cellPadding:2.5,textColor:[71,85,105]},
     headStyles:{fillColor:[100,116,139],textColor:[255,255,255],fontStyle:'bold'},
     alternateRowStyles:{fillColor:[248,250,252]},
-    head:[['Cenario','Vagas','Custo mensal','Custo anual']],
+    head:[['Cenario','Estagiarios','1 Emprego','Total vagas','Custo mensal','Custo anual']],
     body:scens,
-    columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},
+    columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right',fontStyle:'bold'},4:{halign:'right'},5:{halign:'right'}},
   });
   y=doc.lastAutoTable.finalY+8;
 
@@ -2697,29 +2741,29 @@ function gerarRelatorioPDF(){
   const distRows=ESTAG_DIST_BASE.map(d=>{
     const prop=d.cnt/ESTAG_DIST_TOTAL;
     const vagas=Math.max(1,Math.round(prop*totalEstag));
-    const custo=vagas*custoMedio;
+    const vagasAdol=Math.max(0,Math.round(prop*qtdAdol));
+    const totalV=vagas+vagasAdol;
+    const custo=vagas*custoMedio+vagasAdol*custoMedioAdol;
     const pct=(prop*100).toFixed(1)+'%';
     const nome=d.s.replace(/Secretaria Municipal d[aeo] /g,'Sec. Mun. ')
                   .replace(/Secretaria de /g,'Sec. ')
-                  .replace(/ - [A-Z]+$/,'').substring(0,42);
-    return [nome, d.cnt, pct, vagas, fM(custo)];
+                  .replace(/ - [A-Z]+$/,'').substring(0,38);
+    return [nome, pct, vagas, vagasAdol||'—', totalV, fM(custo)];
   });
-  // Adjust to match total
-  let sumVagas=distRows.reduce((s,r)=>s+r[3],0);
+  let sumVagas=distRows.reduce((s,r)=>s+(typeof r[2]==='number'?r[2]:0),0);
   let diff=totalEstag-sumVagas;
-  if(diff!==0) distRows[0][3]+=diff;
-  distRows.forEach(r=>{r[4]=fM(r[3]*custoMedio);});
-  distRows.push(['TOTAL MUNICIPAL','1.010','100%',totalEstag,fM(custoTotal)]);
+  if(diff!==0&&distRows[0]) distRows[0][2]+=diff;
+  distRows.push(['TOTAL MUNICIPAL','100%',totalEstag,qtdAdol,totalGeral,fM(custoTotalGeral)]);
 
   doc.autoTable({
     startY:y,
     margin:{left:ML,right:W-MR},
-    styles:{fontSize:7.8,cellPadding:2,textColor:[71,85,105]},
+    styles:{fontSize:7.5,cellPadding:2,textColor:[71,85,105]},
     headStyles:{fillColor:COR_AZUL,textColor:[255,255,255],fontStyle:'bold'},
     alternateRowStyles:{fillColor:[248,250,252]},
-    head:[['Secretaria','Ref.','Prop.','Vagas','Custo/mes']],
+    head:[['Secretaria','Prop.','Estagiarios','1 Emprego','Total vagas','Custo/mes']],
     body:distRows,
-    columnStyles:{0:{cellWidth:80},1:{halign:'right'},2:{halign:'right'},3:{halign:'right',fontStyle:'bold'},4:{halign:'right'}},
+    columnStyles:{0:{cellWidth:72},1:{halign:'right'},2:{halign:'right',fontStyle:'bold'},3:{halign:'right',textColor:[180,83,9]},4:{halign:'right',fontStyle:'bold'},5:{halign:'right'}},
     didParseCell:function(d){if(d.row.index===distRows.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[226,232,240];}},
   });
   y=doc.lastAutoTable.finalY+8;
@@ -2735,12 +2779,15 @@ function gerarRelatorioPDF(){
     alternateRowStyles:{fillColor:[248,250,252]},
     head:[['Indicador','Resultado']],
     body:[
-      ['Total de vagas de estagio geradas', totalEstag+' vagas'],
-      ['Secretarias beneficiadas', '20 unidades (100% das secretarias)'],
-      ['Vagas de nivel medio (formacao basica)', qtdMed+' vagas ('+Math.round(qtdMed/totalEstag*100)+'%)'],
-      ['Vagas de nivel tecnico (formacao especializada)', qtdTec+' vagas ('+Math.round(qtdTec/totalEstag*100)+'%)'],
-      ['Vagas de nivel superior (formacao universitaria)', qtdSup+' vagas ('+Math.round(qtdSup/totalEstag*100)+'%)'],
-      ['Estimativa de jovens beneficiados por ano*', Math.round(totalEstag*0.5)+' a '+totalEstag+' estudantes'],
+      ['Total de vagas — Estagio Convencional', totalEstag+' vagas'],
+      ['Total de vagas — Primeiro Emprego Adolescente', qtdAdol+' vagas (16-18 anos, rede publica)'],
+      ['TOTAL GERAL DO PROGRAMA', totalGeral+' vagas'],
+      ['Secretarias beneficiadas', '20 unidades (100% das secretarias municipais)'],
+      ['Estagio Nivel Medio', qtdMed+' vagas ('+Math.round(qtdMed/totalGeral*100)+'% do total)'],
+      ['Estagio Nivel Tecnico', qtdTec+' vagas ('+Math.round(qtdTec/totalGeral*100)+'% do total)'],
+      ['Estagio Nivel Superior', qtdSup+' vagas ('+Math.round(qtdSup/totalGeral*100)+'% do total)'],
+      ['Primeiro Emprego Adolescente', qtdAdol+' vagas ('+Math.round(qtdAdol/totalGeral*100)+'% do total)'],
+      ['Estimativa de jovens beneficiados/ano*', Math.round(totalGeral*0.5)+' a '+totalGeral+' estudantes'],
     ],
     columnStyles:{0:{fontStyle:'bold'}},
   });
@@ -2761,15 +2808,21 @@ function gerarRelatorioPDF(){
     alternateRowStyles:{fillColor:[248,250,252]},
     head:[['Requisito','Especificacao','Status']],
     body:[
+      [{content:'ESTAGIO CONVENCIONAL — Lei 11.788/2008',colSpan:3,styles:{fontStyle:'bold',fillColor:[219,234,254],textColor:[30,64,175]}}],
       ['Vinculo com ensino','Estudante matriculado em inst. de ensino (art. 3)','Obrigatorio'],
       ['Jornada maxima','6h/dia ou 30h/semana (art. 10)','A respeitar'],
       ['Limite de vagas','Max. 20% do quadro de servidores efetivos (art. 17)','A verificar'],
-      ['Contrato de estagio','Termo de compromisso tripartite — estagiario, escola, orgao (art. 7)','Obrigatorio'],
+      ['Contrato de estagio','Termo tripartite — estagiario, escola, orgao (art. 7)','Obrigatorio'],
       ['Seguro de acidentes','Seguro contra acidentes pessoais (art. 9, IV)','Incluso no custo'],
       ['Supervisor designado','Servidor efetivo designado por unidade (art. 9, V)','A designar'],
       ['Prazo maximo','2 anos no mesmo orgao (art. 11)','A controlar'],
-      ['Beneficios','Bolsa-auxilio + transporte ou equivalente (art. 12)','Incluso no custo'],
       ['Convenio','Acordo com inst. de ensino publica ou privada (art. 8)','A formalizar'],
+      [{content:'PRIMEIRO EMPREGO ADOLESCENTE — ECA + CF art. 7, XXXIII',colSpan:3,styles:{fontStyle:'bold',fillColor:[254,243,199],textColor:[146,64,14]}}],
+      ['Faixa etaria','16 a 18 anos (ECA art. 60 — proibido trabalho a menor de 16)','Obrigatorio'],
+      ['Jornada especial','Max. 4h/dia — protecao ao adolescente (ECA art. 67)','Obrigatorio'],
+      ['Prioridade','Estudantes da rede publica municipal','Recomendado'],
+      ['Proibicoes','Trabalho noturno, perigoso ou insalubre (ECA art. 67)','A observar'],
+      ['Acompanhamento','Relatorio semestral ao Conselho Tutelar','Recomendado'],
     ],
     columnStyles:{0:{fontStyle:'bold',cellWidth:52},2:{halign:'center',cellWidth:28}},
   });
@@ -2798,13 +2851,17 @@ function gerarRelatorioPDF(){
   checkY(50);
   secTitle('8. CONCLUSAO E RECOMENDACAO');
   bodyText([
-    'O Programa Municipal de Estagio representa uma iniciativa alinhada as melhores praticas de',
-    'gestao publica e ao desenvolvimento local. Ao distribuir '+totalEstag+' vagas entre as 20 secretarias',
-    'municipais, o programa gera oportunidades concretas de insercao profissional para estudantes',
-    'de Paulo Afonso–BA, com custo mensal estimado de '+fM(custoTotal)+' e custo anual de '+fM(custoAnual)+'.',
+    'O Programa Municipal de Paulo Afonso, em suas duas modalidades — Estagio Convencional e',
+    'Primeiro Emprego Adolescente —, representa uma iniciativa de desenvolvimento local de amplo',
+    'alcance social. Ao distribuir '+totalGeral+' vagas entre todas as 20 secretarias municipais,',
+    'o programa oferece oportunidades concretas a estudantes de todos os niveis de formacao.',
     '',
-    'Recomenda-se a aprovacao do Projeto de Lei e o inicio imediato da Fase 1 (preparacao),',
-    'com formalizacao dos convenios necessarios junto as instituicoes de ensino da regiao.',
+    'A modalidade Primeiro Emprego Adolescente, com '+qtdAdol+' vagas destinadas a jovens de 16 a 18',
+    'anos da rede publica municipal, fortalece o compromisso com a politica de juventude local',
+    'e atende ao mandamento constitucional de protecao ao trabalho do adolescente (CF art. 7, XXXIII).',
+    '',
+    'Custo total do programa: '+fM(custoTotalGeral)+'/mes — '+fM(custoAnual)+'/ano.',
+    'Recomenda-se a aprovacao do Projeto de Lei e o inicio imediato da Fase 1 (preparacao).',
   ]);
 
   // ── RODAPE em todas as paginas ─────────────────────────────────────────
@@ -2827,9 +2884,9 @@ function gerarRelatorioPDF(){
 // ESTAGIARIOS — Cenarios e Simulador
 // ================================================================
 const ESTAG_SCENARIOS = {
-  A:{bolsaMed:600, qtdMed:60,  bolsaTec:900,  qtdTec:40,  bolsaSup:1200, qtdSup:30},
-  B:{bolsaMed:750, qtdMed:80,  bolsaTec:1100, qtdTec:60,  bolsaSup:1500, qtdSup:50},
-  C:{bolsaMed:900, qtdMed:120, bolsaTec:1300, qtdTec:80,  bolsaSup:1800, qtdSup:80},
+  A:{bolsaMed:600, qtdMed:60,  bolsaTec:900,  qtdTec:40,  bolsaSup:1200, qtdSup:30,  bolsaAdol:450, qtdAdol:20},
+  B:{bolsaMed:750, qtdMed:80,  bolsaTec:1100, qtdTec:60,  bolsaSup:1500, qtdSup:50,  bolsaAdol:500, qtdAdol:40},
+  C:{bolsaMed:900, qtdMed:120, bolsaTec:1300, qtdTec:80,  bolsaSup:1800, qtdSup:80,  bolsaAdol:600, qtdAdol:60},
 };
 const ESTAG_AUX = 180;
 const CUSTO_COM_MEDIO = 3800;
@@ -2842,6 +2899,8 @@ function estagScenario(key){
   document.getElementById('qtd-tec').value=s.qtdTec;
   document.getElementById('bolsa-sup').value=s.bolsaSup;
   document.getElementById('qtd-sup').value=s.qtdSup;
+  document.getElementById('bolsa-adol').value=s.bolsaAdol;
+  document.getElementById('qtd-adol').value=s.qtdAdol;
   ['a','b','c'].forEach(k=>{
     const b=document.getElementById('scen-'+k);
     if(b){b.style.background=k===key.toLowerCase()?'#4f46e5':'';b.style.color=k===key.toLowerCase()?'#fff':'';}
@@ -2909,6 +2968,15 @@ function renderEstag(){
   ].map(x=>`<div class="kpi"><div class="kpi-l">${x.l}</div><div class="kpi-v" style="color:${x.c}">${x.v}</div><div class="kpi-s">${x.s}</div></div>`).join('');
 
   // Alerta conformidade
+  // KPIs adolescente
+  const kpiAdolEl=document.getElementById('kpi-estag-adol');
+  if(kpiAdolEl) kpiAdolEl.innerHTML=[
+    {l:'Vagas Primeiro Emprego',v:qtdAdol,s:'jovens de 16 a 18 anos, rede publica',c:'#b45309'},
+    {l:'Bolsa mensal',v:'R$ '+bolsaAdol.toLocaleString('pt-BR'),s:'jornada max. 4h/dia (ECA art. 67)',c:'#b45309'},
+    {l:'Custo mensal (1 Emprego)',v:fM(custoAdol),s:'bolsa + seguro + aux. estimado',c:'#d97706'},
+    {l:'Total geral (estagio + 1 emprego)',v:totalGeral+' vagas',s:fM(custoTotalGeral)+'/mes — R$ '+fM(custoTotalGeral*12)+'/ano',c:'#4f46e5'},
+  ].map(x=>`<div class="kpi" style="border-left:3px solid #f59e0b"><div class="kpi-l">${x.l}</div><div class="kpi-v" style="color:${x.c}">${x.v}</div><div class="kpi-s">${x.s}</div></div>`).join('');
+
   const legalEl=document.getElementById('estag-legal-alert');
   if(legalEl){
     const totalServ=Object.values(bySecCom).reduce((s,v)=>s+v,0);
@@ -2949,18 +3017,26 @@ function renderEstag(){
       tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw===0?'—':'R$'+(ctx.raw/1e3).toFixed(0)+'k'} (${custoTotalMes>0?Math.round(ctx.parsed/custoTotalMes*100):0}%)`}}}}});
 
   // Tabela
+  // Adolescent distribution (proportional, same base)
+  const custoMedioAdol=qtdAdol>0?custoAdol/qtdAdol:(bolsaAdol+ESTAG_AUX);
   const tbody=document.getElementById('estag-sec-body');
   if(tbody) tbody.innerHTML=secDist.map(d=>{
+    const prop=ESTAG_DIST_BASE.find(x=>x.s===d.s)||{cnt:1};
+    const adolVagas=Math.max(0,Math.round((prop.cnt/ESTAG_DIST_TOTAL)*qtdAdol));
+    const totalVagas=d.estag+adolVagas;
+    const custoAdolSec=adolVagas*custoMedioAdol;
+    const custoTotalSec=d.custoEstag+custoAdolSec;
     const pct=d.exc>0?Math.round(d.estag/d.exc*100):0;
     const ok=d.economia>=0;
     return`<tr>
-      <td style="font-size:12px;max-width:200px">${d.s.replace(/^Secretaria Municipal d[aeo] /,'Sec. ').replace(/ - \w+$/,'').trim()}</td>
+      <td style="font-size:12px;max-width:180px">${d.s.replace(/^Secretaria Municipal d[aeo] /,'Sec. ').replace(/ - \w+$/,'').trim()}</td>
       <td class="r" style="color:#dc2626;font-weight:700">+${d.exc}</td>
       <td class="r" style="font-weight:700">${d.estag}</td>
-      <td class="r">${fM(d.custoEstag)}</td>
+      <td class="r" style="color:#b45309;font-weight:700">${adolVagas||'—'}</td>
+      <td class="r" style="font-weight:700;color:#4f46e5">${totalVagas}</td>
+      <td class="r">${fM(custoTotalSec)}</td>
       <td class="r" style="color:#dc2626">${fM(d.custoAtual)}</td>
       <td class="r" style="font-weight:700;color:${ok?'#059669':'#dc2626'}">${ok?'+':'-'}${fM(Math.abs(d.economia))}</td>
-      <td class="r" style="color:#2563eb;font-weight:600">${ok?fM(d.economia*12):'—'}</td>
       <td><div style="background:#e2e8f0;border-radius:4px;height:8px;min-width:60px">
         <div style="background:${pct>=80?'#059669':pct>=50?'#2563eb':'#f59e0b'};width:${Math.min(100,pct)}%;height:100%;border-radius:4px"></div>
       </div><span style="font-size:10px;color:var(--mu)">${pct}%</span></td>
