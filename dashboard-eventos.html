@@ -1704,6 +1704,7 @@ function renderGrat(){
     const comIns={};
     agg2.forEach(r=>{
       if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      if(EXCLUIR_COMPS.has(r[A2_ANO]*100+r[A2_MES]))return;
       if(r[A2_RI]!==riComG)return;
       if(!evIP.has(r[A2_EI]))return;
       const mi=r[A2_MI];
@@ -1746,6 +1747,7 @@ function renderGrat(){
     const acum3={};
     agg2.forEach(r=>{
       if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      if(EXCLUIR_COMPS.has(r[A2_ANO]*100+r[A2_MES]))return;
       if(!evIns3.has(r[A2_EI])&&!evPer3.has(r[A2_EI]))return;
       const mi=r[A2_MI]; const comp=r[A2_ANO]*100+r[A2_MES];
       if(!acum3[mi])acum3[mi]={};
@@ -1883,6 +1885,137 @@ function gratDrilldown(trEl, mi){
     </div>
   </td>`;
   trEl.insertAdjacentElement('afterend',detail);
+}
+
+function varDrilldown(trEl, mi, anoA, anoB){
+  // fechar qualquer outro aberto
+  document.querySelectorAll('.var-drill').forEach(r=>r.remove());
+  document.querySelectorAll('.var-row-open').forEach(r=>{
+    r.classList.remove('var-row-open');
+    const ch=r.querySelector('.var-chev');
+    if(ch){ch.textContent='▶';ch.style.color='#94a3b8';}
+  });
+  // toggle: se já era este, só fechou
+  if(trEl.classList.contains('var-row-open')) return;
+
+  trEl.classList.add('var-row-open');
+  const chev=trEl.querySelector('.var-chev');
+  if(chev){chev.textContent='▼';chev.style.color='#d97706';}
+
+  const fRd=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const mNm=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const prof=srv_profile[+mi]||[0,0,0];
+  const nome=nomes[+mi]||('Mat. '+mats[+mi]);
+
+  // Agrupa por (mes) para cada ano — total mensal
+  const byAnoMes={};
+  // Agrupa por (ei, ano) — total por rubrica e ano
+  const byEiAno={};
+  const evSet=new Set();
+
+  agg2.forEach(r=>{
+    if(r[A2_MI]!==+mi) return;
+    if(r[A2_ANO]!==anoA&&r[A2_ANO]!==anoB) return;
+    if(EXCLUIR_COMPS.has(r[A2_ANO]*100+r[A2_MES])) return;
+    const mes=r[A2_MES], ano=r[A2_ANO], val=r[A2_VAL];
+    const ei=r[A2_EI];
+    // mensal
+    if(!byAnoMes[ano])byAnoMes[ano]={};
+    byAnoMes[ano][mes]=(byAnoMes[ano][mes]||0)+val;
+    // rubrica
+    if(!byEiAno[ei])byEiAno[ei]={};
+    byEiAno[ei][ano]=(byEiAno[ei][ano]||0)+val;
+    evSet.add(ei);
+  });
+
+  // ── Tabela mensal ──
+  const meses=[1,2,3,4,5,6,7,8,9,10,11,12];
+  const mesRows=meses.map(m=>{
+    const vA=byAnoMes[anoA]?.(m)||0;
+    const vB=byAnoMes[anoB]?.(m)||0;
+    if(!vA&&!vB) return '';
+    const delta=vB-vA;
+    return`<tr style="font-size:10.5px">
+      <td style="font-weight:600;color:#475569">${mNm[m]}</td>
+      <td class="r">${vA?fRd(vA):'<span style="color:#cbd5e1">—</span>'}</td>
+      <td class="r">${vB?fRd(vB):'<span style="color:#cbd5e1">—</span>'}</td>
+      <td class="r" style="font-weight:700;color:${delta>0?'#dc2626':delta<0?'#059669':'#94a3b8'}">${vA&&vB?(delta>0?'+':'')+fRd(delta):'—'}</td>
+    </tr>`;
+  }).filter(Boolean).join('');
+
+  const totA=Object.values(byAnoMes[anoA]||{}).reduce((s,v)=>s+v,0);
+  const totB=Object.values(byAnoMes[anoB]||{}).reduce((s,v)=>s+v,0);
+  const totDelta=totB-totA;
+
+  // ── Tabela por rubrica ──
+  const eiArr=[...evSet].sort((a,b)=>{
+    const sA=(byEiAno[a]?.[anoA]||0)+(byEiAno[a]?.[anoB]||0);
+    const sB=(byEiAno[b]?.[anoA]||0)+(byEiAno[b]?.[anoB]||0);
+    return sB-sA;
+  });
+  const rubRows=eiArr.map(ei=>{
+    const vA=byEiAno[ei]?.[anoA]||0;
+    const vB=byEiAno[ei]?.[anoB]||0;
+    const delta=vB-vA;
+    const pctStr=vA>0?((delta/vA)*100).toFixed(1)+'%':'novo';
+    return`<tr style="font-size:10.5px">
+      <td style="max-width:220px;font-size:10px">${ev_names[ei]||ei}</td>
+      <td class="r">${vA?fRd(vA):'<span style="color:#cbd5e1">—</span>'}</td>
+      <td class="r">${vB?fRd(vB):'<span style="color:#cbd5e1">—</span>'}</td>
+      <td class="r" style="font-weight:700;color:${delta>0?'#dc2626':delta<0?'#059669':'#64748b'}">${delta!==0?(delta>0?'+':'')+fRd(delta):'='}</td>
+      <td class="r" style="color:${delta>0?'#d97706':'#059669'}">${pctStr}</td>
+    </tr>`;
+  }).join('');
+
+  const detail=document.createElement('tr');
+  detail.className='var-drill';
+  detail.innerHTML=`<td colspan="7" style="padding:0;border-left:3px solid #f59e0b;background:#fffdf5">
+    <div style="padding:12px 18px 16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <strong style="color:#92400e;font-size:13px">${nome}</strong>
+        <span style="font-size:11px;color:#64748b">${secs[prof[1]]||'-'}</span>
+        <span class="badge" style="background:#ede9fe;color:#7c3aed">${regimes[prof[2]]||'-'}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:6px">📅 Recebimento mensal</div>
+          <div style="overflow-x:auto">
+            <table style="font-size:10.5px;width:100%">
+              <thead><tr style="background:#fef9c3">
+                <th style="text-align:left;padding:4px 8px">Mês</th>
+                <th class="r" style="padding:4px 8px">${anoA}</th>
+                <th class="r" style="padding:4px 8px">${anoB}</th>
+                <th class="r" style="padding:4px 8px">Δ</th>
+              </tr></thead>
+              <tbody>${mesRows}</tbody>
+              <tfoot><tr style="background:#fef3c7;font-weight:700">
+                <td style="padding:4px 8px">Total anual</td>
+                <td class="r" style="padding:4px 8px">${totA?fRd(totA):'—'}</td>
+                <td class="r" style="padding:4px 8px">${totB?fRd(totB):'—'}</td>
+                <td class="r" style="padding:4px 8px;color:${totDelta>0?'#dc2626':'#059669'}">${totDelta>0?'+':''}${fRd(totDelta)}</td>
+              </tr></tfoot>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:6px">📋 Detalhe por rubrica</div>
+          <div style="overflow-x:auto">
+            <table style="font-size:10.5px;width:100%">
+              <thead><tr style="background:#fef9c3">
+                <th style="text-align:left;padding:4px 8px">Rubrica</th>
+                <th class="r" style="padding:4px 8px">${anoA}</th>
+                <th class="r" style="padding:4px 8px">${anoB}</th>
+                <th class="r" style="padding:4px 8px">Δ R$</th>
+                <th class="r" style="padding:4px 8px">Δ %</th>
+              </tr></thead>
+              <tbody>${rubRows}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </td>`;
+  trEl.insertAdjacentElement('afterend', detail);
 }
 
 
@@ -2784,6 +2917,7 @@ function renderAudit(){
     const monthPeak={};
     agg2.forEach(r=>{
       if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      if(EXCLUIR_COMPS.has(r[A2_ANO]*100+r[A2_MES]))return;
       const mi=r[A2_MI]; const comp=r[A2_ANO]*100+r[A2_MES];
       if(!monthPeak[mi])monthPeak[mi]={};
       monthPeak[mi][comp]=(monthPeak[mi][comp]||0)+r[A2_VAL];
@@ -2830,6 +2964,7 @@ function renderAudit(){
     const heByMiAno={};
     agg2.forEach(r=>{
       if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      if(EXCLUIR_COMPS.has(r[A2_ANO]*100+r[A2_MES]))return;
       if(!EV_EXTRA.has(r[A2_EI]))return;
       if(FS.ris.size>0){const prof=srv_profile[r[A2_MI]];if(!prof||!FS.ris.has(prof[2]))return;}
       if(FS.sis.size>0){const prof=srv_profile[r[A2_MI]];if(!prof||!FS.sis.has(prof[1]))return;}
@@ -2914,9 +3049,9 @@ function renderAudit(){
           <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Ano ant. (total)</th><th class="r">Ano atual (total)</th><th class="r">Variação</th></tr></thead>
           <tbody>${varRows.slice(0,20).map(([mi,anoA,anoB,vA,vB,pct],i)=>{
             const prof=srv_profile[mi]||[0,0,0];
-            return`<tr>
+            return`<tr class="var-row" style="cursor:pointer" title="Clique para ver detalhe mensal" onclick="varDrilldown(this,${mi},${anoA},${anoB})">
               <td style="color:#94a3b8">${i+1}</td>
-              <td style="font-weight:600">${nomes[mi]||mats[mi]}</td>
+              <td style="font-weight:600">${nomes[mi]||mats[mi]} <span class="var-chev" style="font-size:10px;color:#94a3b8;margin-left:4px">▶</span></td>
               <td style="font-size:10px">${secs[prof[1]]||'-'}</td>
               <td><span class="badge" style="background:#ede9fe;color:#7c3aed;font-size:10px">${regimes[prof[2]]||'-'}</span></td>
               <td class="r">${fRa(vA)} <span style="color:#94a3b8;font-size:10px">(${anoA})</span></td>
@@ -2935,6 +3070,7 @@ function renderAudit(){
     const dupReg={};
     agg2.forEach(r=>{
       if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      if(EXCLUIR_COMPS.has(r[A2_ANO]*100+r[A2_MES]))return;
       const mi=r[A2_MI]; const comp=r[A2_ANO]*100+r[A2_MES];
       if(!dupReg[mi])dupReg[mi]={};
       if(!dupReg[mi][comp])dupReg[mi][comp]={ris:new Set(),val:0};
@@ -2980,6 +3116,7 @@ function renderAudit(){
     const cntByComp={};
     agg1.forEach(r=>{
       if(FS.anos.size>0&&!FS.anos.has(r[A1_ANO]))return;
+      if(EXCLUIR_COMPS.has(r[A1_ANO]*100+r[A1_MES]))return;
       if(r[A1_RI]!==riComA)return;
       const comp=r[A1_ANO]*100+r[A1_MES];
       cntByComp[comp]=(cntByComp[comp]||0)+r[A1_CNT];
