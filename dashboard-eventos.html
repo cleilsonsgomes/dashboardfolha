@@ -2981,36 +2981,37 @@ function renderEstag(){
     agg1.filter(r=>r[A1r]===riCom&&inAno(r)&&inComp(r)).forEach(r=>{sm[r[A1s]]=Math.max(sm[r[A1s]]||0,r[A1c]);});
     Object.entries(sm).forEach(([si,n])=>{bySecCom[secs[si]]=n;});
   } else {
-    const miAno4=new Set(agg4.filter(r=>inAno(r)).map(r=>r[A4_MI]));
     const comMis=new Set();
-    srv_profile.forEach((p,mi)=>{if(p&&p[2]===riCom&&miAno4.has(mi))comMis.add(mi);});
+    srv_profile.forEach((p,mi)=>{if(p&&p[2]===riCom)comMis.add(mi);});
     comMis.forEach(mi=>{const p=srv_profile[mi];bySecCom[secs[p[1]]]=(bySecCom[secs[p[1]]]||0)+1;});
   }
 
   const secExc=Object.entries(LEI_SEC)
     .map(([s,lei])=>({s,lei,cont:bySecCom[s]||0,exc:Math.max(0,(bySecCom[s]||0)-lei)}))
-    .filter(d=>d.exc>0).sort((a,b)=>b.exc-a.exc);
+    .sort((a,b)=>b.exc-a.exc);
   const totalExc=secExc.reduce((s,d)=>s+d.exc,0);
+  const comTotal=secExc.reduce((s,d)=>s+d.cont,0);
 
   const custoMedioEstag=totalEstag>0?custoTotalMes/totalEstag:(bolsaMed+ESTAG_AUX);
   const secDist=secExc.map(d=>{
-    const prop=totalExc>0?d.exc/totalExc:0;
+    const base=ESTAG_DIST_BASE.find(x=>x.s===d.s)||{cnt:0};
+    const prop=base.cnt/ESTAG_DIST_TOTAL;
     const estag=Math.round(prop*totalEstag);
     const custoEstag=estag*custoMedioEstag;
-    const custoAtual=d.exc*CUSTO_COM_MEDIO;
+    const custoAtual=d.cont*CUSTO_COM_MEDIO;
     return {...d,estag,custoEstag,custoAtual,economia:custoAtual-custoEstag};
   });
 
-  const economiaTotal=totalExc*CUSTO_COM_MEDIO-custoTotalMes;
-  const custoAtualTotal=totalExc*CUSTO_COM_MEDIO;
+  const custoAtualTotal=comTotal*CUSTO_COM_MEDIO;
+  const economiaTotal=custoAtualTotal-custoTotalGeral;
 
   // KPIs
   const kpiEl=document.getElementById('kpi-estag');
   if(kpiEl) kpiEl.innerHTML=[
     {l:'Total de estagiarios propostos',v:totalEstag,s:'Medio: '+qtdMed+' / Tecnico: '+qtdTec+' / Superior: '+qtdSup,c:'#4f46e5'},
     {l:'Custo mensal com estagiarios',v:fM(custoTotalMes),s:'bolsa + seguro + aux. estimado',c:'#2563eb'},
-    {l:'Custo atual (excedentes)',v:fM(custoAtualTotal),s:totalExc+' comissionados x R$ '+CUSTO_COM_MEDIO.toLocaleString('pt-BR')+'/mes est.',c:'#dc2626'},
-    {l:'Economia mensal estimada',v:economiaTotal>0?fM(economiaTotal):'Sem economia',s:economiaTotal>0?fM(economiaTotal*12)+' ao ano':'Custo supera excedente atual',c:economiaTotal>0?'#059669':'#b45309'},
+    {l:'Custo atual (comissionados)',v:fM(custoAtualTotal),s:comTotal+' comissionados x R$ '+CUSTO_COM_MEDIO.toLocaleString('pt-BR')+'/mes est.',c:'#dc2626'},
+    {l:'Economia mensal estimada',v:economiaTotal>0?fM(economiaTotal):'Custo supera folha atual',s:economiaTotal>0?fM(economiaTotal*12)+' ao ano ('+Math.round(economiaTotal/custoAtualTotal*100)+'% de reducao)':'programa custa mais que a folha',c:economiaTotal>0?'#059669':'#b45309'},
   ].map(x=>`<div class="kpi"><div class="kpi-l">${x.l}</div><div class="kpi-v" style="color:${x.c}">${x.v}</div><div class="kpi-s">${x.s}</div></div>`).join('');
 
   // Alerta conformidade
@@ -3078,7 +3079,7 @@ function renderEstag(){
     const ok=d.economia>=0;
     return`<tr>
       <td style="font-size:12px;max-width:180px">${d.s.replace(/^Secretaria Municipal d[aeo] /,'Sec. ').replace(/ - \w+$/,'').trim()}</td>
-      <td class="r" style="color:#dc2626;font-weight:700">+${d.exc}</td>
+      <td class="r" style="color:${d.exc>0?'#dc2626':'#64748b'};font-weight:700">${d.exc>0?'+'+d.exc:'—'}</td>
       <td class="r" style="font-weight:700">${d.estag}</td>
       <td class="r" style="color:#b45309;font-weight:700">${adolVagas||'—'}</td>
       <td class="r" style="font-weight:700;color:#4f46e5">${totalVagas}</td>
