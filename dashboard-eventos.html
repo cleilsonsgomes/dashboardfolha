@@ -1476,10 +1476,10 @@ function renderGrat(){
   if(gratCatFlt) rows=rows.filter(r=>(evToGCat2[r[A1_EI]]||'Outros Grat.')===gratCatFlt);
 
   // KPIs
-  let total=0, srvSet=new Set(), rubSet=new Set();
+  let total=0, srvCount=0, rubSet=new Set();
   const byEv={}, bySec={}, byAno={};
   rows.forEach(r=>{
-    total+=r[A1_VAL]; srvSet.add(r[A1_SI]+'_'); rubSet.add(r[A1_EI]);
+    total+=r[A1_VAL]; srvCount+=r[A1_CNT]||0; rubSet.add(r[A1_EI]);
     byEv[r[A1_EI]]=(byEv[r[A1_EI]]||0)+r[A1_VAL];
     bySec[r[A1_SI]]=(bySec[r[A1_SI]]||0)+r[A1_VAL];
     if(!byAno[r[A1_ANO]]) byAno[r[A1_ANO]]={};
@@ -1495,7 +1495,7 @@ function renderGrat(){
     <div class="kpi"><div class="kpi-l">Total Gratificações</div><div class="kpi-v" style="color:#7c3aed">${fM(total)}</div><div class="kpi-s">período filtrado</div></div>
     <div class="kpi"><div class="kpi-l">% da Folha Total</div><div class="kpi-v" style="color:#dc2626">${pct}%</div><div class="kpi-s">do total pago</div></div>
     <div class="kpi"><div class="kpi-l">Tipos de Rubrica</div><div class="kpi-v" style="color:#059669">${rubSet.size}</div><div class="kpi-s">eventos distintos</div></div>
-    <div class="kpi"><div class="kpi-l">Servidores Beneficiados</div><div class="kpi-v" style="color:#1d4ed8">${srvSet.size}</div><div class="kpi-s">com ao menos 1 gratificação</div></div>
+    <div class="kpi"><div class="kpi-l">Servidores Beneficiados</div><div class="kpi-v" style="color:#1d4ed8">${srvCount.toLocaleString('pt-BR')}</div><div class="kpi-s">com ao menos 1 gratificação</div></div>
   `;
 
   // Gráfico 1: Top rubricas
