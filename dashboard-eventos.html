@@ -1895,44 +1895,60 @@ function varDrilldown(trEl, mi, anoA, anoB){
     const ch=r.querySelector('.var-chev');
     if(ch){ch.textContent='▶';ch.style.color='#94a3b8';}
   });
-  // toggle: se já era este, só fechou
   if(trEl.classList.contains('var-row-open')) return;
-
   trEl.classList.add('var-row-open');
   const chev=trEl.querySelector('.var-chev');
   if(chev){chev.textContent='▼';chev.style.color='#d97706';}
 
   const fRd=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const mNm=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const prof=srv_profile[+mi]||[0,0,0];
-  const nome=nomes[+mi]||('Mat. '+mats[+mi]);
+  const miN=+mi, anoAN=+anoA, anoBN=+anoB;
+  const prof=srv_profile[miN]||[0,0,0];
+  const nome=nomes[miN]||('Mat. '+mats[miN]);
 
-  // Agrupa por (mes) para cada ano — total mensal
-  const byAnoMes={};
-  // Agrupa por (ei, ano) — total por rubrica e ano
+  // ── Rubricas por ano via agg4 (mesma fonte que gratDrilldown) ────────────
   const byEiAno={};
-  const evSet=new Set();
-
-  agg2.forEach(r=>{
-    if(r[A2_MI]!==+mi) return;
-    if(r[A2_ANO]!==anoA&&r[A2_ANO]!==anoB) return;
-    if(EXCLUIR_COMPS.has(r[A2_ANO]*100+r[A2_MES])) return;
-    const mes=r[A2_MES], ano=r[A2_ANO], val=r[A2_VAL];
-    const ei=r[A2_EI];
-    // mensal
-    if(!byAnoMes[ano])byAnoMes[ano]={};
-    byAnoMes[ano][mes]=(byAnoMes[ano][mes]||0)+val;
-    // rubrica
-    if(!byEiAno[ei])byEiAno[ei]={};
-    byEiAno[ei][ano]=(byEiAno[ei][ano]||0)+val;
-    evSet.add(ei);
+  const anosSet=new Set();
+  agg4.forEach(r=>{
+    if(r[A4_MI]!==miN) return;
+    if(r[A4_ANO]!==anoAN&&r[A4_ANO]!==anoBN) return;
+    if(!byEiAno[r[A4_EI]])byEiAno[r[A4_EI]]={};
+    byEiAno[r[A4_EI]][r[A4_ANO]]=(byEiAno[r[A4_EI]][r[A4_ANO]]||0)+r[A4_VAL];
+    anosSet.add(r[A4_ANO]);
   });
 
-  // ── Tabela mensal ──
-  const meses=[1,2,3,4,5,6,7,8,9,10,11,12];
-  const mesRows=meses.map(m=>{
-    const vA=byAnoMes[anoA]?.(m)||0;
-    const vB=byAnoMes[anoB]?.(m)||0;
+  const totA4A=Object.values(byEiAno).reduce((s,byA)=>s+(byA[anoAN]||0),0);
+  const totA4B=Object.values(byEiAno).reduce((s,byA)=>s+(byA[anoBN]||0),0);
+
+  const rubRows=Object.entries(byEiAno)
+    .sort((a,b)=>((b[1][anoBN]||0)+(b[1][anoAN]||0))-((a[1][anoAN]||0)+(a[1][anoBN]||0)))
+    .map(([ei,byA])=>{
+      const vA=byA[anoAN]||0, vB=byA[anoBN]||0, delta=vB-vA;
+      const pct=vA>0?((delta/vA)*100).toFixed(1)+'%':'novo';
+      return`<tr style="font-size:10.5px">
+        <td style="max-width:220px;font-size:10px">${ev_names[+ei]||ei}</td>
+        <td class="r">${vA?fRd(vA):'<span style="color:#cbd5e1">—</span>'}</td>
+        <td class="r">${vB?fRd(vB):'<span style="color:#cbd5e1">—</span>'}</td>
+        <td class="r" style="font-weight:700;color:${delta>0?'#dc2626':delta<0?'#059669':'#64748b'}">${delta!==0?(delta>0?'+':'')+fRd(delta):'='}</td>
+        <td class="r" style="color:${delta>0?'#d97706':'#059669'}">${pct}</td>
+      </tr>`;
+    }).join('');
+
+  // ── Mensal via agg2 ───────────────────────────────────────────────────────
+  const byAnoMes={};
+  agg2.forEach(r=>{
+    if(r[A2_MI]!=miN) return;
+    if(r[A2_ANO]!==anoAN&&r[A2_ANO]!==anoBN) return;
+    if(EXCLUIR_COMPS.has(r[A2_ANO]*100+r[A2_MES])) return;
+    const m=r[A2_MES], a=r[A2_ANO];
+    if(!byAnoMes[a])byAnoMes[a]={};
+    byAnoMes[a][m]=(byAnoMes[a][m]||0)+r[A2_VAL];
+  });
+  const totMesA=Object.values(byAnoMes[anoAN]||{}).reduce((s,v)=>s+v,0);
+  const totMesB=Object.values(byAnoMes[anoBN]||{}).reduce((s,v)=>s+v,0);
+  const mesRows=[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>{
+    const vA=(byAnoMes[anoAN]||{})[m]||0;
+    const vB=(byAnoMes[anoBN]||{})[m]||0;
     if(!vA&&!vB) return '';
     const delta=vB-vA;
     return`<tr style="font-size:10.5px">
@@ -1943,29 +1959,9 @@ function varDrilldown(trEl, mi, anoA, anoB){
     </tr>`;
   }).filter(Boolean).join('');
 
-  const totA=Object.values(byAnoMes[anoA]||{}).reduce((s,v)=>s+v,0);
-  const totB=Object.values(byAnoMes[anoB]||{}).reduce((s,v)=>s+v,0);
+  // usa totais de agg4 se agg2 não trouxe dados
+  const totA=totMesA||totA4A, totB=totMesB||totA4B;
   const totDelta=totB-totA;
-
-  // ── Tabela por rubrica ──
-  const eiArr=[...evSet].sort((a,b)=>{
-    const sA=(byEiAno[a]?.[anoA]||0)+(byEiAno[a]?.[anoB]||0);
-    const sB=(byEiAno[b]?.[anoA]||0)+(byEiAno[b]?.[anoB]||0);
-    return sB-sA;
-  });
-  const rubRows=eiArr.map(ei=>{
-    const vA=byEiAno[ei]?.[anoA]||0;
-    const vB=byEiAno[ei]?.[anoB]||0;
-    const delta=vB-vA;
-    const pctStr=vA>0?((delta/vA)*100).toFixed(1)+'%':'novo';
-    return`<tr style="font-size:10.5px">
-      <td style="max-width:220px;font-size:10px">${ev_names[ei]||ei}</td>
-      <td class="r">${vA?fRd(vA):'<span style="color:#cbd5e1">—</span>'}</td>
-      <td class="r">${vB?fRd(vB):'<span style="color:#cbd5e1">—</span>'}</td>
-      <td class="r" style="font-weight:700;color:${delta>0?'#dc2626':delta<0?'#059669':'#64748b'}">${delta!==0?(delta>0?'+':'')+fRd(delta):'='}</td>
-      <td class="r" style="color:${delta>0?'#d97706':'#059669'}">${pctStr}</td>
-    </tr>`;
-  }).join('');
 
   const detail=document.createElement('tr');
   detail.className='var-drill';
@@ -1976,20 +1972,20 @@ function varDrilldown(trEl, mi, anoA, anoB){
         <span style="font-size:11px;color:#64748b">${secs[prof[1]]||'-'}</span>
         <span class="badge" style="background:#ede9fe;color:#7c3aed">${regimes[prof[2]]||'-'}</span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex-wrap:wrap">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div>
           <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:6px">📅 Recebimento mensal</div>
           <div style="overflow-x:auto">
             <table style="font-size:10.5px;width:100%">
               <thead><tr style="background:#fef9c3">
                 <th style="text-align:left;padding:4px 8px">Mês</th>
-                <th class="r" style="padding:4px 8px">${anoA}</th>
-                <th class="r" style="padding:4px 8px">${anoB}</th>
+                <th class="r" style="padding:4px 8px">${anoAN}</th>
+                <th class="r" style="padding:4px 8px">${anoBN}</th>
                 <th class="r" style="padding:4px 8px">Δ</th>
               </tr></thead>
-              <tbody>${mesRows}</tbody>
+              <tbody>${mesRows||'<tr><td colspan="4" style="color:#94a3b8;font-size:11px;padding:8px">Detalhamento mensal não disponível para este período.</td></tr>'}</tbody>
               <tfoot><tr style="background:#fef3c7;font-weight:700">
-                <td style="padding:4px 8px">Total anual</td>
+                <td style="padding:4px 8px">Total</td>
                 <td class="r" style="padding:4px 8px">${totA?fRd(totA):'—'}</td>
                 <td class="r" style="padding:4px 8px">${totB?fRd(totB):'—'}</td>
                 <td class="r" style="padding:4px 8px;color:${totDelta>0?'#dc2626':'#059669'}">${totDelta>0?'+':''}${fRd(totDelta)}</td>
@@ -1998,17 +1994,24 @@ function varDrilldown(trEl, mi, anoA, anoB){
           </div>
         </div>
         <div>
-          <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:6px">📋 Detalhe por rubrica</div>
+          <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:6px">📋 Detalhe por rubrica (anual)</div>
           <div style="overflow-x:auto">
             <table style="font-size:10.5px;width:100%">
               <thead><tr style="background:#fef9c3">
                 <th style="text-align:left;padding:4px 8px">Rubrica</th>
-                <th class="r" style="padding:4px 8px">${anoA}</th>
-                <th class="r" style="padding:4px 8px">${anoB}</th>
+                <th class="r" style="padding:4px 8px">${anoAN}</th>
+                <th class="r" style="padding:4px 8px">${anoBN}</th>
                 <th class="r" style="padding:4px 8px">Δ R$</th>
                 <th class="r" style="padding:4px 8px">Δ %</th>
               </tr></thead>
-              <tbody>${rubRows}</tbody>
+              <tbody>${rubRows||'<tr><td colspan="5" style="color:#94a3b8;font-size:11px;padding:8px">Sem dados de rubrica.</td></tr>'}</tbody>
+              <tfoot><tr style="background:#fef3c7;font-weight:700">
+                <td style="padding:4px 8px">Total</td>
+                <td class="r" style="padding:4px 8px">${totA4A?fRd(totA4A):'—'}</td>
+                <td class="r" style="padding:4px 8px">${totA4B?fRd(totA4B):'—'}</td>
+                <td class="r" style="padding:4px 8px;color:${(totA4B-totA4A)>0?'#dc2626':'#059669'}">${(totA4B-totA4A)>0?'+':''}${fRd(totA4B-totA4A)}</td>
+                <td class="r" style="padding:4px 8px;color:#d97706">${totA4A>0?((totA4B-totA4A)/totA4A*100).toFixed(1)+'%':'—'}</td>
+              </tr></tfoot>
             </table>
           </div>
         </div>
