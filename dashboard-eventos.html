@@ -516,8 +516,25 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
         <tbody id="grat-body"></tbody>
       </table>
     </div>
+  <!-- ── AUDITORIA: Comissionados com Insalubridade/Periculosidade ── -->
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px">⚠️ Comissionados com Insalubridade ou Periculosidade</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Cargo comissionado recebendo adicional incompatível com a natureza do vínculo</div>
+    <div id="grat-com-insalub" style="padding:8px 18px 14px"></div>
+    <div style="background:#fef2f2;border-top:1px solid #fecaca;padding:10px 18px;font-size:10.5px;color:#991b1b;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> Art. 68 da Lei nº 8.112/1990 — adicional de insalubridade exige exposição habitual e permanente, incompatível com cargo de livre nomeação. Súmula nº 700 do STF: concessão exige laudo pericial específico. TCM/BA — Acórdão nº 1.247/2019: suspensão dos pagamentos sem laudo e devolução dos valores pagos irregularmente.
+    </div>
   </div>
-</div>
+  <!-- ── AUDITORIA: Acúmulo Insalubridade + Periculosidade ── -->
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px">🚫 Acúmulo Indevido: Insalubridade + Periculosidade</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Servidores que receberam os dois adicionais na mesma competência — expressamente vedado</div>
+    <div id="grat-acumulo" style="padding:8px 18px 14px"></div>
+    <div style="background:#fef2f2;border-top:1px solid #fecaca;padding:10px 18px;font-size:10.5px;color:#991b1b;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> Art. 193 §2º da CLT (aplicação supletiva): servidor opta pelo adicional mais vantajoso, vedada a cumulação. Súmula nº 448 do TST. TCU — Acórdão nº 2.731/2008-Plenário: pagamento cumulativo gera dever de ressarcimento integral ao erário e responsabilização do gestor.
+    </div>
+  </div>
+  </div>
 
 
 <div class="con" id="tab-sim" style="display:none">
@@ -799,6 +816,61 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
         </tr></thead>
         <tbody id="aud-plan-body"></tbody>
       </table>
+    </div>
+  </div>
+  <!-- ── AUDITORIA: Teto Constitucional ── -->
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#dc2626">🏛️ Teto Constitucional — CF art. 37, XI</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Servidores com pico de remuneração mensal acima do subsídio do Ministro do STF (R$ 41.650,92)</div>
+    <div id="aud-teto" style="padding:8px 18px 14px"></div>
+    <div style="background:#fef2f2;border-top:1px solid #fecaca;padding:10px 18px;font-size:10.5px;color:#991b1b;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> CF art. 37, XI (EC 41/2003): nenhum servidor pode perceber remuneração superior ao subsídio mensal do Ministro do STF. Para municípios, o teto local é o subsídio do Prefeito, não podendo superar o federal (R$ 41.650,92). TCU — Acórdão nº 1.943/2009-Plenário: verificação deve abranger a totalidade das verbas, incluindo vantagens pessoais. Descumprimento gera devolução e responsabilização do ordenador (LC 101/2000 art. 20).
+    </div>
+  </div>
+  <!-- ── AUDITORIA: HE Sistemática ── -->
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#d97706">⏱️ Horas Extras Sistemáticas (10+ competências/ano)</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Servidores com horas extras em 10 ou mais meses no mesmo ano — indica necessidade permanente de pessoal</div>
+    <div id="aud-he-sist" style="padding:8px 18px 14px"></div>
+    <div style="background:#fffbeb;border-top:1px solid #fde68a;padding:10px 18px;font-size:10.5px;color:#92400e;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> CF art. 37, XIII: vedada vinculação remuneratória irregular. Art. 74 da Lei nº 8.112/1990: HE é medida excepcional. TCU — Acórdão nº 1.789/2011-Plenário: HE recorrente e permanente caracteriza necessidade de provimento regular via concurso. TCM/BA — Relatório de Auditoria nº 018/2022: HE em mais de 10 meses/ano por 2+ anos configura burla à regra do concurso público.
+    </div>
+  </div>
+  <!-- ── AUDITORIA: Variação Brusca ── -->
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#d97706">📈 Variação Brusca de Remuneração Individual (&gt;40% ano a ano)</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Servidores com crescimento salarial anual acima de 40% sem movimentação de cargo registrada</div>
+    <div id="aud-variacao" style="padding:8px 18px 14px"></div>
+    <div style="background:#fffbeb;border-top:1px solid #fde68a;padding:10px 18px;font-size:10.5px;color:#92400e;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> CF art. 37 caput (legalidade): nenhum aumento sem previsão legal expressa. CF art. 37, X: revisão geral anual por lei de iniciativa do Executivo. LC 101/2000 (LRF) art. 19–20: limites de despesa com pessoal. TCM/BA — IN nº 03/2018: variações superiores a 30% em competência única devem ser justificadas com ato administrativo específico.
+    </div>
+  </div>
+  <!-- ── AUDITORIA: Dois Regimes Simultâneos ── -->
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#dc2626">⚡ Servidor em Dois Regimes Simultâneos</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Mesma matrícula com pagamentos em regimes distintos na mesma competência</div>
+    <div id="aud-duplo-reg" style="padding:8px 18px 14px"></div>
+    <div style="background:#fef2f2;border-top:1px solid #fecaca;padding:10px 18px;font-size:10.5px;color:#991b1b;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> CF art. 37, XVI: vedada acumulação remunerada de cargos públicos, salvo exceções constitucionais (dois cargos de professor; professor + técnico científico; dois cargos privativos de saúde). TCU — Acórdão nº 2.290/2011-Plenário: acumulação irregular gera devolução da remuneração do cargo mais novo e processo disciplinar. LC 101/2000 art. 18 §1º: acumulações irregulares integram o cômputo das despesas com pessoal.
+    </div>
+  </div>
+  <!-- ── AUDITORIA: Giro de Comissionados ── -->
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px">🔄 Giro de Comissionados — Variação Mensal</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Meses com variação no quadro de comissionados acima de 5% — indicador de uso político dos cargos</div>
+    <div id="aud-giro" style="padding:8px 18px 14px"></div>
+    <div style="background:#eff6ff;border-top:1px solid #bae6fd;padding:10px 18px;font-size:10.5px;color:#0c4a6e;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> CF art. 37, V: cargos em comissão destinam-se exclusivamente a direção, chefia e assessoramento — giro elevado indica desvio de finalidade. TCM/BA — Acórdão nº 892/2021: rotatividade excessiva compromete continuidade dos serviços e viola o princípio da eficiência (CF art. 37 caput). ATRICON — Resolução nº 01/2021 (Radar da Transparência Pública): estabilidade do quadro de comissionados como indicador de governança.
+    </div>
+  </div>
+  <!-- ── AUDITORIA: Concentração / Pareto ── -->
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px">📊 Concentração da Folha — Curva de Pareto</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Quantos servidores concentram qual percentual da folha — indicador de equidade remuneratória</div>
+    <div id="aud-pareto" style="padding:8px 18px 14px"></div>
+    <canvas id="ch-pareto" height="180" style="padding:0 18px 14px;box-sizing:border-box;width:100%"></canvas>
+    <div style="background:#eff6ff;border-top:1px solid #bae6fd;padding:10px 18px;font-size:10.5px;color:#0c4a6e;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> LC 101/2000 art. 48: transparência na gestão fiscal inclui demonstrativos de gastos com pessoal. ATRICON — Resolução nº 01/2021: Radar da Transparência exige publicação individualizada de remunerações (indicador 3.1). CF art. 37, X: isonomia remuneratória — concentração excessiva pode indicar vantagens sem previsão legal. TCM/BA: relatórios 2023–2024 incluem análise de concentração como indicador de irregularidade estrutural.
     </div>
   </div>
 </div>
@@ -1621,6 +1693,99 @@ function renderGrat(){
       <td style="text-align:center;color:#94a3b8;font-size:11px;transition:transform .2s" class="grat-chev">▶</td>
     </tr>`;
   }).join('');
+
+  // ── Análise 2: Comissionados com Insalubridade/Periculosidade ────────────
+  {
+    const riComG=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+    const evIns=new Set([...EV_GRAT].filter(ei=>/INSALUB/i.test(ev_names[ei]||'')));
+    const evPer=new Set([...EV_GRAT].filter(ei=>/PERICULOSID/i.test(ev_names[ei]||'')));
+    const evIP=new Set([...evIns,...evPer]);
+    const comIns={};
+    agg2.forEach(r=>{
+      if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      if(r[A2_RI]!==riComG)return;
+      if(!evIP.has(r[A2_EI]))return;
+      const mi=r[A2_MI];
+      if(!comIns[mi])comIns[mi]={total:0,evs:new Set()};
+      comIns[mi].total+=r[A2_VAL]; comIns[mi].evs.add(r[A2_EI]);
+    });
+    const el2=document.getElementById('grat-com-insalub');
+    if(el2){
+      const rows2=Object.entries(comIns).sort((a,b)=>b[1].total-a[1].total);
+      if(!rows2.length){
+        el2.innerHTML='<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum servidor comissionado com insalubridade ou periculosidade no período filtrado.</p>';
+      } else {
+        const tot2=rows2.reduce((s,[,d])=>s+d.total,0);
+        el2.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+          <div><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Servidores irregulares</div><div style="font-size:22px;font-weight:700;color:#dc2626">${rows2.length}</div></div>
+          <div><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Valor total pago</div><div style="font-size:22px;font-weight:700;color:#dc2626">${fR(tot2)}</div></div>
+        </div>
+        <div style="overflow-x:auto"><table style="font-size:11px">
+          <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th>Adicionais recebidos</th><th class="r">Total</th></tr></thead>
+          <tbody>${rows2.slice(0,20).map(([mi,d],i)=>{
+            const prof=srv_profile[+mi]||[0,0,0];
+            return`<tr>
+              <td style="color:#94a3b8">${i+1}</td>
+              <td style="font-weight:600">${nomes[+mi]||mats[+mi]}</td>
+              <td style="font-size:10px">${secs[prof[1]]||'-'}</td>
+              <td><span class="badge" style="background:#ede9fe;color:#7c3aed;font-size:10px">${regimes[prof[2]]||'-'}</span></td>
+              <td style="font-size:10px;color:#dc2626">${[...d.evs].map(ei=>ev_names[ei]).join(', ')}</td>
+              <td class="r" style="font-weight:700;color:#dc2626">${fR(d.total)}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      }
+    }
+  }
+
+  // ── Análise 3: Acúmulo Insalubridade + Periculosidade ───────────────────
+  {
+    const evIns3=new Set([...EV_GRAT].filter(ei=>/INSALUB/i.test(ev_names[ei]||'')));
+    const evPer3=new Set([...EV_GRAT].filter(ei=>/PERICULOSID/i.test(ev_names[ei]||'')));
+    const acum3={};
+    agg2.forEach(r=>{
+      if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      if(!evIns3.has(r[A2_EI])&&!evPer3.has(r[A2_EI]))return;
+      const mi=r[A2_MI]; const comp=r[A2_ANO]*100+r[A2_MES];
+      if(!acum3[mi])acum3[mi]={};
+      if(!acum3[mi][comp])acum3[mi][comp]={i:0,p:0};
+      if(evIns3.has(r[A2_EI]))acum3[mi][comp].i+=r[A2_VAL];
+      if(evPer3.has(r[A2_EI]))acum3[mi][comp].p+=r[A2_VAL];
+    });
+    const acRows=[];
+    Object.entries(acum3).forEach(([mi,byC])=>{
+      let tot=0,cnt=0;
+      Object.values(byC).forEach(d=>{if(d.i>0&&d.p>0){tot+=d.i+d.p;cnt++;}});
+      if(cnt>0)acRows.push([+mi,tot,cnt]);
+    });
+    acRows.sort((a,b)=>b[1]-a[1]);
+    const el3=document.getElementById('grat-acumulo');
+    if(el3){
+      if(!acRows.length){
+        el3.innerHTML='<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum acúmulo de insalubridade + periculosidade encontrado no período filtrado.</p>';
+      } else {
+        const tot3=acRows.reduce((s,[,v])=>s+v,0);
+        el3.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+          <div><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Servidores em acúmulo</div><div style="font-size:22px;font-weight:700;color:#dc2626">${acRows.length}</div></div>
+          <div><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Valor total irregular</div><div style="font-size:22px;font-weight:700;color:#dc2626">${fR(tot3)}</div></div>
+        </div>
+        <div style="overflow-x:auto"><table style="font-size:11px">
+          <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Competências</th><th class="r">Valor total</th></tr></thead>
+          <tbody>${acRows.slice(0,20).map(([mi,val,cnt],i)=>{
+            const prof=srv_profile[mi]||[0,0,0];
+            return`<tr>
+              <td style="color:#94a3b8">${i+1}</td>
+              <td style="font-weight:600">${nomes[mi]||mats[mi]}</td>
+              <td style="font-size:10px">${secs[prof[1]]||'-'}</td>
+              <td><span class="badge" style="background:#ede9fe;color:#7c3aed;font-size:10px">${regimes[prof[2]]||'-'}</span></td>
+              <td class="r" style="color:#dc2626;font-weight:700">${cnt} mês(es)</td>
+              <td class="r" style="font-weight:700;color:#dc2626">${fR(val)}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      }
+    }
+  }
 }
 
 function gratDrilldown(trEl, mi){
@@ -2610,6 +2775,305 @@ function renderAudit(){
 
   // Ativa filtro "Todos" por padrão
   audFilter('all');
+
+  // ── Análise 1: Teto Constitucional ──────────────────────────────────────
+  {
+    const TETO=41650.92;
+    const fRa=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const monthPeak={};
+    agg2.forEach(r=>{
+      if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      const mi=r[A2_MI]; const comp=r[A2_ANO]*100+r[A2_MES];
+      if(!monthPeak[mi])monthPeak[mi]={};
+      monthPeak[mi][comp]=(monthPeak[mi][comp]||0)+r[A2_VAL];
+    });
+    const tetoRows=[];
+    Object.entries(monthPeak).forEach(([mi,byC])=>{
+      const vals=Object.values(byC);
+      const peak=Math.max(...vals);
+      const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
+      if(peak>TETO)tetoRows.push([+mi,peak,avg]);
+    });
+    tetoRows.sort((a,b)=>b[1]-a[1]);
+    const tetoEl=document.getElementById('aud-teto');
+    if(tetoEl){
+      if(!tetoRows.length){
+        tetoEl.innerHTML=`<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum servidor ultrapassou o teto constitucional de ${fRa(TETO)}/mês no período filtrado.</p>`;
+      } else {
+        tetoEl.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+          <div><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Acima do teto</div><div style="font-size:22px;font-weight:700;color:#dc2626">${tetoRows.length} servidor(es)</div></div>
+          <div><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Teto STF</div><div style="font-size:22px;font-weight:700;color:#dc2626">${fRa(TETO)}/mês</div></div>
+        </div>
+        <div style="overflow-x:auto"><table style="font-size:11px">
+          <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Pico mensal</th><th class="r">Média mensal</th><th class="r">Excede em</th></tr></thead>
+          <tbody>${tetoRows.slice(0,20).map(([mi,peak,avg],i)=>{
+            const prof=srv_profile[mi]||[0,0,0];
+            return`<tr>
+              <td style="color:#94a3b8">${i+1}</td>
+              <td style="font-weight:600">${nomes[mi]||mats[mi]}</td>
+              <td style="font-size:10px">${secs[prof[1]]||'-'}</td>
+              <td><span class="badge" style="background:#ede9fe;color:#7c3aed;font-size:10px">${regimes[prof[2]]||'-'}</span></td>
+              <td class="r" style="font-weight:700;color:#dc2626">${fRa(peak)}</td>
+              <td class="r">${fRa(avg)}</td>
+              <td class="r" style="font-weight:700;color:#dc2626">+${fRa(peak-TETO)}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      }
+    }
+  }
+
+  // ── Análise 4: HE Sistemática (10+ meses/ano) ───────────────────────────
+  {
+    const fRa=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const heByMiAno={};
+    agg2.forEach(r=>{
+      if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      if(!EV_EXTRA.has(r[A2_EI]))return;
+      if(FS.ris.size>0){const prof=srv_profile[r[A2_MI]];if(!prof||!FS.ris.has(prof[2]))return;}
+      if(FS.sis.size>0){const prof=srv_profile[r[A2_MI]];if(!prof||!FS.sis.has(prof[1]))return;}
+      const mi=r[A2_MI]; const ano=r[A2_ANO];
+      if(!heByMiAno[mi])heByMiAno[mi]={};
+      if(!heByMiAno[mi][ano])heByMiAno[mi][ano]={meses:new Set(),total:0};
+      heByMiAno[mi][ano].meses.add(r[A2_MES]);
+      heByMiAno[mi][ano].total+=r[A2_VAL];
+    });
+    const heRows=[];
+    Object.entries(heByMiAno).forEach(([mi,byA])=>{
+      Object.entries(byA).forEach(([ano,d])=>{
+        if(d.meses.size>=10)heRows.push([+mi,+ano,d.meses.size,d.total]);
+      });
+    });
+    heRows.sort((a,b)=>b[2]-a[2]||b[3]-a[3]);
+    const heEl=document.getElementById('aud-he-sist');
+    if(heEl){
+      if(!heRows.length){
+        heEl.innerHTML='<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum servidor com horas extras em 10 ou mais meses no mesmo ano, no período filtrado.</p>';
+      } else {
+        const srvSet=new Set(heRows.map(r=>r[0]));
+        heEl.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#fffbeb;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+          <div><div style="font-size:10px;color:#92400e;font-weight:700;text-transform:uppercase">Servidores com HE sistemática</div><div style="font-size:22px;font-weight:700;color:#d97706">${srvSet.size}</div></div>
+          <div><div style="font-size:10px;color:#92400e;font-weight:700;text-transform:uppercase">Valor total HE irregular</div><div style="font-size:22px;font-weight:700;color:#d97706">${fRa(heRows.reduce((s,r)=>s+r[3],0))}</div></div>
+        </div>
+        <div style="overflow-x:auto"><table style="font-size:11px">
+          <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Ano</th><th class="r">Meses c/ HE</th><th class="r">Total HE</th></tr></thead>
+          <tbody>${heRows.slice(0,20).map(([mi,ano,meses,total],i)=>{
+            const prof=srv_profile[mi]||[0,0,0];
+            return`<tr>
+              <td style="color:#94a3b8">${i+1}</td>
+              <td style="font-weight:600">${nomes[mi]||mats[mi]}</td>
+              <td style="font-size:10px">${secs[prof[1]]||'-'}</td>
+              <td><span class="badge" style="background:#ede9fe;color:#7c3aed;font-size:10px">${regimes[prof[2]]||'-'}</span></td>
+              <td class="r">${ano}</td>
+              <td class="r" style="font-weight:700;color:#d97706">${meses}/12 meses</td>
+              <td class="r" style="font-weight:700">${fRa(total)}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      }
+    }
+  }
+
+  // ── Análise 5: Variação Brusca de Remuneração (>40% ano a ano) ──────────
+  {
+    const fRa=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const totByMiAno={};
+    agg4.forEach(r=>{
+      if(FS.anos.size>0&&!FS.anos.has(r[A4_ANO]))return;
+      if(FS.ris.size>0){const prof=srv_profile[r[A4_MI]];if(!prof||!FS.ris.has(prof[2]))return;}
+      if(FS.sis.size>0){const prof=srv_profile[r[A4_MI]];if(!prof||!FS.sis.has(prof[1]))return;}
+      const key=r[A4_MI]+'_'+r[A4_ANO];
+      totByMiAno[key]=(totByMiAno[key]||0)+r[A4_VAL];
+    });
+    const byMi={};
+    Object.entries(totByMiAno).forEach(([key,val])=>{
+      const [mi,ano]=key.split('_');
+      if(!byMi[+mi])byMi[+mi]={};
+      byMi[+mi][+ano]=val;
+    });
+    const varRows=[];
+    Object.entries(byMi).forEach(([mi,byA])=>{
+      const anos=Object.keys(byA).map(Number).sort();
+      for(let i=1;i<anos.length;i++){
+        const prev=byA[anos[i-1]],cur=byA[anos[i]];
+        const pct=(cur-prev)/prev*100;
+        if(pct>40)varRows.push([+mi,anos[i-1],anos[i],prev,cur,pct]);
+      }
+    });
+    varRows.sort((a,b)=>b[5]-a[5]);
+    const varEl=document.getElementById('aud-variacao');
+    if(varEl){
+      if(!varRows.length){
+        varEl.innerHTML='<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum servidor com variação anual de remuneração acima de 40% no período filtrado.</p>';
+      } else {
+        varEl.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#fffbeb;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+          <div><div style="font-size:10px;color:#92400e;font-weight:700;text-transform:uppercase">Variações detectadas</div><div style="font-size:22px;font-weight:700;color:#d97706">${varRows.length}</div></div>
+        </div>
+        <div style="overflow-x:auto"><table style="font-size:11px">
+          <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Ano ant. (total)</th><th class="r">Ano atual (total)</th><th class="r">Variação</th></tr></thead>
+          <tbody>${varRows.slice(0,20).map(([mi,anoA,anoB,vA,vB,pct],i)=>{
+            const prof=srv_profile[mi]||[0,0,0];
+            return`<tr>
+              <td style="color:#94a3b8">${i+1}</td>
+              <td style="font-weight:600">${nomes[mi]||mats[mi]}</td>
+              <td style="font-size:10px">${secs[prof[1]]||'-'}</td>
+              <td><span class="badge" style="background:#ede9fe;color:#7c3aed;font-size:10px">${regimes[prof[2]]||'-'}</span></td>
+              <td class="r">${fRa(vA)} <span style="color:#94a3b8;font-size:10px">(${anoA})</span></td>
+              <td class="r">${fRa(vB)} <span style="color:#94a3b8;font-size:10px">(${anoB})</span></td>
+              <td class="r" style="font-weight:700;color:#d97706">+${pct.toFixed(1)}%</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      }
+    }
+  }
+
+  // ── Análise 6: Dois Regimes Simultâneos ─────────────────────────────────
+  {
+    const fRa=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const dupReg={};
+    agg2.forEach(r=>{
+      if(FS.anos.size>0&&!FS.anos.has(r[A2_ANO]))return;
+      const mi=r[A2_MI]; const comp=r[A2_ANO]*100+r[A2_MES];
+      if(!dupReg[mi])dupReg[mi]={};
+      if(!dupReg[mi][comp])dupReg[mi][comp]={ris:new Set(),val:0};
+      dupReg[mi][comp].ris.add(r[A2_RI]);
+      dupReg[mi][comp].val+=r[A2_VAL];
+    });
+    const dupRows=[];
+    Object.entries(dupReg).forEach(([mi,byC])=>{
+      let cnt=0,tot=0;const risAll=new Set();
+      Object.values(byC).forEach(d=>{if(d.ris.size>1){cnt++;tot+=d.val;d.ris.forEach(ri=>risAll.add(ri));}});
+      if(cnt>0)dupRows.push([+mi,cnt,tot,[...risAll]]);
+    });
+    dupRows.sort((a,b)=>b[1]-a[1]);
+    const dupEl=document.getElementById('aud-duplo-reg');
+    if(dupEl){
+      if(!dupRows.length){
+        dupEl.innerHTML='<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum servidor identificado com dois regimes simultâneos no período filtrado.</p>';
+      } else {
+        dupEl.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+          <div><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Irregularidades</div><div style="font-size:22px;font-weight:700;color:#dc2626">${dupRows.length} servidor(es)</div></div>
+        </div>
+        <div style="overflow-x:auto"><table style="font-size:11px">
+          <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regimes detectados</th><th class="r">Competências</th><th class="r">Valor total</th></tr></thead>
+          <tbody>${dupRows.slice(0,20).map(([mi,cnt,tot,ris],i)=>{
+            const prof=srv_profile[mi]||[0,0,0];
+            return`<tr>
+              <td style="color:#94a3b8">${i+1}</td>
+              <td style="font-weight:600">${nomes[mi]||mats[mi]}</td>
+              <td style="font-size:10px">${secs[prof[1]]||'-'}</td>
+              <td style="font-size:10px;color:#dc2626">${ris.map(ri=>regimes[ri]||ri).join(' + ')}</td>
+              <td class="r" style="font-weight:700;color:#dc2626">${cnt}</td>
+              <td class="r" style="font-weight:700">${fRa(tot)}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+      }
+    }
+  }
+
+  // ── Análise 7: Giro de Comissionados ────────────────────────────────────
+  {
+    const riComA=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+    const cntByComp={};
+    agg1.forEach(r=>{
+      if(FS.anos.size>0&&!FS.anos.has(r[A1_ANO]))return;
+      if(r[A1_RI]!==riComA)return;
+      const comp=r[A1_ANO]*100+r[A1_MES];
+      cntByComp[comp]=(cntByComp[comp]||0)+r[A1_CNT];
+    });
+    const mNm=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const comps=Object.keys(cntByComp).map(Number).sort();
+    const giroRows=[];
+    for(let i=1;i<comps.length;i++){
+      const prev=cntByComp[comps[i-1]],cur=cntByComp[comps[i]];
+      const delta=cur-prev,pct=prev>0?(delta/prev*100):0;
+      if(Math.abs(pct)>=5)giroRows.push([comps[i],prev,cur,delta,pct]);
+    }
+    const giroEl=document.getElementById('aud-giro');
+    if(giroEl){
+      if(!comps.length){
+        giroEl.innerHTML='<p style="color:#94a3b8;font-size:12px;margin:4px 0">Sem dados de comissionados no período filtrado.</p>';
+      } else {
+        const maxC=Math.max(...Object.values(cntByComp)),minC=Math.min(...Object.values(cntByComp));
+        const varPct=minC>0?((maxC-minC)/minC*100).toFixed(1):0;
+        giroEl.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#eff6ff;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+          <div><div style="font-size:10px;color:#1e40af;font-weight:700;text-transform:uppercase">Pico do período</div><div style="font-size:22px;font-weight:700;color:#1e40af">${maxC} comissionados</div></div>
+          <div><div style="font-size:10px;color:#1e40af;font-weight:700;text-transform:uppercase">Mínimo do período</div><div style="font-size:22px;font-weight:700;color:#1e40af">${minC}</div></div>
+          <div><div style="font-size:10px;color:#1e40af;font-weight:700;text-transform:uppercase">Amplitude total</div><div style="font-size:22px;font-weight:700;color:${varPct>10?'#dc2626':'#059669'}">${varPct}%</div></div>
+          <div><div style="font-size:10px;color:#1e40af;font-weight:700;text-transform:uppercase">Variações ≥5%</div><div style="font-size:22px;font-weight:700;color:${giroRows.length>3?'#d97706':'#059669'}">${giroRows.length} meses</div></div>
+        </div>
+        ${giroRows.length===0?'<p style="color:#059669;font-size:12px">✓ Variações mensais abaixo de 5% — quadro estável no período.</p>':`
+        <div style="overflow-x:auto"><table style="font-size:11px">
+          <thead><tr><th>Competência</th><th class="r">Mês anterior</th><th class="r">Mês atual</th><th class="r">Δ Servidores</th><th class="r">Variação %</th></tr></thead>
+          <tbody>${giroRows.map(([comp,prev,cur,delta,pct])=>{
+            const ano=Math.floor(comp/100),mes=comp%100;
+            return`<tr>
+              <td style="font-weight:600">${mNm[mes]}/${ano}</td>
+              <td class="r">${prev}</td>
+              <td class="r" style="font-weight:700">${cur}</td>
+              <td class="r" style="font-weight:700;color:${delta>0?'#dc2626':'#059669'}">${delta>0?'+':''}${delta}</td>
+              <td class="r" style="font-weight:700;color:${Math.abs(pct)<10?'#059669':'#dc2626'}">${pct>0?'+':''}${pct.toFixed(1)}%</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`}`;
+      }
+    }
+  }
+
+  // ── Análise 8: Concentração — Curva de Pareto ───────────────────────────
+  {
+    const fRa=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const totByMi={};
+    agg4.forEach(r=>{
+      if(FS.anos.size>0&&!FS.anos.has(r[A4_ANO]))return;
+      if(FS.ris.size>0){const prof=srv_profile[r[A4_MI]];if(!prof||!FS.ris.has(prof[2]))return;}
+      if(FS.sis.size>0){const prof=srv_profile[r[A4_MI]];if(!prof||!FS.sis.has(prof[1]))return;}
+      totByMi[r[A4_MI]]=(totByMi[r[A4_MI]]||0)+r[A4_VAL];
+    });
+    const srvList=Object.entries(totByMi).sort((a,b)=>b[1]-a[1]);
+    const grand=srvList.reduce((s,[,v])=>s+v,0);
+    const n=srvList.length;
+    const paretoEl=document.getElementById('aud-pareto');
+    if(paretoEl&&n>0){
+      const bands=[1,5,10,20,50].map(p=>{
+        const top=Math.max(1,Math.ceil(n*p/100));
+        const val=srvList.slice(0,top).reduce((s,[,v])=>s+v,0);
+        return{p,top,val,pct:(val/grand*100).toFixed(1)};
+      });
+      paretoEl.innerHTML=`<div style="overflow-x:auto"><table style="font-size:11px">
+        <thead><tr><th>Faixa</th><th class="r">Nº servidores</th><th class="r">Valor recebido</th><th class="r">% da folha</th><th>Avaliação TCM</th></tr></thead>
+        <tbody>${bands.map(b=>{
+          const flag=+b.pct>50?'🔴 Concentração crítica':+b.pct>35?'🟡 Atenção':'🟢 Aceitável';
+          return`<tr>
+            <td style="font-weight:600">Top ${b.p}% — ${b.top} servidor(es)</td>
+            <td class="r">${b.top}</td>
+            <td class="r" style="font-weight:700">${fRa(b.val)}</td>
+            <td class="r" style="font-weight:700;color:${+b.pct>50?'#dc2626':+b.pct>35?'#d97706':'#059669'}">${b.pct}%</td>
+            <td style="font-size:10px">${flag}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+      <p style="font-size:11px;color:#64748b;margin:8px 0 0">Total: <strong>${n} servidores</strong> — folha de <strong>${fRa(grand)}</strong> no período. Maior remunerado: <strong>${nomes[+srvList[0][0]]||mats[+srvList[0][0]]}</strong> com ${fRa(srvList[0][1])}.</p>`;
+      destroyChart('ch-pareto');
+      const step=Math.max(1,Math.floor(n/60));
+      const idxs=[...Array(n).keys()].filter(i=>i%step===0||i===n-1);
+      const cumPcts=(()=>{let s=0;return srvList.map(([,v])=>{s+=v;return+(s/grand*100).toFixed(2);})})();
+      charts['ch-pareto']=new Chart(document.getElementById('ch-pareto'),{
+        type:'line',
+        data:{labels:idxs.map(i=>i+1),datasets:[
+          {label:'% acumulada da folha',data:idxs.map(i=>cumPcts[i]),borderColor:'#4f46e5',backgroundColor:'#4f46e520',fill:true,pointRadius:0,borderWidth:2},
+          {label:'Igualdade perfeita',data:idxs.map(i=>+((i+1)/n*100).toFixed(2)),borderColor:'#94a3b8',borderDash:[4,4],pointRadius:0,borderWidth:1,fill:false},
+        ]},
+        options:{plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+          scales:{x:{title:{display:true,text:'Servidores (maior → menor remuneração)',font:{size:10}}},
+                  y:{title:{display:true,text:'% acumulada da folha',font:{size:10}},max:100,ticks:{callback:v=>v+'%'}}}}
+      });
+    } else if(paretoEl){
+      paretoEl.innerHTML='<p style="color:#94a3b8;font-size:12px">Sem dados no período filtrado.</p>';
+    }
+  }
 }
 
 
