@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Análise de Eventos da Folha — Paulo Afonso–BA</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{--ac:#4f46e5;--dark:#0f172a;--mu:#64748b;--bd:#e2e8f0;--bg:#f8fafc;--wh:#fff}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -660,6 +662,7 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     <button class="btn-apply" id="scen-b" onclick="estagScenario('B')" style="font-size:12px">🔵 Referência</button>
     <button class="btn-apply" id="scen-c" onclick="estagScenario('C')" style="font-size:12px">🟣 Amplo</button>
     <button class="btn-apply" onclick="renderEstag()" style="font-size:12px;margin-left:8px">&#x27F3; Recalcular</button>
+    <button class="btn-apply" onclick="gerarRelatorioPDF()" style="font-size:12px;margin-left:auto;background:#059669;color:#fff">&#x1F4C4; Gerar Relatorio PDF</button>
   </div>
   <div class="g2" style="margin-bottom:18px;grid-template-columns:repeat(3,1fr)">
     <div class="cc" style="padding:18px">
@@ -2475,6 +2478,349 @@ function renderAudit(){
   audFilter('all');
 }
 
+
+
+
+// ================================================================
+// DISTRIBUICAO ABRIL/2026 — proporcoes por secretaria (base real)
+// ================================================================
+const ESTAG_DIST_BASE = [
+  {s:'Secretaria Municipal da Saude - SMS',                              cnt:286},
+  {s:'Secretaria Municipal de Desenvolvimento Social e Cidadania - SEDES', cnt:189},
+  {s:'Secretaria de Administracao Municipal - SEAM',                     cnt:114},
+  {s:'Secretaria Municipal de Turismo, Industria e Comercio - SETIC',    cnt:61},
+  {s:'Secretaria Municipal de Infraestrutura e Planejamento Urbano - SEINFRA', cnt:56},
+  {s:'Secretaria Municipal de Meio Ambiente e Servicos Publicos - SEMMASP', cnt:45},
+  {s:'Secretaria Municipal de Desenvolvimento Rural - SDR',              cnt:42},
+  {s:'Secretaria Municipal de Cultura e Esporte - SECULTE',              cnt:39},
+  {s:'Secretaria Municipal da Fazenda - SEFAZ',                          cnt:33},
+  {s:'Secretaria Municipal de Educacao - SME',                           cnt:32},
+  {s:'Gabinete do Prefeito',                                             cnt:29},
+  {s:'Procuradoria Geral do Municipio - PGM',                            cnt:29},
+  {s:'Secretaria Municipal de Ordem Publica e Seguranca Cidada - SMOP',  cnt:13},
+  {s:'Secretaria Municipal de Politica Para a Mulher e Cidadania - SMPMC', cnt:10},
+  {s:'Secretaria Municipal de Tecnologia e Inovacao - SMTI',             cnt:10},
+  {s:'Assessoria de Comunicacao',                                        cnt:7},
+  {s:'Secretaria de Planejamento Estrategico - SEPLANE',                 cnt:7},
+  {s:'Controladoria Geral do Municipio - CGM',                           cnt:4},
+  {s:'Gabinete do Vice-Prefeito - GVP',                                  cnt:3},
+  {s:'Ouvidoria',                                                        cnt:1},
+];
+const ESTAG_DIST_TOTAL = ESTAG_DIST_BASE.reduce((s,d)=>s+d.cnt,0); // 1010
+
+function gerarRelatorioPDF(){
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210, ML=18, MR=192, CW=MR-ML;
+  const fM=v=>v>=1e6?'R$ '+(v/1e6).toFixed(2)+' M':v>=1e3?'R$ '+(v/1e3).toFixed(1)+' mil':'R$ '+v.toFixed(0);
+  const now=new Date();
+  const dataGer=now.toLocaleDateString('pt-BR');
+
+  // Params from simulator
+  const bolsaMed=+document.getElementById('bolsa-med').value||750;
+  const qtdMed  =+document.getElementById('qtd-med').value||80;
+  const bolsaTec=+document.getElementById('bolsa-tec').value||1100;
+  const qtdTec  =+document.getElementById('qtd-tec').value||60;
+  const bolsaSup=+document.getElementById('bolsa-sup').value||1500;
+  const qtdSup  =+document.getElementById('qtd-sup').value||50;
+  const totalEstag=qtdMed+qtdTec+qtdSup;
+  const custoMed=(bolsaMed+ESTAG_AUX)*qtdMed;
+  const custoTec=(bolsaTec+ESTAG_AUX)*qtdTec;
+  const custoSup=(bolsaSup+ESTAG_AUX)*qtdSup;
+  const custoTotal=custoMed+custoTec+custoSup;
+  const custoAnual=custoTotal*12;
+  const custoMedio=totalEstag>0?custoTotal/totalEstag:0;
+
+  // Colors
+  const COR_AZUL=[30,64,175], COR_VERDE=[5,150,105], COR_CINZA=[71,85,105];
+  const COR_FUNDO=[248,250,252], COR_LINHA=[226,232,240];
+
+  let y=0;
+  function addPage(){doc.addPage();y=20;}
+  function checkY(need=20){if(y+need>275){addPage();}}
+
+  // ── CAPA ───────────────────────────────────────────────────────────────
+  doc.setFillColor(30,64,175);
+  doc.rect(0,0,W,55,'F');
+  doc.setFillColor(5,150,105);
+  doc.rect(0,52,W,6,'F');
+
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.text('PREFEITURA MUNICIPAL DE PAULO AFONSO — BAHIA',W/2,18,{align:'center'});
+  doc.setFontSize(18);
+  doc.text('Programa Municipal de Estagio',W/2,32,{align:'center'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(12);
+  doc.text('Estudo de Impacto — Subsidio a Projeto de Lei',W/2,43,{align:'center'});
+
+  doc.setTextColor(...COR_CINZA);
+  doc.setFontSize(9);
+  doc.text('Lei n 11.788/2008 — Lei do Estagio',ML,72);
+  doc.text('Competencia de referencia: Abril/2026',ML,79);
+  doc.text('Data de geracao: '+dataGer, ML,86);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...COR_AZUL);
+  doc.text('Cenario simulado: '+totalEstag+' estagiarios — Custo mensal: '+fM(custoTotal),ML,96);
+
+  // linha separadora
+  doc.setDrawColor(...COR_LINHA);
+  doc.line(ML,102,MR,102);
+
+  // resumo executivo (capa)
+  doc.setTextColor(...COR_CINZA);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  const resumo=[
+    'Este documento apresenta um estudo de impacto para subsidiar a elaboracao de Projeto de Lei',
+    'instituindo o Programa Municipal de Estagio de Paulo Afonso–BA. O programa visa ampliar a',
+    'insercao de jovens no mercado de trabalho, fortalecer parcerias com instituicoes de ensino e',
+    'qualificar o atendimento ao cidadao nas secretarias municipais, em conformidade plena com a',
+    'Lei Federal n 11.788/2008 (Lei do Estagio).',
+  ];
+  resumo.forEach((l,i)=>doc.text(l,ML,112+i*6));
+
+  y=150;
+
+  // ── SEC 1: APRESENTACAO ────────────────────────────────────────────────
+  function secTitle(title){
+    checkY(14);
+    doc.setFillColor(...COR_AZUL);
+    doc.rect(ML,y,CW,8,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10);
+    doc.text(title,ML+3,y+5.5);
+    y+=12;
+    doc.setTextColor(...COR_CINZA);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+  }
+  function bodyText(lines){
+    (Array.isArray(lines)?lines:[lines]).forEach(l=>{
+      checkY(6);
+      doc.text(l,ML,y);
+      y+=5.5;
+    });
+    y+=2;
+  }
+  function subTitle(t){
+    checkY(8);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...COR_AZUL);
+    doc.setFontSize(9);
+    doc.text(t,ML,y);
+    y+=6;
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(...COR_CINZA);
+  }
+
+  secTitle('1. APRESENTACAO E OBJETIVOS');
+  bodyText([
+    'O Programa Municipal de Estagio de Paulo Afonso tem como objetivos:',
+    '  a) Proporcionar experiencia pratica a estudantes dos niveis medio, tecnico e superior;',
+    '  b) Fortalecer a parceria entre o poder publico e instituicoes de ensino do municipio e regiao;',
+    '  c) Ampliar a capacidade de atendimento das secretarias municipais;',
+    '  d) Contribuir para a formacao profissional de jovens residentes no municipio.',
+    '',
+    'O programa sera regido integralmente pela Lei Federal n 11.788, de 25 de setembro de 2008,',
+    'que dispoe sobre o estagio de estudantes, e pelas diretrizes fixadas neste estudo.',
+  ]);
+
+  // ── SEC 2: PROPOSTA ────────────────────────────────────────────────────
+  secTitle('2. PROPOSTA DO PROGRAMA');
+  bodyText('Vagas por nivel de formacao, valores de bolsa-auxilio e custo mensal estimado:');
+  doc.autoTable({
+    startY:y,
+    margin:{left:ML,right:W-MR},
+    styles:{fontSize:8.5,cellPadding:2.5,textColor:[71,85,105]},
+    headStyles:{fillColor:COR_AZUL,textColor:[255,255,255],fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,250,252]},
+    head:[['Nivel','Vagas','Bolsa mensal','Seguro+Aux.','Custo unitario','Custo total/mes']],
+    body:[
+      ['Medio',   qtdMed, 'R$ '+bolsaMed.toLocaleString('pt-BR'),  'R$ '+ESTAG_AUX, 'R$ '+(bolsaMed+ESTAG_AUX).toLocaleString('pt-BR'), fM(custoMed)],
+      ['Tecnico', qtdTec, 'R$ '+bolsaTec.toLocaleString('pt-BR'),  'R$ '+ESTAG_AUX, 'R$ '+(bolsaTec+ESTAG_AUX).toLocaleString('pt-BR'), fM(custoTec)],
+      ['Superior',qtdSup, 'R$ '+bolsaSup.toLocaleString('pt-BR'),  'R$ '+ESTAG_AUX, 'R$ '+(bolsaSup+ESTAG_AUX).toLocaleString('pt-BR'), fM(custoSup)],
+      ['TOTAL',   totalEstag, '—', '—', '—', fM(custoTotal)],
+    ],
+    columnStyles:{0:{fontStyle:'bold'},5:{fontStyle:'bold'}},
+  });
+  y=doc.lastAutoTable.finalY+8;
+
+  // ── SEC 3: CUSTO TOTAL ─────────────────────────────────────────────────
+  checkY(60);
+  secTitle('3. CUSTO TOTAL DO PROGRAMA');
+  doc.autoTable({
+    startY:y,
+    margin:{left:ML,right:W-MR},
+    styles:{fontSize:8.5,cellPadding:2.5,textColor:[71,85,105]},
+    headStyles:{fillColor:COR_VERDE,textColor:[255,255,255],fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,250,252]},
+    head:[['Indicador','Valor']],
+    body:[
+      ['Total de estagiarios', totalEstag+' vagas'],
+      ['Custo mensal total', fM(custoTotal)],
+      ['Custo anual projetado (12 meses)', fM(custoAnual)],
+      ['Custo medio por vaga/mes', fM(custoMedio)],
+    ],
+    columnStyles:{0:{fontStyle:'bold'},1:{halign:'right'}},
+  });
+  y=doc.lastAutoTable.finalY+6;
+
+  subTitle('Comparativo entre cenarios:');
+  const scens=Object.entries(ESTAG_SCENARIOS).map(([k,s])=>{
+    const tot=(s.qtdMed+s.qtdTec+s.qtdSup);
+    const cm=((s.bolsaMed+ESTAG_AUX)*s.qtdMed+(s.bolsaTec+ESTAG_AUX)*s.qtdTec+(s.bolsaSup+ESTAG_AUX)*s.qtdSup);
+    return [k==='A'?'Conservador':k==='B'?'Referencia':'Amplo', tot+' vagas', fM(cm)+'/mes', fM(cm*12)+'/ano'];
+  });
+  doc.autoTable({
+    startY:y,
+    margin:{left:ML,right:W-MR},
+    styles:{fontSize:8.5,cellPadding:2.5,textColor:[71,85,105]},
+    headStyles:{fillColor:[100,116,139],textColor:[255,255,255],fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,250,252]},
+    head:[['Cenario','Vagas','Custo mensal','Custo anual']],
+    body:scens,
+    columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},
+  });
+  y=doc.lastAutoTable.finalY+8;
+
+  // ── SEC 4: DISTRIBUICAO ────────────────────────────────────────────────
+  addPage();
+  secTitle('4. DISTRIBUICAO POR SECRETARIA');
+  bodyText([
+    'A distribuicao de vagas por secretaria e proporcional ao porte de cada unidade,',
+    'conforme levantamento de referencia de Abril/2026, abrangendo todas as 20 unidades.',
+  ]);
+  const distRows=ESTAG_DIST_BASE.map(d=>{
+    const prop=d.cnt/ESTAG_DIST_TOTAL;
+    const vagas=Math.max(1,Math.round(prop*totalEstag));
+    const custo=vagas*custoMedio;
+    const pct=(prop*100).toFixed(1)+'%';
+    const nome=d.s.replace(/Secretaria Municipal d[aeo] /g,'Sec. Mun. ')
+                  .replace(/Secretaria de /g,'Sec. ')
+                  .replace(/ - [A-Z]+$/,'').substring(0,42);
+    return [nome, d.cnt, pct, vagas, fM(custo)];
+  });
+  // Adjust to match total
+  let sumVagas=distRows.reduce((s,r)=>s+r[3],0);
+  let diff=totalEstag-sumVagas;
+  if(diff!==0) distRows[0][3]+=diff;
+  distRows.forEach(r=>{r[4]=fM(r[3]*custoMedio);});
+  distRows.push(['TOTAL MUNICIPAL','1.010','100%',totalEstag,fM(custoTotal)]);
+
+  doc.autoTable({
+    startY:y,
+    margin:{left:ML,right:W-MR},
+    styles:{fontSize:7.8,cellPadding:2,textColor:[71,85,105]},
+    headStyles:{fillColor:COR_AZUL,textColor:[255,255,255],fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,250,252]},
+    head:[['Secretaria','Ref.','Prop.','Vagas','Custo/mes']],
+    body:distRows,
+    columnStyles:{0:{cellWidth:80},1:{halign:'right'},2:{halign:'right'},3:{halign:'right',fontStyle:'bold'},4:{halign:'right'}},
+    didParseCell:function(d){if(d.row.index===distRows.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[226,232,240];}},
+  });
+  y=doc.lastAutoTable.finalY+8;
+
+  // ── SEC 5: IMPACTO ─────────────────────────────────────────────────────
+  checkY(55);
+  secTitle('5. IMPACTO NA GESTAO DE PESSOAS');
+  doc.autoTable({
+    startY:y,
+    margin:{left:ML,right:W-MR},
+    styles:{fontSize:8.5,cellPadding:2.5,textColor:[71,85,105]},
+    headStyles:{fillColor:COR_VERDE,textColor:[255,255,255],fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,250,252]},
+    head:[['Indicador','Resultado']],
+    body:[
+      ['Total de vagas de estagio geradas', totalEstag+' vagas'],
+      ['Secretarias beneficiadas', '20 unidades (100% das secretarias)'],
+      ['Vagas de nivel medio (formacao basica)', qtdMed+' vagas ('+Math.round(qtdMed/totalEstag*100)+'%)'],
+      ['Vagas de nivel tecnico (formacao especializada)', qtdTec+' vagas ('+Math.round(qtdTec/totalEstag*100)+'%)'],
+      ['Vagas de nivel superior (formacao universitaria)', qtdSup+' vagas ('+Math.round(qtdSup/totalEstag*100)+'%)'],
+      ['Estimativa de jovens beneficiados por ano*', Math.round(totalEstag*0.5)+' a '+totalEstag+' estudantes'],
+    ],
+    columnStyles:{0:{fontStyle:'bold'}},
+  });
+  y=doc.lastAutoTable.finalY+4;
+  doc.setFontSize(7.5);
+  doc.setTextColor(148,163,184);
+  doc.text('* Considerando renovacoes parciais ao longo do ano letivo.',ML,y);
+  y+=8;
+
+  // ── SEC 6: REQUISITOS LEGAIS ───────────────────────────────────────────
+  checkY(65);
+  secTitle('6. REQUISITOS E OBRIGACOES — LEI N 11.788/2008');
+  doc.autoTable({
+    startY:y,
+    margin:{left:ML,right:W-MR},
+    styles:{fontSize:8.5,cellPadding:2.5,textColor:[71,85,105]},
+    headStyles:{fillColor:[100,116,139],textColor:[255,255,255],fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,250,252]},
+    head:[['Requisito','Especificacao','Status']],
+    body:[
+      ['Vinculo com ensino','Estudante matriculado em inst. de ensino (art. 3)','Obrigatorio'],
+      ['Jornada maxima','6h/dia ou 30h/semana (art. 10)','A respeitar'],
+      ['Limite de vagas','Max. 20% do quadro de servidores efetivos (art. 17)','A verificar'],
+      ['Contrato de estagio','Termo de compromisso tripartite — estagiario, escola, orgao (art. 7)','Obrigatorio'],
+      ['Seguro de acidentes','Seguro contra acidentes pessoais (art. 9, IV)','Incluso no custo'],
+      ['Supervisor designado','Servidor efetivo designado por unidade (art. 9, V)','A designar'],
+      ['Prazo maximo','2 anos no mesmo orgao (art. 11)','A controlar'],
+      ['Beneficios','Bolsa-auxilio + transporte ou equivalente (art. 12)','Incluso no custo'],
+      ['Convenio','Acordo com inst. de ensino publica ou privada (art. 8)','A formalizar'],
+    ],
+    columnStyles:{0:{fontStyle:'bold',cellWidth:52},2:{halign:'center',cellWidth:28}},
+  });
+  y=doc.lastAutoTable.finalY+8;
+
+  // ── SEC 7: PLANO DE IMPLEMENTACAO ──────────────────────────────────────
+  checkY(70);
+  secTitle('7. PLANO DE IMPLEMENTACAO');
+  doc.autoTable({
+    startY:y,
+    margin:{left:ML,right:W-MR},
+    styles:{fontSize:8.5,cellPadding:2.5,textColor:[71,85,105]},
+    headStyles:{fillColor:COR_AZUL,textColor:[255,255,255],fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[248,250,252]},
+    head:[['Fase','Acao','Prazo','Responsavel']],
+    body:[
+      ['Fase 1\nPreparacao','Levantamento de parceiros (UNEB, SENAI, escolas tecnicas)\nElaboracao dos convenios institucionais\nDesignacao de supervisores por secretaria','0–60 dias','SEAM + PGM'],
+      ['Fase 2\nSelecao','Publicacao do edital de selecao\nAnalise de curriculos e entrevistas\nFormalizacao dos termos de compromisso','60–90 dias','SEAM + Secretarias'],
+      ['Fase 3\nImplantacao','Inicio das atividades por secretaria\nAcompanhamento mensal de desempenho\nAvaliacao semestral do programa','A partir do 3 mes','Supervisores + SEAM'],
+    ],
+    columnStyles:{0:{fontStyle:'bold',cellWidth:20},2:{cellWidth:22},3:{cellWidth:32}},
+  });
+  y=doc.lastAutoTable.finalY+8;
+
+  // ── SEC 8: CONCLUSAO ───────────────────────────────────────────────────
+  checkY(50);
+  secTitle('8. CONCLUSAO E RECOMENDACAO');
+  bodyText([
+    'O Programa Municipal de Estagio representa uma iniciativa alinhada as melhores praticas de',
+    'gestao publica e ao desenvolvimento local. Ao distribuir '+totalEstag+' vagas entre as 20 secretarias',
+    'municipais, o programa gera oportunidades concretas de insercao profissional para estudantes',
+    'de Paulo Afonso–BA, com custo mensal estimado de '+fM(custoTotal)+' e custo anual de '+fM(custoAnual)+'.',
+    '',
+    'Recomenda-se a aprovacao do Projeto de Lei e o inicio imediato da Fase 1 (preparacao),',
+    'com formalizacao dos convenios necessarios junto as instituicoes de ensino da regiao.',
+  ]);
+
+  // ── RODAPE em todas as paginas ─────────────────────────────────────────
+  const totalPages=doc.getNumberOfPages();
+  for(let i=1;i<=totalPages;i++){
+    doc.setPage(i);
+    doc.setDrawColor(...COR_LINHA);
+    doc.line(ML,285,MR,285);
+    doc.setFontSize(7);
+    doc.setTextColor(148,163,184);
+    doc.text('Prefeitura Municipal de Paulo Afonso — Programa de Estagio — Gerado em '+dataGer,ML,290);
+    doc.text('Pagina '+i+' de '+totalPages,MR,290,{align:'right'});
+  }
+
+  doc.save('Estudo_Impacto_Estagios_PauloAfonso_'+now.getFullYear()+('0'+(now.getMonth()+1)).slice(-2)+'.pdf');
+}
 
 
 // ================================================================
