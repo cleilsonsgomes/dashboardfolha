@@ -512,7 +512,7 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     <div style="padding:14px 18px 6px;font-weight:700;font-size:13px">Top 30 Servidores — Maior Recebimento em Gratificações</div>
     <div style="overflow-x:auto">
       <table>
-        <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Qtd Rubricas</th><th class="r">Total Gratificações</th><th class="r">% da Remu.</th></tr></thead>
+        <thead><tr><th>#</th><th>Servidor</th><th>Secretaria</th><th>Regime</th><th class="r">Qtd Rubricas</th><th class="r">Total Gratificações</th><th class="r">% da Remu.</th><th style="width:24px"></th></tr></thead>
         <tbody id="grat-body"></tbody>
       </table>
     </div>
@@ -1604,22 +1604,119 @@ function renderGrat(){
   if(gratQ) top30=top30.filter(([mi])=>(nomes[+mi]||String(mats[+mi])).toLowerCase().includes(gratQ));
   top30=top30.slice(0,30);
   const tb=document.getElementById('grat-body');
-  if(top30.length===0){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">Nenhum dado para o filtro atual</td></tr>';return;}
+  if(top30.length===0){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px">Nenhum dado para o filtro atual</td></tr>';return;}
   tb.innerHTML=top30.map(([mi,gv],idx)=>{
     const prof=srv_profile[+mi]||[0,0,0];
     const tot=srvTotal[+mi]||1;
     const pct=(gv/tot*100).toFixed(1);
     const rubs=(srvRubs[+mi]||new Set()).size;
-    return `<tr>
+    return `<tr class="grat-row" onclick="gratDrilldown(this,${mi})" style="cursor:pointer" title="Clique para ver detalhes por rubrica">
       <td style="color:#94a3b8">${idx+1}</td>
-      <td>${nomes[+mi]||String(mats[+mi])}</td>
+      <td style="font-weight:600">${nomes[+mi]||String(mats[+mi])}</td>
       <td style="font-size:11px;color:#64748b">${secs[prof[1]]||'-'}</td>
       <td><span class="badge" style="background:#ede9fe;color:#7c3aed">${regimes[prof[2]]||'-'}</span></td>
       <td class="r">${rubs}</td>
       <td class="r" style="font-weight:700;color:#7c3aed">${fR(gv)}</td>
       <td class="r" style="color:#dc2626">${pct}%</td>
+      <td style="text-align:center;color:#94a3b8;font-size:11px;transition:transform .2s" class="grat-chev">▶</td>
     </tr>`;
   }).join('');
+}
+
+function gratDrilldown(trEl, mi){
+  const existId='gd_'+mi;
+  const existing=document.getElementById(existId);
+  // fechar qualquer outro aberto
+  document.querySelectorAll('.grat-drill').forEach(r=>r.remove());
+  document.querySelectorAll('.grat-row-open').forEach(r=>{
+    r.classList.remove('grat-row-open');
+    const ch=r.querySelector('.grat-chev');
+    if(ch){ch.textContent='▶';ch.style.color='#94a3b8';}
+  });
+  if(existing) return; // era o mesmo — só fechou
+  trEl.classList.add('grat-row-open');
+  const chev=trEl.querySelector('.grat-chev');
+  if(chev){chev.textContent='▼';chev.style.color='#7c3aed';}
+
+  const fRd=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const byEiAno={};
+  const anosSet=new Set();
+  let totalGrat=0, totalRemu=0;
+
+  agg4.forEach(r=>{
+    if(r[A4_MI]!==+mi) return;
+    if(FS.anos.size>0&&!FS.anos.has(r[A4_ANO])) return;
+    totalRemu+=r[A4_VAL];
+    if(!EV_GRAT.has(r[A4_EI])) return;
+    if(!byEiAno[r[A4_EI]]) byEiAno[r[A4_EI]]={};
+    byEiAno[r[A4_EI]][r[A4_ANO]]=(byEiAno[r[A4_EI]][r[A4_ANO]]||0)+r[A4_VAL];
+    anosSet.add(r[A4_ANO]);
+    totalGrat+=r[A4_VAL];
+  });
+
+  const anosArr=[...anosSet].sort();
+  const prof=srv_profile[+mi]||[0,0,0];
+  const nome=nomes[+mi]||('Mat. '+mats[+mi]);
+  const pctGrat=totalRemu>0?(totalGrat/totalRemu*100).toFixed(1):'0.0';
+
+  const rubRows=Object.entries(byEiAno).sort((a,b)=>{
+    return Object.values(b[1]).reduce((s,v)=>s+v,0)-Object.values(a[1]).reduce((s,v)=>s+v,0);
+  });
+
+  const anoThs=anosArr.map(a=>`<th class="r" style="min-width:90px">${a}</th>`).join('');
+  const rubHtml=rubRows.map(([ei,byAno])=>{
+    const totRub=Object.values(byAno).reduce((s,v)=>s+v,0);
+    const pctRub=totalGrat>0?(totRub/totalGrat*100).toFixed(1)+'%':'—';
+    const cells=anosArr.map(a=>
+      `<td class="r" style="font-size:11px">${byAno[a]?fRd(byAno[a]):'<span style="color:#cbd5e1">—</span>'}</td>`
+    ).join('');
+    return `<tr>
+      <td style="font-size:11px;max-width:220px">${ev_names[+ei]||String(ei)}</td>
+      ${cells}
+      <td class="r" style="font-weight:700;color:#7c3aed;font-size:11px">${fRd(totRub)}</td>
+      <td class="r" style="color:#94a3b8;font-size:11px">${pctRub}</td>
+    </tr>`;
+  }).join('');
+
+  const totRow=`<tr style="background:#ede9fe">
+    <td style="font-weight:700;font-size:11px">TOTAL GRATIFICAÇÕES</td>
+    ${anosArr.map(a=>{
+      const s=rubRows.reduce((acc,[,byAno])=>acc+(byAno[a]||0),0);
+      return `<td class="r" style="font-weight:700;font-size:11px">${s?fRd(s):'—'}</td>`;
+    }).join('')}
+    <td class="r" style="font-weight:700;color:#7c3aed;font-size:11px">${fRd(totalGrat)}</td>
+    <td class="r" style="font-weight:700;color:#dc2626;font-size:11px">${pctGrat}% da remu.</td>
+  </tr>`;
+
+  const detail=document.createElement('tr');
+  detail.id=existId;
+  detail.className='grat-drill';
+  detail.innerHTML=`<td colspan="8" style="padding:0;border-left:3px solid #7c3aed;background:#faf5ff">
+    <div style="padding:12px 18px 16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <strong style="color:#6d28d9;font-size:13px">${nome}</strong>
+        <span style="font-size:11px;color:#64748b">${secs[prof[1]]||'-'}</span>
+        <span class="badge" style="background:#ede9fe;color:#7c3aed">${regimes[prof[2]]||'-'}</span>
+        <span style="margin-left:auto;font-size:11px;color:#64748b">
+          Remuneração total: <strong>${fRd(totalRemu)}</strong>
+          &nbsp;|&nbsp; Gratificações: <strong style="color:#7c3aed">${fRd(totalGrat)}</strong>
+          &nbsp;(<strong style="color:#dc2626">${pctGrat}%</strong> da remu.)
+        </span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="font-size:11px;min-width:400px">
+          <thead><tr style="background:#ede9fe">
+            <th style="text-align:left;padding:5px 8px;min-width:200px">Rubrica</th>
+            ${anoThs}
+            <th class="r" style="padding:5px 8px">Total</th>
+            <th class="r" style="padding:5px 8px">% das grat.</th>
+          </tr></thead>
+          <tbody>${rubHtml}${totRow}</tbody>
+        </table>
+      </div>
+    </div>
+  </td>`;
+  trEl.insertAdjacentElement('afterend',detail);
 }
 
 
