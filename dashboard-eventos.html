@@ -1570,22 +1570,31 @@ function renderGrat(){
   // Usar agg4 filtrado — agg4: [mi, ano, ei, val]
   const srvGrat = {};
   const srvTotal = {};
+  // helper: checa regime e secretaria via srv_profile
+  const inRegSec=mi=>{
+    const prof=srv_profile[mi];
+    if(!prof) return false;
+    if(FS.ris.size>0&&!FS.ris.has(prof[2])) return false;
+    if(FS.sis.size>0&&!FS.sis.has(prof[1])) return false;
+    return true;
+  };
   agg4.forEach(r=>{
     if(FS.anos.size>0&&!FS.anos.has(r[A4_ANO])) return;
     if(!EV_GRAT.has(r[A4_EI])) return;
-    const mi=r[A4_MI];
-    srvGrat[mi]=(srvGrat[mi]||0)+r[A4_VAL];
+    if(!inRegSec(r[A4_MI])) return;
+    srvGrat[r[A4_MI]]=(srvGrat[r[A4_MI]]||0)+r[A4_VAL];
   });
   agg4.forEach(r=>{
     if(FS.anos.size>0&&!FS.anos.has(r[A4_ANO])) return;
-    const mi=r[A4_MI];
-    srvTotal[mi]=(srvTotal[mi]||0)+r[A4_VAL];
+    if(!inRegSec(r[A4_MI])) return;
+    srvTotal[r[A4_MI]]=(srvTotal[r[A4_MI]]||0)+r[A4_VAL];
   });
   // Count distinct event types per server
   const srvRubs = {};
   agg4.forEach(r=>{
     if(!EV_GRAT.has(r[A4_EI])) return;
     if(FS.anos.size>0&&!FS.anos.has(r[A4_ANO])) return;
+    if(!inRegSec(r[A4_MI])) return;
     if(!srvRubs[r[A4_MI]]) srvRubs[r[A4_MI]]=new Set();
     srvRubs[r[A4_MI]].add(r[A4_EI]);
   });
