@@ -669,9 +669,9 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">&#x1F4D7; Nivel Medio</div>
       <div style="display:grid;gap:10px">
         <div><label style="font-size:10px;color:var(--mu);font-weight:600">Bolsa mensal (R$)</label>
-          <input type="number" id="bolsa-med" value="750" min="0" step="50" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;color:#059669;margin-top:3px"></div>
+          <input type="number" id="bolsa-med" oninput="estagSaveLS()" value="750" min="0" step="50" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;color:#059669;margin-top:3px"></div>
         <div><label style="font-size:10px;color:var(--mu);font-weight:600">Quantidade</label>
-          <input type="number" id="qtd-med" value="80" min="0" step="5" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;margin-top:3px"></div>
+          <input type="number" id="qtd-med" oninput="estagSaveLS()" value="80" min="0" step="5" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;margin-top:3px"></div>
         <div style="font-size:11px;color:var(--mu)">Seguro obrigatorio: R$ 30/estagiario<br>Custo aux. estimado: R$ 150/estagiario</div>
       </div>
     </div>
@@ -679,9 +679,9 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       <div style="font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">&#x1F4D8; Nivel Tecnico</div>
       <div style="display:grid;gap:10px">
         <div><label style="font-size:10px;color:var(--mu);font-weight:600">Bolsa mensal (R$)</label>
-          <input type="number" id="bolsa-tec" value="1100" min="0" step="50" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;color:#2563eb;margin-top:3px"></div>
+          <input type="number" id="bolsa-tec" oninput="estagSaveLS()" value="1100" min="0" step="50" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;color:#2563eb;margin-top:3px"></div>
         <div><label style="font-size:10px;color:var(--mu);font-weight:600">Quantidade</label>
-          <input type="number" id="qtd-tec" value="60" min="0" step="5" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;margin-top:3px"></div>
+          <input type="number" id="qtd-tec" oninput="estagSaveLS()" value="60" min="0" step="5" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;margin-top:3px"></div>
         <div style="font-size:11px;color:var(--mu)">Seguro obrigatorio: R$ 30/estagiario<br>Custo aux. estimado: R$ 150/estagiario</div>
       </div>
     </div>
@@ -689,9 +689,9 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">&#x1F4D9; Nivel Superior</div>
       <div style="display:grid;gap:10px">
         <div><label style="font-size:10px;color:var(--mu);font-weight:600">Bolsa mensal (R$)</label>
-          <input type="number" id="bolsa-sup" value="1500" min="0" step="50" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;color:#7c3aed;margin-top:3px"></div>
+          <input type="number" id="bolsa-sup" oninput="estagSaveLS()" value="1500" min="0" step="50" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;color:#7c3aed;margin-top:3px"></div>
         <div><label style="font-size:10px;color:var(--mu);font-weight:600">Quantidade</label>
-          <input type="number" id="qtd-sup" value="50" min="0" step="5" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;margin-top:3px"></div>
+          <input type="number" id="qtd-sup" oninput="estagSaveLS()" value="50" min="0" step="5" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-weight:700;margin-top:3px"></div>
         <div style="font-size:11px;color:var(--mu)">Seguro obrigatorio: R$ 30/estagiario<br>Custo aux. estimado: R$ 150/estagiario</div>
       </div>
     </div>
@@ -706,12 +706,12 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
       <div>
         <label style="font-size:10px;color:var(--mu);font-weight:600">Bolsa mensal (R$)</label>
-        <input type="number" id="bolsa-adol" value="500" min="0" step="50"
+        <input type="number" id="bolsa-adol" oninput="estagSaveLS()" value="500" min="0" step="50"
           style="width:100%;padding:7px 10px;border:1px solid #f59e0b;border-radius:8px;font-size:14px;font-weight:700;color:#b45309;margin-top:3px">
       </div>
       <div>
         <label style="font-size:10px;color:var(--mu);font-weight:600">Quantidade</label>
-        <input type="number" id="qtd-adol" value="40" min="0" step="5"
+        <input type="number" id="qtd-adol" oninput="estagSaveLS()" value="40" min="0" step="5"
           style="width:100%;padding:7px 10px;border:1px solid #f59e0b;border-radius:8px;font-size:14px;font-weight:700;margin-top:3px">
       </div>
       <div style="font-size:11px;color:var(--mu);grid-column:span 2;align-self:center;background:#fffbeb;border-radius:8px;padding:8px 12px">
@@ -2512,26 +2512,26 @@ function renderAudit(){
 // DISTRIBUICAO ABRIL/2026 — proporcoes por secretaria (base real)
 // ================================================================
 const ESTAG_DIST_BASE = [
-  {s:'Secretaria Municipal da Saude - SMS',                              cnt:286},
-  {s:'Secretaria Municipal de Desenvolvimento Social e Cidadania - SEDES', cnt:189},
-  {s:'Secretaria de Administracao Municipal - SEAM',                     cnt:114},
-  {s:'Secretaria Municipal de Turismo, Industria e Comercio - SETIC',    cnt:61},
-  {s:'Secretaria Municipal de Infraestrutura e Planejamento Urbano - SEINFRA', cnt:56},
-  {s:'Secretaria Municipal de Meio Ambiente e Servicos Publicos - SEMMASP', cnt:45},
-  {s:'Secretaria Municipal de Desenvolvimento Rural - SDR',              cnt:42},
-  {s:'Secretaria Municipal de Cultura e Esporte - SECULTE',              cnt:39},
-  {s:'Secretaria Municipal da Fazenda - SEFAZ',                          cnt:33},
-  {s:'Secretaria Municipal de Educacao - SME',                           cnt:32},
-  {s:'Gabinete do Prefeito',                                             cnt:29},
-  {s:'Procuradoria Geral do Municipio - PGM',                            cnt:29},
-  {s:'Secretaria Municipal de Ordem Publica e Seguranca Cidada - SMOP',  cnt:13},
-  {s:'Secretaria Municipal de Politica Para a Mulher e Cidadania - SMPMC', cnt:10},
-  {s:'Secretaria Municipal de Tecnologia e Inovacao - SMTI',             cnt:10},
-  {s:'Assessoria de Comunicacao',                                        cnt:7},
-  {s:'Secretaria de Planejamento Estrategico - SEPLANE',                 cnt:7},
-  {s:'Controladoria Geral do Municipio - CGM',                           cnt:4},
-  {s:'Gabinete do Vice-Prefeito - GVP',                                  cnt:3},
-  {s:'Ouvidoria',                                                        cnt:1},
+  {s:'Secretaria Municipal da Saude - SMS',                                   cnt:286},
+  {s:'Secretaria Municipal de Desenvolvimento Social e Cidadania - SEDES',    cnt:189},
+  {s:'Secretaria de Administração Municipal - SEAM',                cnt:114},
+  {s:'Secretaria Municipal de Turismo, Indústria e Comércio - SETIC',cnt:61},
+  {s:'Secretaria Municipal de Infraestrutura e Planejamento Urbano - SEINFRA',cnt:56},
+  {s:'Secretaria Municipal de Meio Ambiente e Serviços Públicos - SEMMASP',cnt:45},
+  {s:'Secretaria Municipal de Desenvolvimento Rural - SDR',                   cnt:42},
+  {s:'Secretaria Municipal de Cultura e Esporte - SECULTE',                   cnt:39},
+  {s:'Secretaria Municipal da Fazenda - SEFAZ',                               cnt:33},
+  {s:'Secretaria Municipal de Educação - SME',                      cnt:32},
+  {s:'Gabinete do Prefeito',                                                   cnt:29},
+  {s:'Procuradoria Geral do Município - PGM',                            cnt:29},
+  {s:'Secretaria Municipal de Ordem Pública e Segurança Cidadã-SMOP',cnt:13},
+  {s:'Secretaria Municipal de Política Para a Mulher e Cidadania - SMPMC',cnt:10},
+  {s:'Secretaria Municipal de Tecnologia e Inovação - SMTI',        cnt:10},
+  {s:'Assessoria de Comunicação',                                   cnt:7},
+  {s:'Secretaria de Planejamento Estratégico – SEPLANE',            cnt:7},
+  {s:'Controladoria Geral do Município - CGM',                           cnt:4},
+  {s:'Gabinete do Vice-Prefeito - GVP',                                       cnt:3},
+  {s:'Ouvidoria',                                                              cnt:1},
 ];
 const ESTAG_DIST_TOTAL = ESTAG_DIST_BASE.reduce((s,d)=>s+d.cnt,0); // 1010
 
@@ -2880,6 +2880,44 @@ function gerarRelatorioPDF(){
 }
 
 
+
+// ================================================================
+// PERSISTÊNCIA — localStorage para campos de estagiários
+// ================================================================
+const ESTAG_LS_KEY = 'estag_params_v1';
+
+function estagSaveLS(){
+  const data = {
+    bolsaMed: document.getElementById('bolsa-med')?.value,
+    qtdMed:   document.getElementById('qtd-med')?.value,
+    bolsaTec: document.getElementById('bolsa-tec')?.value,
+    qtdTec:   document.getElementById('qtd-tec')?.value,
+    bolsaSup: document.getElementById('bolsa-sup')?.value,
+    qtdSup:   document.getElementById('qtd-sup')?.value,
+    bolsaAdol:document.getElementById('bolsa-adol')?.value,
+    qtdAdol:  document.getElementById('qtd-adol')?.value,
+  };
+  try{ localStorage.setItem(ESTAG_LS_KEY, JSON.stringify(data)); }catch(e){}
+}
+
+function estagRestoreLS(){
+  try{
+    const data = JSON.parse(localStorage.getItem(ESTAG_LS_KEY)||'{}');
+    if(!data.bolsaMed) return false; // nada salvo
+    ['bolsa-med','qtd-med','bolsa-tec','qtd-tec','bolsa-sup','qtd-sup','bolsa-adol','qtd-adol'].forEach(id=>{
+      const key = id.replace('-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());
+      const map = {'bolsamed':'bolsaMed','qtdmed':'qtdMed','bolsatec':'bolsaTec','qtdtec':'qtdTec',
+                   'bolsasup':'bolsaSup','qtdsup':'qtdSup','bolsaadol':'bolsaAdol','qtdadol':'qtdAdol'};
+      const fieldKey = id.replace('-','');
+      const val = data[map[fieldKey]||fieldKey];
+      const el = document.getElementById(id);
+      if(el && val !== undefined) el.value = val;
+    });
+    return true;
+  }catch(e){ return false; }
+}
+
+
 // ================================================================
 // ESTAGIARIOS — Cenarios e Simulador
 // ================================================================
@@ -2905,10 +2943,12 @@ function estagScenario(key){
     const b=document.getElementById('scen-'+k);
     if(b){b.style.background=k===key.toLowerCase()?'#4f46e5':'';b.style.color=k===key.toLowerCase()?'#fff':'';}
   });
+  estagSaveLS();
   renderEstag();
 }
 
 function renderEstag(){
+  estagRestoreLS();
   const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
   const fM=v=>v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0);
   const [A1a,A1m,A1e,A1s,A1r,A1v,A1c]=[0,1,2,3,4,5,6];
@@ -2988,33 +3028,35 @@ function renderEstag(){
     </div>`;
   }
 
-  // Grafico comparativo
-  const top10=secDist.slice(0,10);
-  const labels=top10.map(d=>d.s.replace(/^Secretaria Municipal d[aeo] /,'').replace(/^Secretaria de /,'').replace(/ [-] \w+$/,'').trim().split(' ').slice(0,3).join(' '));
+  // ── Gráfico 1: Distribuição de custo por secretaria (Top 10) ──────────
+  const top10Base=ESTAG_DIST_BASE.slice(0,10);
+  const shortName=s=>s.replace(/^Secretaria Municipal d[aeo] /,'').replace(/^Secretaria de /,'').replace(/ [-–] \w+$/,'').trim().split(' ').slice(0,3).join(' ');
+  const labelsBase=top10Base.map(d=>shortName(d.s));
+  const custoMedioEstagTot=totalEstag>0?custoTotalMes/totalEstag:(bolsaMed+ESTAG_AUX);
+  const custoMedioAdolTot=qtdAdol>0?custoAdol/qtdAdol:(bolsaAdol+ESTAG_AUX);
   destroyChart('ch-estag-comp');
-  if(top10.length>0){
-    charts['ch-estag-comp']=new Chart(document.getElementById('ch-estag-comp'),{type:'bar',
-      data:{labels,datasets:[
-        {label:'Custo atual (excedentes)',data:top10.map(d=>Math.round(d.custoAtual)),backgroundColor:'#dc262650',borderColor:'#dc2626',borderWidth:1.5,borderRadius:3},
-        {label:'Custo c/ estagiarios',data:top10.map(d=>Math.round(d.custoEstag)),backgroundColor:'#05966950',borderColor:'#059669',borderWidth:1.5,borderRadius:3},
-      ]},
-      options:{plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},
-        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: R$ ${ctx.raw.toLocaleString('pt-BR')}`}}},
-        scales:{x:{ticks:{font:{size:9}}},y:{ticks:{callback:v=>'R$'+(v/1e3).toFixed(0)+'k'}}}}});
-  } else {
-    const ctx=document.getElementById('ch-estag-comp');
-    if(ctx){const c=ctx.getContext('2d');c.clearRect(0,0,ctx.width,ctx.height);c.fillStyle='#94a3b8';c.font='13px sans-serif';c.textAlign='center';c.fillText('Nenhum excesso detectado no periodo filtrado',ctx.width/2,ctx.height/2);}
-  }
+  charts['ch-estag-comp']=new Chart(document.getElementById('ch-estag-comp'),{type:'bar',
+    data:{labels:labelsBase,datasets:[
+      {label:'Custo Estágio',
+       data:top10Base.map(d=>Math.round((d.cnt/ESTAG_DIST_TOTAL)*custoTotalMes)),
+       backgroundColor:'#4f46e550',borderColor:'#4f46e5',borderWidth:1.5,borderRadius:3},
+      {label:'Custo 1º Emprego Adol.',
+       data:top10Base.map(d=>Math.round((d.cnt/ESTAG_DIST_TOTAL)*custoAdol)),
+       backgroundColor:'#f59e0b50',borderColor:'#f59e0b',borderWidth:1.5,borderRadius:3},
+    ]},
+    options:{plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: R$ ${ctx.raw.toLocaleString('pt-BR')}`}}},
+      scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{ticks:{callback:v=>'R$'+(v/1e3).toFixed(1)+'k'}}}}});
 
-  // Grafico nivel
+  // ── Gráfico 2: Distribuição por nível e modalidade ─────────────────────
   destroyChart('ch-estag-nivel');
   charts['ch-estag-nivel']=new Chart(document.getElementById('ch-estag-nivel'),{type:'doughnut',
-    data:{labels:['Nivel Medio','Nivel Tecnico','Nivel Superior'],
-      datasets:[{data:[custoMedMes,custoTecMes,custoSupMes],
-        backgroundColor:['#bbf7d0','#bfdbfe','#ddd6fe'],
-        borderColor:['#059669','#2563eb','#7c3aed'],borderWidth:2}]},
+    data:{labels:['Estágio Médio','Estágio Técnico','Estágio Superior','1º Emprego Adol.'],
+      datasets:[{data:[custoMedMes,custoTecMes,custoSupMes,custoAdol],
+        backgroundColor:['#bbf7d0','#bfdbfe','#ddd6fe','#fde68a'],
+        borderColor:['#059669','#2563eb','#7c3aed','#f59e0b'],borderWidth:2}]},
     options:{plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
-      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw===0?'—':'R$'+(ctx.raw/1e3).toFixed(0)+'k'} (${custoTotalMes>0?Math.round(ctx.parsed/custoTotalMes*100):0}%)`}}}}});
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: R$ ${ctx.raw>0?(ctx.raw/1e3).toFixed(1)+'k':'0'} (${custoTotalGeral>0?Math.round(ctx.raw/custoTotalGeral*100):0}%)`}}}}});
 
   // Tabela
   // Adolescent distribution (proportional, same base)
