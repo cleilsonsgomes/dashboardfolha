@@ -4228,7 +4228,7 @@ function executarPesq(){
     if(!a4[si][ri][mi])a4[si][ri][mi]={};
     if(!a4[si][ri][mi][ano])a4[si][ri][mi][ano]={};
     a4[si][ri][mi][ano][ei]=(a4[si][ri][mi][ano][ei]||0)+val;
-    if(mesFlt===null)srvMatch[mi]=true;
+    srvMatch[mi]=true;
   });
 
   window._pqA1=a1; window._pqA2=a2; window._pqA4=a4;
@@ -4340,7 +4340,13 @@ function pqTog(hdrEl, bodyId){
       return (nomes[a]||mats[a]||'').localeCompare(nomes[b]||mats[b]||'');
     });
     if(!mis.length){
-      body.innerHTML='<div style="padding:8px 12px;color:var(--mu);font-size:12px;font-style:italic">Sem servidores encontrados para este regime.</div>';
+      // Check if agg4 has servers that were excluded due to month filter
+      const a4chk=window._pqA4;
+      const a4mis=(a4chk[si]&&a4chk[si][ri])?Object.keys(a4chk[si][ri]).length:0;
+      const msgExtra=a4mis>0&&window._pqFlt.mesFlt!==null
+        ?` <span style="color:#f59e0b">${a4mis} servidor(es) têm dados anuais — remova o filtro de mês para visualizá-los.</span>`
+        :'';
+      body.innerHTML=`<div style="padding:8px 12px;color:var(--mu);font-size:12px;font-style:italic">Sem dados mensais confirmados para o período filtrado.${msgExtra}</div>`;
       return;
     }
     let h='';
