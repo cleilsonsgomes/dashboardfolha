@@ -4339,39 +4339,39 @@ function pqTog(hdrEl, bodyId){
     const mis=[...allMis].sort((a,b)=>{
       return (nomes[a]||mats[a]||'').localeCompare(nomes[b]||mats[b]||'');
     });
-    if(!mis.length){
-      // Check if agg4 has servers that were excluded due to month filter
-      const a4chk=window._pqA4;
-      const a4mis=(a4chk[si]&&a4chk[si][ri])?Object.keys(a4chk[si][ri]).length:0;
-      const msgExtra=a4mis>0&&window._pqFlt.mesFlt!==null
-        ?` <span style="color:#f59e0b">${a4mis} servidor(es) têm dados anuais — remova o filtro de mês para visualizá-los.</span>`
-        :'';
-      body.innerHTML=`<div style="padding:8px 12px;color:var(--mu);font-size:12px;font-style:italic">Sem dados mensais confirmados para o período filtrado.${msgExtra}</div>`;
+    // Always include agg4 servers (marked as annual when no monthly data)
+    const allMisFull=new Set([...Object.keys(miTree2),...Object.keys((a4[si]&&a4[si][ri])||{})]);
+    const misFull=[...allMisFull].sort((a,b)=>(nomes[a]||mats[a]||'').localeCompare(nomes[b]||mats[b]||''));
+    if(!misFull.length){
+      body.innerHTML='<div style="padding:8px 12px;color:var(--mu);font-size:12px;font-style:italic">Sem servidores encontrados para este regime.</div>';
       return;
     }
     let h='';
-    mis.forEach(mi=>{
+    misFull.forEach(mi=>{
       const hasMonthly=!!miTree2[mi];
+      const hasFlt=window._pqFlt.mesFlt!==null;
       let tot=0;
       if(hasMonthly){
         Object.values(miTree2[mi]).forEach(eiMap=>Object.values(eiMap).forEach(v=>tot+=v));
       } else {
-        Object.values(miTree4[mi]).forEach(eiMap=>Object.values(eiMap).forEach(v=>tot+=v));
+        const anoTree=(a4[si]&&a4[si][ri]&&a4[si][ri][mi])||{};
+        Object.values(anoTree).forEach(eiMap=>Object.values(eiMap).forEach(v=>tot+=v));
       }
       const nm=nomes[mi]||('Mat. '+mats[mi]);
       const bid='pqm'+si+'_'+ri+'_'+mi;
-      const nDetail=hasMonthly?Object.keys(miTree2[mi]).length+' mês(es)':Object.keys(miTree4[mi]).length+' ano(s)';
-      const src4=hasMonthly?'':' data-src4="1"';
+      const nDetail=hasMonthly?Object.keys(miTree2[mi]).length+' mês(es)':Object.keys((a4[si]&&a4[si][ri]&&a4[si][ri][mi])||{}).length+' ano(s)';
+      const annualBadge=(!hasMonthly)?' <span style="background:#fef3c7;color:#92400e;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700">TOTAL ANUAL</span>':'';
+      const src4attr=hasMonthly?'':' data-src4="1"';
       h+=`<div style="border-bottom:1px solid #f1f5f9">
         <div style="display:flex;align-items:center;padding:8px 12px;cursor:pointer;gap:10px" onclick="pqTog(this,'${bid}')">
           <span class="pq-chev" style="color:#94a3b8;font-size:11px;transition:transform .15s">▶</span>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:12.5px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</div>
-            <div style="font-size:10.5px;color:#94a3b8">Mat. ${mats[mi]||mi} · ${nDetail}${hasMonthly?'':' · <span style="color:#f59e0b">totais anuais</span>'}</div>
+            <div style="font-weight:600;font-size:12.5px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}${annualBadge}</div>
+            <div style="font-size:10.5px;color:#94a3b8">Mat. ${mats[mi]||mi} · ${nDetail}</div>
           </div>
-          <span style="font-weight:700;font-size:12.5px;color:#10b981">${fR(tot)}</span>
+          <span style="font-weight:700;font-size:12.5px;color:${hasMonthly?'#10b981':'#f59e0b'}">${fR(tot)}</span>
         </div>
-        <div id="${bid}" class="pq-body" data-lvl="4" data-si="${si}" data-ri="${ri}" data-mi="${mi}"${src4} style="display:none;padding-left:16px"></div>
+        <div id="${bid}" class="pq-body" data-lvl="4" data-si="${si}" data-ri="${ri}" data-mi="${mi}"${src4attr} style="display:none;padding-left:16px"></div>
       </div>`;
     });
     body.innerHTML=h;
