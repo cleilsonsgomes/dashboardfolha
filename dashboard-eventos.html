@@ -4150,14 +4150,33 @@ function executarPesq(){
   const vmax=document.getElementById('pesq-vmax').value!==''?Number(document.getElementById('pesq-vmax').value):null;
 
   const fR=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const mNm=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-  // Build data tree: {si -> {ri -> {mi -> {comp -> {ei -> val}}}}}
-  const tree={};
-  let totalGeral=0, totalLin=0;
-  const srvMatch={};
-  const eiMatch={};
+  // ── Build agg1 tree: {si -> {ri -> total}} (totais completos) ────────────
+  // agg1: [A1_ANO=0, A1_MES=1, A1_EI=2, A1_SI=3, A1_RI=4, A1_VAL=5, A1_CNT=6]
+  const a1={};
+  let totalGeral=0;
+  agg1.forEach(r=>{
+    const ano=r[0], mes=r[1], ei=r[2], si=r[3], ri=r[4], val=r[5];
+    if(EXCLUIR_COMPS.has(ano*100+mes)) return;
+    if(anoFlt!==null&&ano!==anoFlt) return;
+    if(mesFlt!==null&&mes!==mesFlt) return;
+    if(secFlt!==''&&String(si)!==secFlt) return;
+    if(regFlt!==''&&String(ri)!==regFlt) return;
+    if(evFlt){
+      const enm=(ev_names[ei]||'').toLowerCase();
+      if(!enm.includes(evFlt)&&!String(ei).includes(evFlt)) return;
+    }
+    if(vmin!==null&&val<vmin) return;
+    if(vmax!==null&&val>vmax) return;
+    if(!a1[si])a1[si]={};
+    a1[si][ri]=(a1[si][ri]||0)+val;
+    totalGeral+=val;
+  });
 
+  // ── Build agg2 tree: {si -> {ri -> {mi -> {comp -> {ei -> val}}}}} ───────
+  // agg2: [A2_ANO=0, A2_MES=1, A2_MI=2, A2_EI=3, A2_SI=4, A2_RI=5, A2_VAL=6]
+  const a2={};
+  const srvMatch={}, eiMatch={};
   agg2.forEach(r=>{
     const ano=r[A2_ANO], mes=r[A2_MES], mi=r[A2_MI], ei=r[A2_EI], val=r[A2_VAL];
     if(EXCLUIR_COMPS.has(ano*100+mes)) return;
@@ -4165,12 +4184,10 @@ function executarPesq(){
     if(mesFlt!==null&&mes!==mesFlt) return;
     if(vmin!==null&&val<vmin) return;
     if(vmax!==null&&val>vmax) return;
-
     const prof=srv_profile[mi]||[0,0,0];
     const si=prof[1], ri=prof[2];
     if(secFlt!==''&&String(si)!==secFlt) return;
     if(regFlt!==''&&String(ri)!==regFlt) return;
-
     if(nomeFlt){
       const nm=(nomes[mi]||'').toLowerCase();
       const mt=(mats[mi]||'').toLowerCase();
@@ -4178,34 +4195,34 @@ function executarPesq(){
     }
     if(evFlt){
       const enm=(ev_names[ei]||'').toLowerCase();
-      const ecd=String(ei).toLowerCase();
-      if(!enm.includes(evFlt)&&!ecd.includes(evFlt)) return;
+      if(!enm.includes(evFlt)&&!String(ei).includes(evFlt)) return;
     }
-
-    if(!tree[si]) tree[si]={};
-    if(!tree[si][ri]) tree[si][ri]={};
-    if(!tree[si][ri][mi]) tree[si][ri][mi]={};
+    if(!a2[si])a2[si]={};
+    if(!a2[si][ri])a2[si][ri]={};
+    if(!a2[si][ri][mi])a2[si][ri][mi]={};
     const comp=ano*100+mes;
-    if(!tree[si][ri][mi][comp]) tree[si][ri][mi][comp]={};
-    tree[si][ri][mi][comp][ei]=(tree[si][ri][mi][comp][ei]||0)+val;
-    totalGeral+=val; totalLin++;
+    if(!a2[si][ri][mi][comp])a2[si][ri][mi][comp]={};
+    a2[si][ri][mi][comp][ei]=(a2[si][ri][mi][comp][ei]||0)+val;
     srvMatch[mi]=true; eiMatch[ei]=true;
   });
 
-  window._pqTree=tree;
+  window._pqA1=a1; window._pqA2=a2;
+  window._pqFlt={nomeFlt,secFlt,regFlt,evFlt,anoFlt,mesFlt,vmin,vmax};
 
-  const nSec=Object.keys(tree).length;
+  // ── KPIs (usando agg1 para total, agg2 para contagem de servidores) ──────
+  const nSec=Object.keys(a1).length;
   const nSrv=Object.keys(srvMatch).length;
   const nEv=Object.keys(eiMatch).length;
+  const totalLin=agg2.filter(r=>{
+    const ano=r[A2_ANO],mes=r[A2_MES]; return !EXCLUIR_COMPS.has(ano*100+mes)&&(anoFlt===null||ano===anoFlt)&&(mesFlt===null||mes===mesFlt);
+  }).length;
 
-  // KPIs
   const kEl=document.getElementById('pesq-kpis');
   const kpis=[
     {label:'Total encontrado',val:fR(totalGeral),color:'#0ea5e9'},
     {label:'Secretarias',val:nSec,color:'#8b5cf6'},
-    {label:'Servidores',val:nSrv,color:'#10b981'},
+    {label:'Servidores c/ detalhe',val:nSrv.toLocaleString('pt-BR'),color:'#10b981'},
     {label:'Rubricas distintas',val:nEv,color:'#f59e0b'},
-    {label:'Registros',val:totalLin.toLocaleString('pt-BR'),color:'#64748b'},
   ];
   kEl.style.display='';
   kEl.querySelector('div').innerHTML=kpis.map(k=>
@@ -4221,37 +4238,26 @@ function executarPesq(){
     return;
   }
 
-  // Level 1: Secretarias
-  const rows=Object.keys(tree).sort((a,b)=>(secs[a]||'').localeCompare(secs[b]||''));
-  let html='<div id="pq-acc">';
+  // ── Level 1: Secretarias (totais de agg1) ────────────────────────────────
+  const rows=Object.keys(a1).sort((a,b)=>(secs[a]||'').localeCompare(secs[b]||''));
+  let h='<div id="pq-acc">';
   rows.forEach(si=>{
-    const tot=pqSecTotal(tree[si]);
+    const tot=Object.values(a1[si]).reduce((s,v)=>s+v,0);
     const nm=(secs[si]||('Secretaria '+si)).replace(/^\d+ - /,'');
     const bid='pqs'+si;
-    html+=`<div class="pq-row" style="border-bottom:1px solid #e2e8f0">
+    const nRi=Object.keys(a1[si]).length;
+    h+=`<div class="pq-row" style="border-bottom:1px solid #e2e8f0">
       <div style="display:flex;align-items:center;padding:10px 14px;cursor:pointer;background:#f8fafc;gap:10px" onclick="pqTog(this,'${bid}')">
         <span class="pq-chev" style="color:#94a3b8;font-size:11px;transition:transform .15s">▶</span>
         <span style="font-weight:700;font-size:13px;color:#1e293b;flex:1">${nm}</span>
-        <span style="font-size:12px;color:#64748b">${Object.keys(tree[si]).reduce((s,ri)=>s+Object.keys(tree[si][ri]).length,0)} serv.</span>
+        <span style="font-size:12px;color:#64748b">${nRi} regime(s)</span>
         <span style="font-weight:700;font-size:13px;color:#0ea5e9">${fR(tot)}</span>
       </div>
       <div id="${bid}" class="pq-body" data-lvl="2" data-si="${si}" style="display:none;padding-left:16px"></div>
     </div>`;
   });
-  html+='</div>';
-  resEl.innerHTML=html;
-}
-
-function pqSecTotal(riTree){
-  let t=0;
-  Object.values(riTree).forEach(miTree=>
-    Object.values(miTree).forEach(compTree=>
-      Object.values(compTree).forEach(eiMap=>
-        Object.values(eiMap).forEach(v=>t+=v)
-      )
-    )
-  );
-  return t;
+  h+='</div>';
+  resEl.innerHTML=h;
 }
 
 function pqTog(hdrEl, bodyId){
@@ -4272,24 +4278,24 @@ function pqTog(hdrEl, bodyId){
   const fR=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const mNm=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const lvl=Number(body.dataset.lvl);
-  const tree=window._pqTree;
+  const a1=window._pqA1, a2=window._pqA2;
 
   if(lvl===2){
-    // Regimes dentro da secretaria
+    // Regimes dentro da secretaria (agg1)
     const si=body.dataset.si;
-    const riTree=tree[si];
-    const ris=Object.keys(riTree).sort((a,b)=>(regimes[a]||'').localeCompare(regimes[b]||''));
+    const riMap=a1[si]||{};
+    const ris=Object.keys(riMap).sort((a,b)=>(regimes[a]||'').localeCompare(regimes[b]||''));
     let h='';
     ris.forEach(ri=>{
-      const tot=pqSecTotal({x:riTree[ri]});
+      const tot=riMap[ri]||0;
       const nm=(regimes[ri]||('Regime '+ri)).replace(/^\d+ - /,'');
       const bid='pqr'+si+'_'+ri;
-      const nSrv=Object.keys(riTree[ri]).length;
+      const nSrv=a2[si]&&a2[si][ri]?Object.keys(a2[si][ri]).length:0;
       h+=`<div style="border-bottom:1px solid #f1f5f9">
         <div style="display:flex;align-items:center;padding:8px 12px;cursor:pointer;background:#fafafa;gap:10px" onclick="pqTog(this,'${bid}')">
           <span class="pq-chev" style="color:#94a3b8;font-size:11px;transition:transform .15s">▶</span>
           <span style="font-weight:600;font-size:12.5px;color:#334155;flex:1">${nm}</span>
-          <span style="font-size:11.5px;color:#64748b">${nSrv} serv.</span>
+          <span style="font-size:11.5px;color:#64748b">${nSrv} serv. c/ detalhe</span>
           <span style="font-weight:700;font-size:12.5px;color:#8b5cf6">${fR(tot)}</span>
         </div>
         <div id="${bid}" class="pq-body" data-lvl="3" data-si="${si}" data-ri="${ri}" style="display:none;padding-left:16px"></div>
@@ -4298,14 +4304,16 @@ function pqTog(hdrEl, bodyId){
     body.innerHTML=h||'<div style="padding:8px 12px;color:var(--mu);font-size:12px">Sem dados</div>';
 
   } else if(lvl===3){
-    // Servidores
+    // Servidores (agg2)
     const si=body.dataset.si, ri=body.dataset.ri;
-    const miTree=tree[si][ri];
+    const miTree=(a2[si]&&a2[si][ri])||{};
     const mis=Object.keys(miTree).sort((a,b)=>{
-      const na=nomes[a]||mats[a]||'';
-      const nb=nomes[b]||mats[b]||'';
-      return na.localeCompare(nb);
+      return (nomes[a]||mats[a]||'').localeCompare(nomes[b]||mats[b]||'');
     });
+    if(!mis.length){
+      body.innerHTML='<div style="padding:8px 12px;color:var(--mu);font-size:12px;font-style:italic">Detalhe individual não disponível para este regime.</div>';
+      return;
+    }
     let h='';
     mis.forEach(mi=>{
       let tot=0;
@@ -4325,12 +4333,12 @@ function pqTog(hdrEl, bodyId){
         <div id="${bid}" class="pq-body" data-lvl="4" data-si="${si}" data-ri="${ri}" data-mi="${mi}" style="display:none;padding-left:16px"></div>
       </div>`;
     });
-    body.innerHTML=h||'<div style="padding:8px 12px;color:var(--mu);font-size:12px">Sem dados</div>';
+    body.innerHTML=h;
 
   } else if(lvl===4){
-    // Competências (mês)
+    // Competências (mês) - agg2
     const si=body.dataset.si, ri=body.dataset.ri, mi=body.dataset.mi;
-    const compTree=tree[si][ri][mi];
+    const compTree=(a2[si]&&a2[si][ri]&&a2[si][ri][mi])||{};
     const comps=Object.keys(compTree).sort();
     let h='<table style="width:100%;border-collapse:collapse;font-size:12px">';
     h+='<tr style="background:#f1f5f9"><th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Competência</th><th style="padding:6px 10px;text-align:right;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Total</th><th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Rubricas</th><th style="padding:6px 4px;text-align:center;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Detalhe</th></tr>';
@@ -4353,7 +4361,6 @@ function pqTog(hdrEl, bodyId){
     });
     h+='</table>';
     body.innerHTML=h;
-
   }
 }
 
@@ -4367,11 +4374,10 @@ function pqTogComp(btnEl, rowId){
   if(row.dataset.rendered) return;
   row.dataset.rendered='1';
   const fR=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  // Decode IDs from rowId: pqc{si}_{ri}_{mi}_{comp}
   const parts=rowId.slice(3).split('_');
   const si=parts[0], ri=parts[1], mi=parts[2], comp=parts[3];
-  const tree=window._pqTree;
-  const eiMap=tree[si][ri][mi][comp];
+  const a2=window._pqA2;
+  const eiMap=(a2[si]&&a2[si][ri]&&a2[si][ri][mi]&&a2[si][ri][mi][comp])||{};
   const CAT_NM=['Base Salarial','Gratificações','Extras/Plantões','Férias','Outros'];
   const eis=Object.keys(eiMap).sort((a,b)=>eiMap[b]-eiMap[a]);
   let h='<table style="width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:6px">';
