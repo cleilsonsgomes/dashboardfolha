@@ -4102,7 +4102,7 @@ function renderPesq(){
   // Populate selects on first render
   const secSel=document.getElementById('pesq-sec');
   if(secSel&&secSel.options.length===1){
-    [...new Set(srv_profile.map(p=>p[0]))].sort((a,b)=>{
+    [...new Set(srv_profile.map(p=>p[1]))].sort((a,b)=>{
       return (secs[a]||'').localeCompare(secs[b]||'');
     }).forEach(si=>{
       const o=document.createElement('option');
@@ -4166,7 +4166,7 @@ function executarPesq(){
     if(vmax!==null&&val>vmax) return;
 
     const prof=srv_profile[mi]||[0,0,0];
-    const si=prof[0], ri=prof[2];
+    const si=prof[1], ri=prof[2];
     if(secFlt!==''&&String(si)!==secFlt) return;
     if(regFlt!==''&&String(ri)!==regFlt) return;
 
@@ -4176,7 +4176,7 @@ function executarPesq(){
       if(!nm.includes(nomeFlt)&&!mt.includes(nomeFlt)) return;
     }
     if(evFlt){
-      const enm=(evts[ei]||'').toLowerCase();
+      const enm=(ev_names[ei]||'').toLowerCase();
       const ecd=String(ei).toLowerCase();
       if(!enm.includes(evFlt)&&!ecd.includes(evFlt)) return;
     }
@@ -4376,7 +4376,7 @@ function pqTogComp(btnEl, rowId){
   let h='<table style="width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:6px">';
   h+='<tr style="background:#fef3c7"><th style="padding:5px 10px;text-align:left;color:var(--mu);font-size:9.5px;text-transform:uppercase">Rubrica</th><th style="padding:5px 10px;text-align:left;color:var(--mu);font-size:9.5px;text-transform:uppercase">Categoria</th><th style="padding:5px 10px;text-align:right;color:var(--mu);font-size:9.5px;text-transform:uppercase">Valor</th></tr>';
   eis.forEach(ei=>{
-    const nm=evts[ei]||('Evento '+ei);
+    const nm=ev_names[ei]||('Evento '+ei);
     const cat=CAT_NM[evCat(Number(ei))]||'Outros';
     h+=`<tr>
       <td style="padding:5px 10px;border-bottom:1px solid #fef9c3;color:#334155">${nm}</td>
