@@ -4178,14 +4178,12 @@ function executarPesq(){
   const a2={};
   const srvMatch={}, eiMatch={};
   agg2.forEach(r=>{
-    const ano=r[A2_ANO], mes=r[A2_MES], mi=r[A2_MI], ei=r[A2_EI], val=r[A2_VAL];
+    const ano=r[A2_ANO], mes=r[A2_MES], mi=r[A2_MI], ei=r[A2_EI], si=r[A2_SI], ri=r[A2_RI], val=r[A2_VAL];
     if(EXCLUIR_COMPS.has(ano*100+mes)) return;
     if(anoFlt!==null&&ano!==anoFlt) return;
     if(mesFlt!==null&&mes!==mesFlt) return;
     if(vmin!==null&&val<vmin) return;
     if(vmax!==null&&val>vmax) return;
-    const prof=srv_profile[mi]||[0,0,0];
-    const si=prof[1], ri=prof[2];
     if(secFlt!==''&&String(si)!==secFlt) return;
     if(regFlt!==''&&String(ri)!==regFlt) return;
     if(nomeFlt){
@@ -4206,7 +4204,33 @@ function executarPesq(){
     srvMatch[mi]=true; eiMatch[ei]=true;
   });
 
-  window._pqA1=a1; window._pqA2=a2;
+  // ── Build agg4 tree: {si -> {ri -> {mi -> {ano -> {ei -> val}}}}} ──────────
+  // agg4: [A4_MI=0, A4_ANO=1, A4_EI=2, A4_VAL=3]
+  const a4={};
+  agg4.forEach(r=>{
+    const mi=r[A4_MI], ano=r[A4_ANO], ei=r[A4_EI], val=r[A4_VAL];
+    if(anoFlt!==null&&ano!==anoFlt) return;
+    const prof=srv_profile[mi]||[0,0,0];
+    const si=prof[1], ri=prof[2];
+    if(secFlt!==''&&String(si)!==secFlt) return;
+    if(regFlt!==''&&String(ri)!==regFlt) return;
+    if(nomeFlt){
+      const nm=(nomes[mi]||'').toLowerCase();
+      const mt=(mats[mi]||'').toLowerCase();
+      if(!nm.includes(nomeFlt)&&!mt.includes(nomeFlt)) return;
+    }
+    if(evFlt){
+      const enm=(ev_names[ei]||'').toLowerCase();
+      if(!enm.includes(evFlt)&&!String(ei).includes(evFlt)) return;
+    }
+    if(!a4[si])a4[si]={};
+    if(!a4[si][ri])a4[si][ri]={};
+    if(!a4[si][ri][mi])a4[si][ri][mi]={};
+    if(!a4[si][ri][mi][ano])a4[si][ri][mi][ano]={};
+    a4[si][ri][mi][ano][ei]=(a4[si][ri][mi][ano][ei]||0)+val;
+  });
+
+  window._pqA1=a1; window._pqA2=a2; window._pqA4=a4;
   window._pqFlt={nomeFlt,secFlt,regFlt,evFlt,anoFlt,mesFlt,vmin,vmax};
 
   // ── KPIs (usando agg1 para total, agg2 para contagem de servidores) ──────
@@ -4304,63 +4328,100 @@ function pqTog(hdrEl, bodyId){
     body.innerHTML=h||'<div style="padding:8px 12px;color:var(--mu);font-size:12px">Sem dados</div>';
 
   } else if(lvl===3){
-    // Servidores (agg2)
+    // Servidores: agg2 com detalhe mensal, agg4 como fallback (anual)
     const si=body.dataset.si, ri=body.dataset.ri;
-    const miTree=(a2[si]&&a2[si][ri])||{};
-    const mis=Object.keys(miTree).sort((a,b)=>{
+    const a4=window._pqA4;
+    const miTree2=(a2[si]&&a2[si][ri])||{};
+    const miTree4=(a4[si]&&a4[si][ri])||{};
+    // Merge keys from both sources
+    const allMis=new Set([...Object.keys(miTree2),...Object.keys(miTree4)]);
+    const mis=[...allMis].sort((a,b)=>{
       return (nomes[a]||mats[a]||'').localeCompare(nomes[b]||mats[b]||'');
     });
     if(!mis.length){
-      body.innerHTML='<div style="padding:8px 12px;color:var(--mu);font-size:12px;font-style:italic">Detalhe individual não disponível para este regime.</div>';
+      body.innerHTML='<div style="padding:8px 12px;color:var(--mu);font-size:12px;font-style:italic">Sem servidores encontrados para este regime.</div>';
       return;
     }
     let h='';
     mis.forEach(mi=>{
+      const hasMonthly=!!miTree2[mi];
       let tot=0;
-      Object.values(miTree[mi]).forEach(eiMap=>Object.values(eiMap).forEach(v=>tot+=v));
+      if(hasMonthly){
+        Object.values(miTree2[mi]).forEach(eiMap=>Object.values(eiMap).forEach(v=>tot+=v));
+      } else {
+        Object.values(miTree4[mi]).forEach(eiMap=>Object.values(eiMap).forEach(v=>tot+=v));
+      }
       const nm=nomes[mi]||('Mat. '+mats[mi]);
       const bid='pqm'+si+'_'+ri+'_'+mi;
-      const nComp=Object.keys(miTree[mi]).length;
+      const nDetail=hasMonthly?Object.keys(miTree2[mi]).length+' mês(es)':Object.keys(miTree4[mi]).length+' ano(s)';
+      const src4=hasMonthly?'':' data-src4="1"';
       h+=`<div style="border-bottom:1px solid #f1f5f9">
         <div style="display:flex;align-items:center;padding:8px 12px;cursor:pointer;gap:10px" onclick="pqTog(this,'${bid}')">
           <span class="pq-chev" style="color:#94a3b8;font-size:11px;transition:transform .15s">▶</span>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:12.5px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</div>
-            <div style="font-size:10.5px;color:#94a3b8">Mat. ${mats[mi]||mi} · ${nComp} mês(es)</div>
+            <div style="font-size:10.5px;color:#94a3b8">Mat. ${mats[mi]||mi} · ${nDetail}${hasMonthly?'':' · <span style="color:#f59e0b">totais anuais</span>'}</div>
           </div>
           <span style="font-weight:700;font-size:12.5px;color:#10b981">${fR(tot)}</span>
         </div>
-        <div id="${bid}" class="pq-body" data-lvl="4" data-si="${si}" data-ri="${ri}" data-mi="${mi}" style="display:none;padding-left:16px"></div>
+        <div id="${bid}" class="pq-body" data-lvl="4" data-si="${si}" data-ri="${ri}" data-mi="${mi}"${src4} style="display:none;padding-left:16px"></div>
       </div>`;
     });
     body.innerHTML=h;
 
   } else if(lvl===4){
-    // Competências (mês) - agg2
     const si=body.dataset.si, ri=body.dataset.ri, mi=body.dataset.mi;
-    const compTree=(a2[si]&&a2[si][ri]&&a2[si][ri][mi])||{};
-    const comps=Object.keys(compTree).sort();
-    let h='<table style="width:100%;border-collapse:collapse;font-size:12px">';
-    h+='<tr style="background:#f1f5f9"><th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Competência</th><th style="padding:6px 10px;text-align:right;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Total</th><th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Rubricas</th><th style="padding:6px 4px;text-align:center;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Detalhe</th></tr>';
-    comps.forEach(comp=>{
-      const eiMap=compTree[comp];
-      const tot=Object.values(eiMap).reduce((s,v)=>s+v,0);
-      const nEi=Object.keys(eiMap).length;
-      const ano=Math.floor(comp/100), mes=comp%100;
-      const compNm=mNm[mes]+'/'+ano;
-      const bid='pqc'+si+'_'+ri+'_'+mi+'_'+comp;
-      h+=`<tr>
-        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#334155">${compNm}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700;color:#10b981">${fR(tot)}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:center;color:#64748b">${nEi}</td>
-        <td style="padding:7px 4px;border-bottom:1px solid #f1f5f9;text-align:center">
-          <button style="font-size:10px;background:#e0f2fe;color:#0369a1;border:none;border-radius:4px;padding:3px 8px;cursor:pointer" onclick="pqTogComp(this,'${bid}')">▶ ver</button>
-        </td>
-      </tr>
-      <tr id="${bid}" style="display:none"><td colspan="4" style="padding:0 0 0 10px"></td></tr>`;
-    });
-    h+='</table>';
-    body.innerHTML=h;
+    const isSrc4=body.dataset.src4==='1';
+    if(isSrc4){
+      // Fallback: agg4 — annual totals
+      const a4=window._pqA4;
+      const anoTree=(a4[si]&&a4[si][ri]&&a4[si][ri][mi])||{};
+      const anos=Object.keys(anoTree).sort();
+      let h='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+      h+='<tr style="background:#f1f5f9"><th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Ano</th><th style="padding:6px 10px;text-align:right;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Total Anual</th><th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Rubricas</th><th style="padding:6px 4px;text-align:center;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Detalhe</th></tr>';
+      anos.forEach(ano=>{
+        const eiMap=anoTree[ano];
+        const tot=Object.values(eiMap).reduce((s,v)=>s+v,0);
+        const nEi=Object.keys(eiMap).length;
+        const bid='pqc'+si+'_'+ri+'_'+mi+'_a'+ano;
+        h+=`<tr>
+          <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#334155">${ano}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700;color:#10b981">${fR(tot)}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:center;color:#64748b">${nEi}</td>
+          <td style="padding:7px 4px;border-bottom:1px solid #f1f5f9;text-align:center">
+            <button style="font-size:10px;background:#e0f2fe;color:#0369a1;border:none;border-radius:4px;padding:3px 8px;cursor:pointer" onclick="pqTogComp(this,'${bid}')">▶ ver</button>
+          </td>
+        </tr>
+        <tr id="${bid}" data-src4="1" data-si="${si}" data-ri="${ri}" data-mi="${mi}" data-ano="${ano}" style="display:none"><td colspan="4" style="padding:0 0 0 10px"></td></tr>`;
+      });
+      h+='</table>';
+      body.innerHTML=h;
+    } else {
+      // agg2 — monthly detail
+      const compTree=(a2[si]&&a2[si][ri]&&a2[si][ri][mi])||{};
+      const comps=Object.keys(compTree).sort();
+      let h='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+      h+='<tr style="background:#f1f5f9"><th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Competência</th><th style="padding:6px 10px;text-align:right;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Total</th><th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Rubricas</th><th style="padding:6px 4px;text-align:center;font-weight:700;color:var(--mu);font-size:10px;text-transform:uppercase">Detalhe</th></tr>';
+      comps.forEach(comp=>{
+        const eiMap=compTree[comp];
+        const tot=Object.values(eiMap).reduce((s,v)=>s+v,0);
+        const nEi=Object.keys(eiMap).length;
+        const ano=Math.floor(comp/100), mes=comp%100;
+        const compNm=mNm[mes]+'/'+ano;
+        const bid='pqc'+si+'_'+ri+'_'+mi+'_'+comp;
+        h+=`<tr>
+          <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#334155">${compNm}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700;color:#10b981">${fR(tot)}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:center;color:#64748b">${nEi}</td>
+          <td style="padding:7px 4px;border-bottom:1px solid #f1f5f9;text-align:center">
+            <button style="font-size:10px;background:#e0f2fe;color:#0369a1;border:none;border-radius:4px;padding:3px 8px;cursor:pointer" onclick="pqTogComp(this,'${bid}')">▶ ver</button>
+          </td>
+        </tr>
+        <tr id="${bid}" style="display:none"><td colspan="4" style="padding:0 0 0 10px"></td></tr>`;
+      });
+      h+='</table>';
+      body.innerHTML=h;
+    }
   }
 }
 
@@ -4374,10 +4435,18 @@ function pqTogComp(btnEl, rowId){
   if(row.dataset.rendered) return;
   row.dataset.rendered='1';
   const fR=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const parts=rowId.slice(3).split('_');
-  const si=parts[0], ri=parts[1], mi=parts[2], comp=parts[3];
-  const a2=window._pqA2;
-  const eiMap=(a2[si]&&a2[si][ri]&&a2[si][ri][mi]&&a2[si][ri][mi][comp])||{};
+  let eiMap={};
+  if(row.dataset.src4==='1'){
+    // agg4 annual
+    const a4=window._pqA4;
+    const si=row.dataset.si,ri=row.dataset.ri,mi=row.dataset.mi,ano=row.dataset.ano;
+    eiMap=(a4[si]&&a4[si][ri]&&a4[si][ri][mi]&&a4[si][ri][mi][ano])||{};
+  } else {
+    const parts=rowId.slice(3).split('_');
+    const si=parts[0], ri=parts[1], mi=parts[2], comp=parts[3];
+    const a2=window._pqA2;
+    eiMap=(a2[si]&&a2[si][ri]&&a2[si][ri][mi]&&a2[si][ri][mi][comp])||{};
+  }
   const CAT_NM=['Base Salarial','Gratificações','Extras/Plantões','Férias','Outros'];
   const eis=Object.keys(eiMap).sort((a,b)=>eiMap[b]-eiMap[a]);
   let h='<table style="width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:6px">';
