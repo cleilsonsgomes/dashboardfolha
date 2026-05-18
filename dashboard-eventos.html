@@ -4228,7 +4228,7 @@ function executarPesq(){
     if(!a4[si][ri][mi])a4[si][ri][mi]={};
     if(!a4[si][ri][mi][ano])a4[si][ri][mi][ano]={};
     a4[si][ri][mi][ano][ei]=(a4[si][ri][mi][ano][ei]||0)+val;
-    srvMatch[mi]=true;
+    if(mesFlt===null)srvMatch[mi]=true;
   });
 
   window._pqA1=a1; window._pqA2=a2; window._pqA4=a4;
@@ -4333,8 +4333,8 @@ function pqTog(hdrEl, bodyId){
     const si=body.dataset.si, ri=body.dataset.ri;
     const a4=window._pqA4;
     const miTree2=(a2[si]&&a2[si][ri])||{};
-    const miTree4=(a4[si]&&a4[si][ri])||{};
-    // Merge keys from both sources
+    const miTree4=(window._pqFlt.mesFlt===null)?(a4[si]&&a4[si][ri])||{}:{};
+    // Merge: agg4 only when no month filter (agg4 has no month granularity)
     const allMis=new Set([...Object.keys(miTree2),...Object.keys(miTree4)]);
     const mis=[...allMis].sort((a,b)=>{
       return (nomes[a]||mats[a]||'').localeCompare(nomes[b]||mats[b]||'');
