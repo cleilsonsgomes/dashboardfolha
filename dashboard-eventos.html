@@ -961,6 +961,7 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
           </div>
         </div>
         <button onclick="simularImpacto()" style="background:var(--ac);color:#fff;border:none;border-radius:6px;padding:8px 20px;cursor:pointer;font-size:13px;font-weight:700;height:34px">▶ Simular</button>
+        <span id="imp-last-badge" style="display:none;font-size:10px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:12px;padding:3px 8px;white-space:nowrap">↺ último cálculo restaurado</span>
         <button onclick="impReset()" style="background:#e2e8f0;color:#475569;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:12px;height:34px">↺ Reset</button>
       </div>
     </div>
@@ -4574,6 +4575,37 @@ function renderImpacto(){
   }
   impPreencherRCL(Number(sel.value));
   impAtualizarGrid(Number(sel.value));
+
+  // Restaurar último estado salvo
+  try{
+    const saved=localStorage.getItem('imp_last_state');
+    if(saved){
+      const state=JSON.parse(saved);
+      if(state.comp&&sel){
+        sel.value=state.comp;
+        impPreencherRCL(Number(state.comp));
+        impAtualizarGrid(Number(state.comp));
+      }
+      if(state.rcl){
+        const h=document.getElementById('imp-rcl');
+        const d=document.getElementById('imp-rcl-display');
+        if(h)h.value=state.rcl;
+        if(d&&Number(state.rcl)>0)d.value='R$ '+Number(state.rcl).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+      }
+      if(state.pcts){
+        // pcts applied after grid is built — defer to next tick
+        setTimeout(()=>{
+          Object.entries(state.pcts).forEach(([ri,v])=>{
+            const el=document.getElementById('imp-pct-'+ri);if(el)el.value=v;
+          });
+          // Show badge if any pct != 0
+          const hasAny=Object.values(state.pcts).some(v=>Number(v)!==0);
+          const badge=document.getElementById('imp-last-badge');
+          if(badge)badge.style.display=hasAny?'':'none';
+        },50);
+      }
+    }
+  }catch(e){}
 }
 
 function impAtualizarGrid(comp){
@@ -4667,6 +4699,13 @@ function simularImpacto(){
   const fR=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const fM=v=>(v>=0?'+':'')+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const fP=v=>(v>=0?'+':'')+v.toFixed(2)+'%';
+
+  // Salvar estado no localStorage
+  (()=>{
+    const state={comp:document.getElementById('imp-comp').value,rcl:document.getElementById('imp-rcl').value,pcts:{}};
+    regimes.forEach((_,ri)=>{const el=document.getElementById('imp-pct-'+ri);if(el)state.pcts[ri]=el.value;});
+    try{localStorage.setItem('imp_last_state',JSON.stringify(state));}catch(e){}
+  })();
 
   const comp=Number(document.getElementById('imp-comp').value);
   const rcl=Number(document.getElementById('imp-rcl').value)||43232757.20;
