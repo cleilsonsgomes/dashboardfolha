@@ -4820,7 +4820,17 @@ function simularImpacto(){
   alertaEl.style.display='';
 
   // ── Tabela Regime ─────────────────────────────────────────────────────────
-  const sortedRis=Object.keys(byRi).sort((a,b)=>byRi[b]-byRi[a]);
+  // Apenas regimes com % informado (diferente de zero) para gráfico e tabela
+  const sortedRis=Object.keys(byRi)
+    .filter(ri=>( pctByRi[ri]||0)!==0)
+    .sort((a,b)=>byRi[b]-byRi[a]);
+  if(!sortedRis.length){
+    document.getElementById('imp-tbl-reg').innerHTML='<div style="padding:16px;text-align:center;color:var(--mu);font-size:13px">Informe ao menos um % diferente de zero para ver a tabela de impacto por regime.</div>';
+    document.getElementById('imp-tbl-sec').innerHTML='';
+    document.getElementById('imp-result').style.display='';
+    return;
+  }
+
   let tReg=`<table style="width:100%;border-collapse:collapse;font-size:12px">
     <tr style="background:#f1f5f9">
       <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Regime</th>
