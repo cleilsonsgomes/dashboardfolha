@@ -947,8 +947,10 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
         <select class="sf" id="imp-comp" style="min-width:140px"></select>
       </div>
       <div>
-        <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;display:block;margin-bottom:4px">RCL Mensal Estimada (R$)</label>
-        <input class="sf" id="imp-rcl" type="number" value="35000000" style="width:160px" placeholder="Ex: 35000000">
+        <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;display:block;margin-bottom:4px">RCL do Mês (R$)</label>
+        <input class="sf" id="imp-rcl-display" type="text" style="width:180px" placeholder="R$ 0,00" oninput="impRclInput(this)" onblur="impRclFmt(this)">
+        <input type="hidden" id="imp-rcl">
+        <div id="imp-rcl-src" style="font-size:9.5px;color:var(--mu);margin-top:2px"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end">
         <div>
@@ -1037,7 +1039,16 @@ const meses_str=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out',
 // MULTI-SELECT FILTER SYSTEM
 // ════════════════════════════════════════════════════════════════
 const FS={anos:new Set([2025,2026]),ris:new Set(),sis:new Set(),eis:new Set(),comps:new Set()};
-const EXCLUIR_COMPS=new Set([202605]); // Mai/2026 excluído por dado incompleto
+const EXCLUIR_COMPS=new Set([202605]);
+
+// RCL mensal real (Receita Corrente Líquida) — Paulo Afonso/BA
+const RCL_MENSAL={
+  202501:44111580.01,202502:44744503.50,202503:38236549.31,
+  202504:40157664.73,202505:40717865.41,202506:44562417.35,
+  202507:47011113.68,202508:41432544.14,202509:49058046.64,
+  202510:42374069.07,202511:43582324.08,202512:69914387.59,
+  202601:47425693.92,202602:42244435.12,202603:43588675.16,202604:43232757.20,
+}; // Mai/2026 excluído por dado incompleto
 let MS={};
 
 function msInit(key,vals,defaults,ids_fld){
@@ -4556,7 +4567,9 @@ function renderImpacto(){
       o.textContent=mNm[c%100]+'/'+Math.floor(c/100);
       sel.appendChild(o);
     });
+    sel.addEventListener('change',()=>impPreencherRCL(Number(sel.value)));
   }
+  impPreencherRCL(Number(sel.value));
   // Build regime grid
   const grid=document.getElementById('imp-reg-grid');
   if(grid&&grid.children.length===0){
@@ -4582,6 +4595,33 @@ function impAplicarTodos(){
   });
 }
 
+function impPreencherRCL(comp){
+  const rcl=RCL_MENSAL[comp]||0;
+  const hidden=document.getElementById('imp-rcl');
+  const display=document.getElementById('imp-rcl-display');
+  const src=document.getElementById('imp-rcl-src');
+  if(hidden)hidden.value=rcl||'';
+  if(display){
+    display.value=rcl>0?'R$ '+rcl.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
+    display.placeholder=rcl>0?'':'Sem RCL para este mês — informe manualmente';
+  }
+  if(src)src.textContent=rcl>0?'✓ RCL real do mês (fonte: RREO/RGF)':'⚠ Mês sem RCL cadastrada — valor estimado';
+}
+
+function impRclInput(el){
+  // Extract raw number from formatted string
+  const raw=el.value.replace(/[^0-9,]/g,'').replace(',','.');
+  const num=parseFloat(raw.replace(/\./g,'').replace(',','.'));
+  const hidden=document.getElementById('imp-rcl');
+  if(hidden&&!isNaN(num))hidden.value=num;
+}
+
+function impRclFmt(el){
+  const hidden=document.getElementById('imp-rcl');
+  const v=Number(hidden?hidden.value:0);
+  if(v>0)el.value='R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
 function impReset(){
   regimes.forEach((_,ri)=>{
     const el=document.getElementById('imp-pct-'+ri);
@@ -4599,7 +4639,7 @@ function simularImpacto(){
   const fP=v=>(v>=0?'+':'')+v.toFixed(2)+'%';
 
   const comp=Number(document.getElementById('imp-comp').value);
-  const rcl=Number(document.getElementById('imp-rcl').value)||35000000;
+  const rcl=Number(document.getElementById('imp-rcl').value)||43232757.20;
   const mNm=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const compNm=mNm[comp%100]+'/'+Math.floor(comp/100);
 
