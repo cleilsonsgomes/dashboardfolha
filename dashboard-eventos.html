@@ -6323,12 +6323,9 @@ ${status}
   async callAPI(question){
     if(!this.apiKey)throw new Error('Chave API não configurada.');
     const ctx=this.buildContext();
-    const modelMap={
-      'claude-haiku-4-5':'claude-haiku-4-5-20251001',
-      'claude-sonnet-4-6':'claude-sonnet-4-6-20251022',
-    };
-    const modelId=modelMap[this.model]||'claude-haiku-4-5-20251001';
-    const sys=`Você é um assistente especializado em folha de pagamento municipal e auditoria, baseado no Guia TCM/BA 2023. Você analisa dados da prefeitura de Paulo Afonso/BA. Responda em português, conciso (máx 200 palavras), com citação legal quando aplicável.
+    // Usa o alias do modelo diretamente — Anthropic resolve para a versão mais recente
+    const modelId=this.model||'claude-haiku-4-5';
+    const sys=`Você é um assistente especializado em folha de pagamento municipal e auditoria pública. Você analisa dados da prefeitura de Paulo Afonso/BA. Responda em português, conciso (máx 200 palavras), com citação legal quando aplicável (CF, LRF, ECs).
 
 CONTEXTO DOS DADOS:
 ${ctx}`;
@@ -6349,8 +6346,14 @@ ${ctx}`;
       body:JSON.stringify(body)
     });
     if(!resp.ok){
-      const err=await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${err.slice(0,200)}`);
+      let errMsg=`HTTP ${resp.status}`;
+      try{
+        const errData=await resp.json();
+        errMsg=errData.error?.message||errData.message||JSON.stringify(errData).slice(0,300);
+      }catch(e){
+        try{const errText=await resp.text();errMsg=errText.slice(0,300);}catch(e){}
+      }
+      throw new Error(errMsg);
     }
     const data=await resp.json();
     return data.content?.[0]?.text||'(Sem resposta)';
@@ -6412,7 +6415,7 @@ ${ctx}`;
     modal.innerHTML=`
 <div id="assist-header">
   <div style="font-size:20px">🤖</div>
-  <div class="ti">Assistente da Folha<div class="st">Paulo Afonso/BA · TCM/BA 2023</div></div>
+  <div class="ti">Assistente da Folha<div class="st">Paulo Afonso/BA</div></div>
   <button onclick="ASSIST.openSettings()" title="Configurações">⚙️</button>
   <button onclick="ASSIST.clearHistory()" title="Limpar">🗑️</button>
   <button onclick="ASSIST.toggle()" title="Fechar">✕</button>
