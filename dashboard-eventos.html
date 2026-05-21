@@ -5770,6 +5770,697 @@ ${pctRCL>=51.3?`<tr><td>6</td><td>Folha/RCL = ${fP(pctRCL)} (zona prudencial/má
   setTimeout(()=>{try{w.focus();w.print();}catch(e){console.warn(e);}},900);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// ASSISTENTE HÍBRIDO — Local (offline) + Claude API (opcional)
+// ════════════════════════════════════════════════════════════════════════════
+const ASSIST={
+  open:false,
+  history:[],
+  apiKey:localStorage.getItem('assist_apikey')||'',
+  model:localStorage.getItem('assist_model')||'claude-haiku-4-5',
+  useAPI:localStorage.getItem('assist_useapi')==='1',
+  loading:false,
+
+  init(){
+    this.renderUI();
+    try{this.history=JSON.parse(localStorage.getItem('assist_history')||'[]');}catch(e){this.history=[];}
+    if(this.history.length>0)this.renderHistory();
+  },
+
+  toggle(){
+    this.open=!this.open;
+    document.getElementById('assist-modal').style.display=this.open?'flex':'none';
+    if(this.open){
+      if(this.history.length===0)this.welcome();
+      setTimeout(()=>{const i=document.getElementById('assist-input');if(i)i.focus();},100);
+    }
+  },
+
+  welcome(){
+    this.addMsg('assistant',
+`👋 Olá! Sou o assistente da Folha de Paulo Afonso/BA.
+
+Pergunte sobre **folha**, **auditoria**, **LRF** ou **legislação**. Estou ${this.useAPI&&this.apiKey?'<span style="color:#10b981">conectado ao Claude API ✓</span>':'operando em modo <strong>local</strong>'}.
+
+Digite **ajuda** para ver exemplos ou clique nas sugestões abaixo.`,
+      ['Qual a folha total?','Quem ganha mais?','Estamos dentro do LRF?','O que é tríplice acumulação?','Ajuda']
+    );
+  },
+
+  addMsg(role,text,chips){
+    this.history.push({role,text,t:Date.now()});
+    if(this.history.length>40)this.history=this.history.slice(-40);
+    try{localStorage.setItem('assist_history',JSON.stringify(this.history));}catch(e){}
+    this.appendBubble(role,text,chips);
+  },
+
+  appendBubble(role,text,chips){
+    const list=document.getElementById('assist-list');
+    if(!list)return;
+    const div=document.createElement('div');
+    div.style.cssText=role==='user'
+      ?'align-self:flex-end;max-width:85%;background:#0ea5e9;color:#fff;padding:8px 12px;border-radius:14px 14px 2px 14px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word'
+      :'align-self:flex-start;max-width:85%;background:#f1f5f9;color:#1e293b;padding:9px 13px;border-radius:14px 14px 14px 2px;font-size:13px;line-height:1.55;word-wrap:break-word';
+    div.innerHTML=this.fmt(text);
+    list.appendChild(div);
+    if(chips&&chips.length){
+      const cd=document.createElement('div');
+      cd.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 4px;align-self:flex-start;max-width:100%';
+      chips.forEach(c=>{
+        const b=document.createElement('button');
+        b.textContent=c;
+        b.style.cssText='background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:14px;padding:4px 10px;font-size:11px;cursor:pointer;line-height:1.3';
+        b.onclick=()=>{document.getElementById('assist-input').value=c;ASSIST.send();};
+        cd.appendChild(b);
+      });
+      list.appendChild(cd);
+    }
+    list.scrollTop=list.scrollHeight;
+  },
+
+  fmt(t){
+    return (t||'')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/&lt;span style=&quot;([^&]+)&quot;&gt;/g,'<span style="$1">')
+      .replace(/&lt;\/span&gt;/g,'</span>')
+      .replace(/&lt;strong&gt;/g,'<strong>').replace(/&lt;\/strong&gt;/g,'</strong>')
+      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+      .replace(/`([^`]+)`/g,'<code style="background:#e2e8f0;padding:1px 5px;border-radius:3px;font-size:11px">$1</code>')
+      .replace(/\[(.+?)\]\((.+?)\)/g,'<a href="#" onclick="ASSIST.go(\'$2\');return false" style="color:#0ea5e9;text-decoration:underline">$1</a>')
+      .replace(/\n/g,'<br>');
+  },
+
+  renderHistory(){
+    const list=document.getElementById('assist-list');
+    if(!list)return;
+    list.innerHTML='';
+    this.history.forEach(m=>this.appendBubble(m.role,m.text));
+  },
+
+  clearHistory(){
+    if(!confirm('Limpar histórico de conversa?'))return;
+    this.history=[];
+    localStorage.removeItem('assist_history');
+    document.getElementById('assist-list').innerHTML='';
+    this.welcome();
+  },
+
+  go(tabName){
+    if(typeof switchTab==='function'){switchTab(tabName);this.open=false;document.getElementById('assist-modal').style.display='none';}
+  },
+
+  async send(){
+    const inp=document.getElementById('assist-input');
+    const q=(inp.value||'').trim();
+    if(!q||this.loading)return;
+    inp.value='';
+    this.addMsg('user',q);
+
+    // 1. Tenta resposta local
+    const local=this.responderLocal(q);
+    if(local){
+      setTimeout(()=>this.addMsg('assistant',local.text,local.chips),200);
+      return;
+    }
+    // 2. Fallback API
+    if(this.useAPI&&this.apiKey){
+      this.loading=true;
+      const tid='lt'+Date.now();
+      const list=document.getElementById('assist-list');
+      list.insertAdjacentHTML('beforeend',`<div id="${tid}" style="align-self:flex-start;color:#64748b;font-size:12px;padding:4px 8px"><em>Consultando Claude API...</em></div>`);
+      list.scrollTop=list.scrollHeight;
+      try{
+        const resp=await this.callAPI(q);
+        document.getElementById(tid)?.remove();
+        this.addMsg('assistant',resp);
+      }catch(err){
+        document.getElementById(tid)?.remove();
+        this.addMsg('assistant',`⚠️ Erro na API: ${err.message}\n\nVerifique sua chave em <a href="#" onclick="ASSIST.openSettings();return false" style="color:#0ea5e9">configurações</a>.`);
+      }
+      this.loading=false;
+      return;
+    }
+    // 3. Sem API e sem match local
+    this.addMsg('assistant',
+`Não entendi essa pergunta no modo local. Tente reformular ou digite **ajuda** para ver exemplos.
+
+💡 Para perguntas mais abertas, você pode ativar o **Claude API** nas [configurações](settings).`,
+      ['Ajuda','Configurações']);
+  },
+
+  openSettings(){
+    document.getElementById('assist-settings').style.display='flex';
+    document.getElementById('assist-apikey').value=this.apiKey;
+    document.getElementById('assist-model').value=this.model;
+    document.getElementById('assist-useapi').checked=this.useAPI;
+  },
+
+  closeSettings(){
+    document.getElementById('assist-settings').style.display='none';
+  },
+
+  saveSettings(){
+    this.apiKey=document.getElementById('assist-apikey').value.trim();
+    this.model=document.getElementById('assist-model').value;
+    this.useAPI=document.getElementById('assist-useapi').checked;
+    localStorage.setItem('assist_apikey',this.apiKey);
+    localStorage.setItem('assist_model',this.model);
+    localStorage.setItem('assist_useapi',this.useAPI?'1':'0');
+    this.closeSettings();
+    this.addMsg('assistant',`✓ Configurações salvas. ${this.useAPI&&this.apiKey?'Claude API ativado.':'Modo local ativo.'}`);
+  },
+
+  // ──── Resposta local: matching de intents ─────────────────────────────
+  responderLocal(qRaw){
+    const q=qRaw.toLowerCase().replace(/[?!.,]/g,'').trim();
+    const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const fN=v=>(v||0).toLocaleString('pt-BR');
+    const fP=v=>(v||0).toFixed(1)+'%';
+    const mNm=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const mAbbr=['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+    // AJUDA
+    if(/^(ajuda|help|exemplos?|o que.*pergunt|como usar)/i.test(q)){
+      return {text:
+`**Exemplos do que posso responder:**
+
+📊 *Folha geral*
+• "qual a folha total?"
+• "folha de abril 2026"
+• "evolução da folha"
+
+👤 *Servidores*
+• "quem ganha mais?"
+• "top 10 salários"
+• "quantos servidores temos?"
+
+🔍 *Auditoria*
+• "tem alguém acima do teto?"
+• "casos de acumulação"
+• "horas extras sistemáticas"
+• "tríplice acumulação"
+
+💰 *LRF / Fiscal*
+• "estamos dentro do limite LRF?"
+• "margem disponível"
+• "folha sobre RCL"
+
+⚖️ *Legislação*
+• "o que é tríplice acumulação?"
+• "art 37 XVI da CF"
+• "regra de acumulação de cargos"
+• "EC 103/2019"
+
+🏛️ *Secretarias / Regimes*
+• "ranking de secretarias"
+• "quantos comissionados?"
+• "folha da saúde"
+
+🧭 *Navegação*
+• "abra a aba auditoria"
+• "mostre o relatório"`,
+        chips:['Qual a folha total?','Quem ganha mais?','Top 10 salários','Tríplice acumulação','Configurações']
+      };
+    }
+
+    // CONFIGURAÇÕES
+    if(/configura[çc][ãa]o|api.key|claude.api|ativar.api|chave.api/i.test(q)){
+      setTimeout(()=>ASSIST.openSettings(),200);
+      return {text:'Abrindo as configurações do assistente...'};
+    }
+
+    // NAVEGAÇÃO
+    const navMap={
+      'composi':'comp','crescimento':'cresc','plant':'plant','hora extra':'he','duplicid':'dup',
+      'drill':'srv','servidor':'srv','insalub':'ins','gratific':'grat','simulador':'sim',
+      'cargos':'cargo','auditoria':'audit','estagi':'estag','pesquisa':'pesq','impacto':'imp'
+    };
+    if(/^(abr[ai]|mostre?|v[áa]|ir para|abra a aba|exiba)/i.test(q)){
+      for(const k in navMap){
+        if(q.includes(k)){
+          setTimeout(()=>ASSIST.go(navMap[k]),300);
+          return {text:`Abrindo a aba **${k.charAt(0).toUpperCase()+k.slice(1)}**...`};
+        }
+      }
+    }
+    if(/relat[óo]rio|pdf/i.test(q)){
+      if(typeof gerarRelatorioAuditoria==='function'){
+        setTimeout(()=>{switchTab('audit');setTimeout(()=>gerarRelatorioAuditoria(),300);},200);
+        return {text:'Abrindo a aba Auditoria e gerando o relatório PDF...'};
+      }
+    }
+
+    // FOLHA TOTAL
+    if(/folha.*(total|geral|geral)|total.*folha|quanto.*custou|gastou/i.test(q)&&!/m[êe]s|secretaria|regime|cargo/.test(q)){
+      let total=0;
+      agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[0]*100+r[1]))total+=r[5];});
+      return {text:
+`A folha **total acumulada** de 2023 a 2026 (excluindo Mai/2026) é:
+
+**${fR(total)}**
+
+Distribuída em ${fN(agg1.length)} agregações por secretaria/regime/evento/mês.
+
+📊 [Ver detalhes em Composição](comp)`,
+        chips:['Folha por ano','Folha de abril 2026','Ranking secretarias']};
+    }
+
+    // FOLHA POR MÊS ESPECÍFICO
+    let mesAlvo=null,anoAlvo=null;
+    for(let m=1;m<=12;m++){
+      if(q.includes(mNm[m].toLowerCase())||q.includes(mAbbr[m])){mesAlvo=m;break;}
+    }
+    const yMatch=q.match(/\b(20[23]\d)\b/);
+    if(yMatch)anoAlvo=Number(yMatch[1]);
+    if(mesAlvo&&anoAlvo){
+      const comp=anoAlvo*100+mesAlvo;
+      const tot=agg1.filter(r=>r[0]*100+r[1]===comp).reduce((s,r)=>s+r[5],0);
+      if(tot===0)return {text:`Não encontrei dados para ${mNm[mesAlvo]}/${anoAlvo}. As competências disponíveis vão de Jan/2023 a Abr/2026.`};
+      const rcl=RCL_MENSAL[comp];
+      let extra=rcl?`\n\n📈 **Folha/RCL** = ${fP((tot/rcl)*100)} (RCL: ${fR(rcl)})`:'';
+      return {text:`Folha de **${mNm[mesAlvo]}/${anoAlvo}**:\n\n**${fR(tot)}**${extra}\n\n[Ver em Composição](comp)`,
+        chips:['Quem ganha mais nesse mês?','Folha por secretaria','Comparar com mês anterior']};
+    }
+
+    // FOLHA POR ANO
+    if(/folha.*(por.*ano|anual)|gasto.*ano|ano.*ano/i.test(q)){
+      const byA={};
+      agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[0]*100+r[1]))byA[r[0]]=(byA[r[0]]||0)+r[5];});
+      let t='**Folha por ano:**\n\n';
+      Object.entries(byA).sort().forEach(([a,v])=>{t+=`• **${a}**: ${fR(v)}\n`;});
+      return {text:t.trim()+'\n\n📊 [Ver em Crescimento](cresc)',chips:['Evolução vs IPCA','Folha total']};
+    }
+
+    // QUEM GANHA MAIS / TOP N
+    if(/quem.*ganha.*mais|top.*sal[áa]rio|maior.*sal[áa]rio|top.*\d+|maiores.*remunera/i.test(q)){
+      const nMatch=q.match(/\b(\d+)\b/);
+      const N=nMatch?Math.min(Number(nMatch[1]),50):10;
+      const monthPeak={};
+      agg2.forEach(r=>{
+        if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+        const mi=r[2],comp=r[0]*100+r[1];
+        if(!monthPeak[mi])monthPeak[mi]={};
+        monthPeak[mi][comp]=(monthPeak[mi][comp]||0)+r[6];
+      });
+      const ranked=Object.entries(monthPeak).map(([mi,byC])=>({mi:+mi,peak:Math.max(...Object.values(byC))})).sort((a,b)=>b.peak-a.peak).slice(0,N);
+      const TETO=Number(document.getElementById('aud-teto-pref-raw')?.value||33763);
+      let t=`**Top ${N} maiores remunerações** (pico mensal):\n\n`;
+      ranked.forEach((r,i)=>{
+        const acima=r.peak>TETO?' 🔴':'';
+        t+=`${i+1}. **${(nomes[r.mi]||'?').slice(0,40)}** — ${fR(r.peak)}${acima}\n`;
+      });
+      t+=`\n🔴 = acima do teto municipal (${fR(TETO)})\n\n[Ver Top 20 no Relatório](audit)`;
+      return {text:t,chips:['Acima do teto','Cargos que mais pagam']};
+    }
+
+    // QUANTOS SERVIDORES
+    if(/quanto.*servidor|n[úu]mero.*servidor|total.*servidor/i.test(q)){
+      const total=Object.keys(srv_profile).length;
+      const byRi={};
+      Object.values(srv_profile).forEach(p=>{byRi[p[2]]=(byRi[p[2]]||0)+1;});
+      let t=`**Total de servidores cadastrados**: ${fN(total)}\n\n**Por regime:**\n`;
+      Object.entries(byRi).sort((a,b)=>b[1]-a[1]).forEach(([ri,n])=>{
+        t+=`• ${(regimes[ri]||'?').replace(/^\d+ - /,'')}: ${fN(n)}\n`;
+      });
+      return {text:t.trim(),chips:['Quantos comissionados?','Quantos temporários?','Por secretaria']};
+    }
+
+    // QUANTOS POR REGIME
+    const regimeKeywords=[
+      {k:/comission|comiss[ãa]o|comiss/i,r:'Cargos em Comiss'},
+      {k:/tempor[áa]rio/i,r:'Tempor'},
+      {k:/estatut[áa]rio/i,r:'^2 - Estatu|Estatut[áa]rio'},
+      {k:/celetista|clt/i,r:'Celetista'},
+      {k:/aposentad/i,r:'Aposentad'},
+      {k:/pensionist|pension/i,r:'Pensionist'},
+      {k:/agente.*pol[íi]tico/i,r:'Agentes Pol'},
+      {k:/estagi[áa]ri/i,r:'Estagi'},
+    ];
+    if(/quanto.*\bsão\b|quanto.*temos|quanto.*tem|quanto.*total|tem.*quanto/i.test(q)||/comissi|tempor[áa]r|estatut|celetista/i.test(q)){
+      for(const rk of regimeKeywords){
+        if(rk.k.test(q)){
+          const ri=regimes.findIndex(r=>new RegExp(rk.r,'i').test(r));
+          if(ri>=0){
+            const n=Object.values(srv_profile).filter(p=>p[2]===ri).length;
+            const tot=agg1.filter(r=>r[4]===ri&&!EXCLUIR_COMPS.has(r[0]*100+r[1])).reduce((s,r)=>s+r[5],0);
+            return {text:`Regime **${regimes[ri]}**:\n\n• Servidores: **${fN(n)}**\n• Folha acumulada: **${fR(tot)}**\n\n[Ver detalhes em Composição](comp)`};
+          }
+        }
+      }
+    }
+
+    // RANKING SECRETARIAS
+    if(/ranking.*secretaria|maior.*secretaria|secretaria.*gasta|top.*secretaria/i.test(q)){
+      const bySi={};
+      agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[0]*100+r[1]))bySi[r[3]]=(bySi[r[3]]||0)+r[5];});
+      const ranked=Object.entries(bySi).sort((a,b)=>b[1]-a[1]).slice(0,10);
+      let t='**Top 10 Secretarias por gasto total:**\n\n';
+      ranked.forEach(([si,v],i)=>{
+        t+=`${i+1}. **${(secs[si]||'?').replace(/^\d+ - /,'')}** — ${fR(v)}\n`;
+      });
+      return {text:t,chips:['Folha por regime','Concentração por cargo']};
+    }
+
+    // TETO CONSTITUCIONAL
+    if(/teto|acima.*sal|sal.*acima|art.*37.*xi|subs[íi]dio.*prefeito/i.test(q)){
+      const TETO=Number(document.getElementById('aud-teto-pref-raw')?.value||33763);
+      const TETO_STF=41650.92;
+      const monthPeak={};
+      agg2.forEach(r=>{
+        if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+        const mi=r[2],comp=r[0]*100+r[1];
+        if(!monthPeak[mi])monthPeak[mi]={};
+        monthPeak[mi][comp]=(monthPeak[mi][comp]||0)+r[6];
+      });
+      const tetoRows=[];
+      Object.entries(monthPeak).forEach(([mi,byC])=>{
+        const peak=Math.max(...Object.values(byC));
+        if(peak>TETO)tetoRows.push({mi:+mi,peak});
+      });
+      const stf=tetoRows.filter(r=>r.peak>TETO_STF).length;
+      tetoRows.sort((a,b)=>b.peak-a.peak);
+      if(tetoRows.length===0)return {text:`✅ **Nenhum servidor** identificado acima do teto municipal (${fR(TETO)}).\n\n_Base: CF art. 37 XI · Guia TCM/BA pág. 19_`};
+      let t=`🔴 **${tetoRows.length} servidor(es)** acima do teto municipal (${fR(TETO)})\n`;
+      if(stf>0)t+=`🚨 Destes, **${stf}** acima do teto STF (${fR(TETO_STF)}) — situação **crítica**.\n`;
+      t+=`\n**Top 5:**\n`;
+      tetoRows.slice(0,5).forEach((r,i)=>{t+=`${i+1}. ${(nomes[r.mi]||'?').slice(0,40)} — ${fR(r.peak)}\n`;});
+      t+=`\n[Ver todos na Auditoria](audit) · [Relatório completo](audit)`;
+      return {text:t,chips:['O que é o teto?','Como ressarcir?','Relatório PDF']};
+    }
+
+    // ACUMULAÇÃO
+    if(/acumul|art.*37.*xvi|dois cargo|duplo regime/i.test(q)){
+      if(typeof audCalcularAcumulacoes!=='function')return {text:'Análise de acumulação não disponível.'};
+      const casos=audCalcularAcumulacoes();
+      const dup=casos.filter(c=>c.nv===2).length;
+      const tri=casos.filter(c=>c.nv>=3).length;
+      return {text:
+`📊 **Acumulação de Cargos (por identidade de nome):**
+
+• Casos com dupla acumulação: **${dup}**
+• Tríplice acumulação: **${tri}** ${tri>0?'🚨':''}
+
+⚖️ *Base: CF art. 37 XVI · Guia TCM/BA pág. 9–11*
+
+Exceções constitucionais à vedação:
+(a) dois cargos de professor
+(b) professor + técnico/científico
+(c) dois cargos de saúde regulamentada
+
+[Ver detalhes na Auditoria](audit)`,
+        chips:['O que é tríplice acumulação?','Aposentado em ativo','Relatório PDF']};
+    }
+
+    // TRÍPLICE — pergunta conceitual
+    if(/o que.*tr[íi]plice|tr[íi]plice acumul|3 cargo|tres cargo/i.test(q)){
+      return {text:
+`⚖️ **Tríplice acumulação** é o exercício simultâneo de **3 ou mais cargos, empregos ou funções públicas** remunerados.
+
+A Constituição Federal (art. 37, XVI) só permite **dupla** acumulação em três hipóteses específicas:
+(a) 2 cargos de professor
+(b) professor + cargo técnico/científico
+(c) 2 cargos privativos de saúde regulamentada
+
+**Tríplice acumulação é sempre irregular**, sem exceção.
+
+📖 *Carvalho Filho:* "É inadmissível a acumulação remunerada de três ou mais cargos e empregos, ainda que todos sejam passíveis de dupla acumulação."
+
+📖 *Maria Sylvia Di Pietro:* "As exceções somente admitem dois cargos, emprego ou função, inexistindo qualquer hipótese de tríplice acumulação."
+
+Único atenuante: vereador que esteja com **licença** de um dos cargos.
+
+🔗 Guia TCM/BA pág. 10–11`,
+        chips:['Casos de tríplice no município?','Acumulação dupla','Aposentado em ativo']};
+    }
+
+    // APOSENTADO EM ATIVO
+    if(/aposentad.*ativo|aposentad.*folha|reformad.*ativo|art.*37.*par.*10/i.test(q)){
+      return {text:
+`⚖️ **Aposentado em folha de ativos** (CF art. 37, §10):
+
+É **vedada a percepção simultânea** de proventos de aposentadoria com remuneração de cargo, emprego ou função pública.
+
+**Ressalvas** (acumulação permitida):
+• Cargo eletivo (vereador, prefeito, etc.)
+• Cargo em comissão
+• Cargo ativo que seja acumulável com o de origem (dois professores, saúde+saúde, etc.)
+
+Servidores aposentados antes de 12/1998 e que retornaram são regidos pela EC 20/98 art. 11.
+
+🔗 Guia TCM/BA pág. 17`,
+        chips:['Casos no município?','Pensão dupla','Relatório PDF']};
+    }
+
+    // PENSÃO DUPLA
+    if(/pens[ãa]o.*dupla|dupla.*pens[ãa]o|duas pens[õo]es/i.test(q)){
+      return {text:
+`⚖️ **Pensão dupla** (EC 103/2019, art. 24):
+
+É **vedada a acumulação** de mais de uma pensão por morte deixada por **cônjuge ou companheiro**, no âmbito do mesmo regime de previdência.
+
+**Ressalvas**:
+• Pensões do **mesmo instituidor** decorrentes de cargos acumuláveis (CF art. 37)
+• Pensões de **regimes distintos** (RGPS + RPPS, ex.)
+
+🔗 Guia TCM/BA pág. 18`,
+        chips:['Casos no município?','Aposentado em ativo']};
+    }
+
+    // HORAS EXTRAS / HE
+    if(/hora.*extra|\bhe\b|extra.*sistem|plant[ãa]o.*sistem/i.test(q)){
+      const heByMiAno={};
+      agg2.forEach(r=>{
+        if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+        if(!EV_EXTRA.has(r[3]))return;
+        const mi=r[2],ano=r[0];
+        if(!heByMiAno[mi])heByMiAno[mi]={};
+        if(!heByMiAno[mi][ano])heByMiAno[mi][ano]={meses:new Set(),total:0};
+        heByMiAno[mi][ano].meses.add(r[1]);
+        heByMiAno[mi][ano].total+=r[6];
+      });
+      const sist=[];
+      Object.entries(heByMiAno).forEach(([mi,byA])=>{
+        Object.entries(byA).forEach(([a,d])=>{if(d.meses.size>=10)sist.push({mi:+mi,a:+a,m:d.meses.size,t:d.total});});
+      });
+      sist.sort((a,b)=>b.t-a.t);
+      const tot=sist.reduce((s,r)=>s+r.t,0);
+      let t=`⚠️ **HE Sistemática (10+ meses/ano):**\n\n• Casos detectados: **${sist.length}**\n• Valor total pago: **${fR(tot)}**\n\n`;
+      if(sist.length>0){
+        t+=`**Top 5 por valor:**\n`;
+        sist.slice(0,5).forEach((r,i)=>{t+=`${i+1}. ${(nomes[r.mi]||'?').slice(0,30)} — ${r.m} meses (${r.a}) — ${fR(r.t)}\n`;});
+      }
+      t+=`\n_HE recorrente é indício de estrutura salarial deficiente — CF art. 37 XIII e CLT art. 59._\n\n[Ver na Auditoria](audit)`;
+      return {text:t,chips:['Por que filtro de regime esconde HE?','Acumulação','Relatório PDF']};
+    }
+
+    // LRF / RCL
+    if(/lrf|rcl|limite.*pessoal|receita.*corrente|art.*19|art.*20|54%|48|51/i.test(q)){
+      const comps=[...new Set(agg1.filter(r=>!EXCLUIR_COMPS.has(r[0]*100+r[1])).map(r=>r[0]*100+r[1]))].sort();
+      const lc=comps[comps.length-1];
+      const folha=agg1.filter(r=>r[0]*100+r[1]===lc).reduce((s,r)=>s+r[5],0);
+      const rcl=RCL_MENSAL[lc]||0;
+      if(!rcl)return {text:`Não há RCL cadastrada para ${mNm[lc%100]}/${Math.floor(lc/100)}. Tente outro mês ou atualize em Impacto Salarial.`};
+      const p=(folha/rcl)*100;
+      let status,cor;
+      if(p>=54){status='🚨 LIMITE MÁXIMO EXCEDIDO';cor='red';}
+      else if(p>=51.3){status='⚠️ Zona prudencial';cor='warn';}
+      else if(p>=48.6){status='⚠️ Limite de alerta';cor='warn';}
+      else{status='✅ Dentro do limite';cor='ok';}
+      const margemAlerta=rcl*0.486-folha;
+      const margemPrud=rcl*0.513-folha;
+      const margemMax=rcl*0.54-folha;
+      return {text:
+`📊 **LRF — ${mNm[lc%100]}/${Math.floor(lc/100)}**
+
+• Folha mensal: **${fR(folha)}**
+• RCL mensal: ${fR(rcl)}
+• **Folha/RCL = ${fP(p)}**
+
+${status}
+
+**Margem até cada limite:**
+• Alerta (48,6%): ${fR(margemAlerta)}
+• Prudencial (51,3%): ${fR(margemPrud)}
+• Máximo (54%): ${fR(margemMax)}
+
+🔗 LRF art. 19 e 20 · CF art. 169 · TCM/BA monitora trimestralmente`,
+        chips:['Evolução do LRF','Impacto de aumento salarial','Simulação']};
+    }
+
+    // SIMULAÇÃO / AUMENTO
+    if(/simul|aument.*sal|projet.*aument|impacto.*aument|reajust/i.test(q)){
+      setTimeout(()=>ASSIST.go('imp'),300);
+      return {text:`Abrindo a aba **Impacto Salarial** onde você pode simular aumentos % por regime e ver o impacto na folha e na LRF.`,
+        chips:['Como funciona?']};
+    }
+
+    // PESQUISAR SERVIDOR
+    if(/quem.*[ée]|matr[íi]cula|cpf.*servidor|sal[áa]rio de|busca.*servidor/i.test(q)){
+      setTimeout(()=>ASSIST.go('pesq'),300);
+      return {text:`Para pesquisar servidor específico, use a aba **Pesquisa** que permite filtrar por nome, matrícula, secretaria, regime, evento e valor.`};
+    }
+
+    // CARGOS QUE MAIS PAGAM
+    if(/cargo.*mais|cargo.*pag|cargo.*caro|cargo.*top|mais.*cargo/i.test(q)){
+      const cargoTot={};
+      agg4.forEach(r=>{const cg=srv_profile[r[0]]?.[0];if(cg!==undefined)cargoTot[cg]=(cargoTot[cg]||0)+r[3];});
+      const ranked=Object.entries(cargoTot).sort((a,b)=>b[1]-a[1]).slice(0,10);
+      let t='**Top 10 Cargos por gasto total:**\n\n';
+      ranked.forEach(([cg,v],i)=>{t+=`${i+1}. ${(cargos[cg]||'?').slice(0,45)} — ${fR(v)}\n`;});
+      return {text:t,chips:['Ranking secretarias','Quem ganha mais?']};
+    }
+
+    // SAUDAÇÕES
+    if(/^(oi|ol[áa]|bom dia|boa tarde|boa noite|tudo bem|e a[íi])/i.test(q)){
+      return {text:'👋 Olá! Como posso ajudar? Digite **ajuda** para ver exemplos.',
+        chips:['Ajuda','Folha total','Quem ganha mais?']};
+    }
+
+    return null;
+  },
+
+  // ──── Chamada à API ──────────────────────────────────────────────────
+  async callAPI(question){
+    if(!this.apiKey)throw new Error('Chave API não configurada.');
+    const ctx=this.buildContext();
+    const modelMap={
+      'claude-haiku-4-5':'claude-haiku-4-5-20251001',
+      'claude-sonnet-4-6':'claude-sonnet-4-6-20251022',
+    };
+    const modelId=modelMap[this.model]||'claude-haiku-4-5-20251001';
+    const sys=`Você é um assistente especializado em folha de pagamento municipal e auditoria, baseado no Guia TCM/BA 2023. Você analisa dados da prefeitura de Paulo Afonso/BA. Responda em português, conciso (máx 200 palavras), com citação legal quando aplicável.
+
+CONTEXTO DOS DADOS:
+${ctx}`;
+    const body={
+      model:modelId,
+      max_tokens:512,
+      system:sys,
+      messages:[{role:'user',content:question}]
+    };
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':this.apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify(body)
+    });
+    if(!resp.ok){
+      const err=await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${err.slice(0,200)}`);
+    }
+    const data=await resp.json();
+    return data.content?.[0]?.text||'(Sem resposta)';
+  },
+
+  buildContext(){
+    const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    let total=0;agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[0]*100+r[1]))total+=r[5];});
+    const comps=[...new Set(agg1.filter(r=>!EXCLUIR_COMPS.has(r[0]*100+r[1])).map(r=>r[0]*100+r[1]))].sort();
+    const lc=comps[comps.length-1];
+    const folhaUlt=agg1.filter(r=>r[0]*100+r[1]===lc).reduce((s,r)=>s+r[5],0);
+    const rcl=RCL_MENSAL[lc]||0;
+    const byRi={};agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[0]*100+r[1]))byRi[r[4]]=(byRi[r[4]]||0)+r[5];});
+    const topRegimes=Object.entries(byRi).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([ri,v])=>`${(regimes[ri]||'?').replace(/^\d+ - /,'')}: ${fR(v)}`).join(', ');
+    return `Período: 2023-2026. Servidores: ${Object.keys(srv_profile).length}. Folha total acumulada: ${fR(total)}. Última competência: ${lc}, folha ${fR(folhaUlt)}, RCL ${fR(rcl)}, Folha/RCL ${rcl?((folhaUlt/rcl)*100).toFixed(1)+'%':'N/A'}. Top regimes: ${topRegimes}.`;
+  },
+
+  // ──── UI ─────────────────────────────────────────────────────────────
+  renderUI(){
+    if(document.getElementById('assist-fab'))return;
+    const css=document.createElement('style');
+    css.textContent=`
+#assist-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#0c4a6e);color:#fff;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(14,165,233,0.4);z-index:9999;font-size:24px;display:flex;align-items:center;justify-content:center;transition:transform .15s}
+#assist-fab:hover{transform:scale(1.08)}
+#assist-modal{position:fixed;bottom:92px;right:24px;width:380px;height:560px;max-height:80vh;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.2);z-index:9999;display:none;flex-direction:column;overflow:hidden;font-family:inherit}
+#assist-header{background:linear-gradient(135deg,#0c4a6e,#0ea5e9);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px}
+#assist-header .ti{flex:1;font-size:13px;font-weight:700}
+#assist-header .st{font-size:10px;opacity:0.85}
+#assist-header button{background:transparent;border:none;color:#fff;cursor:pointer;font-size:16px;opacity:.85;padding:2px 5px}
+#assist-header button:hover{opacity:1}
+#assist-list{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:#fafbfc}
+#assist-foot{padding:10px 12px;border-top:1px solid #e2e8f0;background:#fff;display:flex;gap:6px;align-items:center}
+#assist-input{flex:1;padding:9px 12px;border:1px solid #cbd5e1;border-radius:20px;font-size:13px;outline:none;font-family:inherit}
+#assist-input:focus{border-color:#0ea5e9}
+#assist-send{background:#0ea5e9;color:#fff;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+#assist-send:hover{background:#0284c7}
+#assist-settings{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;display:none;align-items:center;justify-content:center;font-family:inherit}
+#assist-settings-box{background:#fff;border-radius:12px;padding:24px;max-width:480px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,0.3)}
+#assist-settings h3{margin:0 0 14px;color:#0c4a6e;font-size:16px}
+#assist-settings .row{margin-bottom:14px}
+#assist-settings label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;margin-bottom:4px}
+#assist-settings input[type=text],#assist-settings input[type=password],#assist-settings select{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit}
+#assist-settings .hint{font-size:11px;color:#64748b;margin-top:3px}
+#assist-settings .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+#assist-settings button{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px}
+@media print{#assist-fab,#assist-modal,#assist-settings{display:none!important}}
+`;
+    document.head.appendChild(css);
+
+    const fab=document.createElement('button');
+    fab.id='assist-fab';
+    fab.innerHTML='💬';
+    fab.title='Assistente';
+    fab.onclick=()=>ASSIST.toggle();
+    document.body.appendChild(fab);
+
+    const modal=document.createElement('div');
+    modal.id='assist-modal';
+    modal.innerHTML=`
+<div id="assist-header">
+  <div style="font-size:20px">🤖</div>
+  <div class="ti">Assistente da Folha<div class="st">Paulo Afonso/BA · TCM/BA 2023</div></div>
+  <button onclick="ASSIST.openSettings()" title="Configurações">⚙️</button>
+  <button onclick="ASSIST.clearHistory()" title="Limpar">🗑️</button>
+  <button onclick="ASSIST.toggle()" title="Fechar">✕</button>
+</div>
+<div id="assist-list"></div>
+<div id="assist-foot">
+  <input id="assist-input" type="text" placeholder="Pergunte..." onkeydown="if(event.key==='Enter')ASSIST.send()">
+  <button id="assist-send" onclick="ASSIST.send()">➤</button>
+</div>`;
+    document.body.appendChild(modal);
+
+    const settings=document.createElement('div');
+    settings.id='assist-settings';
+    settings.innerHTML=`
+<div id="assist-settings-box">
+  <h3>⚙️ Configurações do Assistente</h3>
+  <div class="row">
+    <label><input type="checkbox" id="assist-useapi" style="margin-right:6px;width:auto"> Usar Claude API para perguntas que o modo local não responde</label>
+    <div class="hint">Quando ativado, perguntas não reconhecidas localmente são enviadas para Claude API (consome créditos).</div>
+  </div>
+  <div class="row">
+    <label>Chave da API Anthropic (sk-ant-...)</label>
+    <input type="password" id="assist-apikey" placeholder="sk-ant-..." autocomplete="off">
+    <div class="hint">A chave fica armazenada apenas no seu navegador. Obtenha em <a href="https://console.anthropic.com/" target="_blank" style="color:#0ea5e9">console.anthropic.com</a>.</div>
+  </div>
+  <div class="row">
+    <label>Modelo</label>
+    <select id="assist-model">
+      <option value="claude-haiku-4-5">Claude Haiku 4.5 — rápido e barato (~R$ 0,02/pergunta)</option>
+      <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — mais inteligente (~R$ 0,08/pergunta)</option>
+    </select>
+  </div>
+  <div style="background:#fef3c7;color:#713f12;padding:10px 12px;border-radius:6px;font-size:11px;line-height:1.5">
+    <strong>⚠️ LGPD:</strong> Ao usar Claude API, dados resumidos da folha (totais e contextos) são enviados para a Anthropic. Dados nominais não são enviados sem necessidade explícita.
+  </div>
+  <div class="acts">
+    <button onclick="ASSIST.closeSettings()" style="background:#e2e8f0;color:#475569">Cancelar</button>
+    <button onclick="ASSIST.saveSettings()" style="background:#0ea5e9;color:#fff">Salvar</button>
+  </div>
+</div>`;
+    document.body.appendChild(settings);
+  }
+};
+
+// Init no carregamento
+if(document.readyState!=='loading')ASSIST.init();
+else document.addEventListener('DOMContentLoaded',()=>ASSIST.init());
+
 </script>
 </body>
 </html>
