@@ -221,6 +221,18 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     <div class="cc"><div class="ch">Evolução Anual por Categoria</div><div class="cs">Tendência de cada grupo de rubrica</div><canvas id="ch-comp-ev" height="240"></canvas></div>
   </div>
   <div class="cc"><div class="ch">Composição por Secretaria (Top 12)</div><div class="cs">Valor total por secretaria, detalhado por categoria de evento</div><canvas id="ch-comp-sec" height="260"></canvas></div>
+
+  <!-- ── Pareto de Eventos / Rubricas ── -->
+  <div class="cc" style="margin-top:18px">
+    <div class="ch">📊 Pareto de Eventos — Rubricas que mais custam à folha</div>
+    <div class="cs">Análise 80/20: identifica quais rubricas concentram a maior parte do custo total. Respeita todos os filtros aplicados.</div>
+    <div id="comp-pareto-kpi" style="padding:8px 14px"></div>
+    <canvas id="ch-comp-pareto" height="200" style="padding:0 14px"></canvas>
+    <div id="comp-pareto-tbl" style="padding:10px 14px;overflow-x:auto"></div>
+    <div style="background:#fef3c7;border-top:1px solid #fde68a;padding:10px 14px;font-size:10.5px;color:#713f12;line-height:1.7">
+      <strong>📐 Princípio de Pareto (80/20):</strong> tipicamente 20% das rubricas concentram 80% do custo. Eventos classe <strong>A</strong> (até 80% acumulado) são prioritários para auditoria e revisão. Classe <strong>B</strong> (80–95%) merecem monitoramento. Classe <strong>C</strong> (95%+) são marginais.
+    </div>
+  </div>
 </div>
 
 <!-- TAB 2: Crescimento de Eventos -->
@@ -1285,6 +1297,7 @@ function renderComp(){
             backgroundColor:CC[i]+'bb',borderColor:CC[i],borderWidth:1,borderRadius:3}))},
     options:{indexAxis:'y',scales:{x:{stacked:true,ticks:{callback:v=>'R$'+(v/1e6).toFixed(1)+'M'}},y:{stacked:true}},
              plugins:{legend:{position:'bottom',labels:{boxWidth:12}}}}});
+  try{renderCompPareto();}catch(e){console.error('pareto:',e);}
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -6463,6 +6476,113 @@ ${ctx}`;
 // Init no carregamento
 if(document.readyState!=='loading')ASSIST.init();
 else document.addEventListener('DOMContentLoaded',()=>ASSIST.init());
+
+// ── Pareto de Eventos ────────────────────────────────────────────────────────
+let _chPareto=null;
+function renderCompPareto(){
+  const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fP=v=>(v||0).toFixed(1)+'%';
+
+  const byEi={};
+  const rows=filtA1();
+  rows.forEach(r=>{ byEi[r[A1_EI]]=(byEi[r[A1_EI]]||0)+r[A1_VAL]; });
+  const total=Object.values(byEi).reduce((s,v)=>s+v,0);
+  if(total<=0){
+    document.getElementById('comp-pareto-kpi').innerHTML='<p style="color:var(--mu);font-size:12px">Sem dados no filtro aplicado.</p>';
+    document.getElementById('comp-pareto-tbl').innerHTML='';
+    if(_chPareto){_chPareto.destroy();_chPareto=null;}
+    return;
+  }
+  const ranked=Object.entries(byEi).map(([ei,v])=>({ei:+ei,val:v,pct:(v/total)*100})).sort((a,b)=>b.val-a.val);
+  let acc=0;
+  const enriched=ranked.map(r=>{ acc+=r.pct; r.acc=acc; r.cls=acc<=80?'A':acc<=95?'B':'C'; return r; });
+  const classeA=enriched.filter(r=>r.cls==='A');
+  const classeB=enriched.filter(r=>r.cls==='B');
+  const classeC=enriched.filter(r=>r.cls==='C');
+  const totalEventos=enriched.length;
+  const eventosAte80=(enriched.findIndex(r=>r.acc>=80)+1)||totalEventos;
+
+  document.getElementById('comp-pareto-kpi').innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+    <div style="background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5;border-radius:8px;padding:8px 14px;flex:1;min-width:140px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase">Classe A (até 80%)</div>
+      <div style="font-size:20px;font-weight:800">${classeA.length}</div>
+      <div style="font-size:10px">${fP(classeA.reduce((s,r)=>s+r.pct,0))} · ${fR(classeA.reduce((s,r)=>s+r.val,0))}</div>
+    </div>
+    <div style="background:#fed7aa;color:#7c2d12;border:1px solid #fdba74;border-radius:8px;padding:8px 14px;flex:1;min-width:140px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase">Classe B (80–95%)</div>
+      <div style="font-size:20px;font-weight:800">${classeB.length}</div>
+      <div style="font-size:10px">${fP(classeB.reduce((s,r)=>s+r.pct,0))} · ${fR(classeB.reduce((s,r)=>s+r.val,0))}</div>
+    </div>
+    <div style="background:#fef3c7;color:#713f12;border:1px solid #fcd34d;border-radius:8px;padding:8px 14px;flex:1;min-width:140px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase">Classe C (95%+)</div>
+      <div style="font-size:20px;font-weight:800">${classeC.length}</div>
+      <div style="font-size:10px">${fP(classeC.reduce((s,r)=>s+r.pct,0))} · ${fR(classeC.reduce((s,r)=>s+r.val,0))}</div>
+    </div>
+    <div style="background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;border-radius:8px;padding:8px 14px;flex:1;min-width:140px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase">Regra 80/20</div>
+      <div style="font-size:20px;font-weight:800">${eventosAte80} de ${totalEventos}</div>
+      <div style="font-size:10px">${fP((eventosAte80/totalEventos)*100)} dos eventos = 80% do custo</div>
+    </div>
+  </div>`;
+
+  const top=enriched.slice(0,25);
+  if(_chPareto){_chPareto.destroy();_chPareto=null;}
+  const ctx=document.getElementById('ch-comp-pareto').getContext('2d');
+  _chPareto=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:top.map(r=>(ev_names[r.ei]||('Ev '+r.ei)).slice(0,28)),
+      datasets:[
+        {label:'Valor (R$)',type:'bar',data:top.map(r=>r.val),backgroundColor:top.map(r=>r.cls==='A'?'#dc2626':r.cls==='B'?'#f97316':'#fbbf24'),borderColor:'rgba(0,0,0,0.1)',borderWidth:1,yAxisID:'y'},
+        {label:'% Acumulado',type:'line',data:top.map(r=>r.acc),borderColor:'#0c4a6e',backgroundColor:'rgba(12,74,110,0.1)',borderWidth:2,tension:0.2,yAxisID:'y1',pointRadius:3,pointBackgroundColor:'#0c4a6e'}
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'top',labels:{font:{size:11}}},
+        tooltip:{callbacks:{label:c=>{
+          if(c.dataset.label==='Valor (R$)')return ' '+fR(c.raw);
+          return ' '+fP(c.raw);
+        }}}
+      },
+      scales:{
+        y:{position:'left',ticks:{callback:v=>'R$ '+(v/1000).toFixed(0)+'k'},grid:{color:'#f1f5f9'},title:{display:true,text:'Valor (R$)',font:{size:10}}},
+        y1:{position:'right',min:0,max:100,ticks:{callback:v=>v+'%'},grid:{display:false},title:{display:true,text:'% Acumulado',font:{size:10}}},
+        x:{ticks:{font:{size:9},maxRotation:60,minRotation:45},grid:{display:false}}
+      }
+    }
+  });
+
+  const top30=enriched.slice(0,30);
+  const CAT_NM=['Base Salarial','Gratificações','Extras/Plantões','Férias','Outros'];
+  let tbl=`<table style="width:100%;border-collapse:collapse;font-size:11.5px">
+    <thead><tr style="background:#0c4a6e;color:#fff">
+      <th style="padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase">#</th>
+      <th style="padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase">Classe</th>
+      <th style="padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase">Rubrica</th>
+      <th style="padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase">Categoria</th>
+      <th style="padding:6px 10px;text-align:right;font-size:9.5px;text-transform:uppercase">Valor</th>
+      <th style="padding:6px 10px;text-align:right;font-size:9.5px;text-transform:uppercase">% Total</th>
+      <th style="padding:6px 10px;text-align:right;font-size:9.5px;text-transform:uppercase">% Acumul.</th>
+    </tr></thead><tbody>`;
+  top30.forEach((r,i)=>{
+    const cor=r.cls==='A'?'#dc2626':r.cls==='B'?'#f97316':'#ca8a04';
+    const corBg=r.cls==='A'?'#fee2e2':r.cls==='B'?'#fed7aa':'#fef3c7';
+    tbl+=`<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:6px 10px;color:#94a3b8">${i+1}</td>
+      <td style="padding:6px 10px"><span style="background:${corBg};color:${cor};padding:2px 8px;border-radius:11px;font-size:10px;font-weight:800">${r.cls}</span></td>
+      <td style="padding:6px 10px;font-weight:600;color:#1e293b">${ev_names[r.ei]||('Ev '+r.ei)}</td>
+      <td style="padding:6px 10px;color:#64748b;font-size:10.5px">${CAT_NM[evCat(r.ei)]||'Outros'}</td>
+      <td style="padding:6px 10px;text-align:right;font-weight:700;color:#0c4a6e">${fR(r.val)}</td>
+      <td style="padding:6px 10px;text-align:right;color:#475569">${fP(r.pct)}</td>
+      <td style="padding:6px 10px;text-align:right;font-weight:600;color:${r.acc<=80?'#dc2626':r.acc<=95?'#f97316':'#ca8a04'}">${fP(r.acc)}</td>
+    </tr>`;
+  });
+  tbl+=`</tbody></table>`;
+  if(totalEventos>30)tbl+=`<div style="text-align:center;padding:8px;font-size:10.5px;color:var(--mu)">Exibindo top 30 de ${totalEventos} eventos analisados</div>`;
+  document.getElementById('comp-pareto-tbl').innerHTML=tbl;
+}
 
 </script>
 </body>
