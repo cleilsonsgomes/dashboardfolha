@@ -806,6 +806,9 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   <div class="info-box" style="background:#eff6ff;border:1px solid #bae6fd;color:#0c4a6e;margin-bottom:18px;padding:10px 14px;border-radius:8px;font-size:11.5px;line-height:1.7">
     <strong>ℹ️ Limitações da Auditoria Automática</strong> — Os dados desta folha <strong>não permitem</strong> verificar automaticamente: <strong>idade do servidor</strong> (aposentadoria compulsória 75+, LC 152/2015, Guia TCM/BA pág. 20); <strong>aposentadoria por invalidez</strong> com condições de retorno (Guia TCM/BA pág. 21, Acórdãos TCU 198/2018 e 2217/2016); <strong>CPF cross-órgão</strong> para acumulação interfederativa; <strong>carga horária</strong> para compatibilidade de horários (Guia TCM/BA pág. 12). Os indicadores de acumulação abaixo são feitos por <em>identidade de nomes</em> e devem ser confirmados manualmente.
   </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:14px">
+    <button onclick="gerarRelatorioAuditoria()" style="background:linear-gradient(135deg,#0c4a6e,#0ea5e9);color:#fff;border:none;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(14,165,233,0.3)">📄 Gerar Relatório de Auditoria (PDF)</button>
+  </div>
   <div id="aud-comparativo" style="margin-bottom:18px"></div>
   <div class="kpi-grid" id="aud-kpi"></div>
   <div id="aud-sev-filter" style="display:flex;gap:8px;margin:16px 0 20px;flex-wrap:wrap"></div>
@@ -5144,6 +5147,627 @@ function renderAcumulacao(){
       elPens.innerHTML=`<div style="background:#dc2626;color:#fff;border-radius:8px;padding:8px 14px;margin-bottom:10px;display:inline-block;min-width:160px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Casos detectados</div><div style="font-size:22px;font-weight:800">${pensaoDupla.length}</div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">#</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">Beneficiário / Pensões</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--mu)">Total</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
     }
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// RELATÓRIO DE AUDITORIA — geração HTML para impressão/PDF
+// ════════════════════════════════════════════════════════════════════════════
+function gerarRelatorioAuditoria(){
+  const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fN=v=>(v||0).toLocaleString('pt-BR');
+  const fP=v=>(v||0).toFixed(1)+'%';
+  const dataNow=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const horaNow=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const mNm=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  // ── Coleta de dados base ───────────────────────────────────────────────
+  const anosFlt=FS.anos.size>0?[...FS.anos].sort():[2023,2024,2025,2026];
+  const periodo=`${anosFlt[0]}–${anosFlt[anosFlt.length-1]}`;
+  const TETO=Number(document.getElementById('aud-teto-pref-raw')?.value||33763);
+  const TETO_STF=41650.92;
+
+  // Total folha período
+  let totalFolha=0; const folhaPorAno={}; const folhaPorRi={}; const folhaPorSi={};
+  agg1.forEach(r=>{
+    if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+    if(FS.anos.size>0&&!FS.anos.has(r[0]))return;
+    totalFolha+=r[5];
+    folhaPorAno[r[0]]=(folhaPorAno[r[0]]||0)+r[5];
+    folhaPorRi[r[4]]=(folhaPorRi[r[4]]||0)+r[5];
+    folhaPorSi[r[3]]=(folhaPorSi[r[3]]||0)+r[5];
+  });
+  const totalServidores=Object.keys(srv_profile).length;
+
+  // Última competência
+  const comps=[...new Set(agg1.filter(r=>!EXCLUIR_COMPS.has(r[0]*100+r[1])).map(r=>r[0]*100+r[1]))].sort();
+  const lastComp=comps[comps.length-1];
+  const folhaUltMes=agg1.filter(r=>r[0]*100+r[1]===lastComp).reduce((s,r)=>s+r[5],0);
+  const folhaAnualProj=folhaUltMes*12;
+
+  // RCL ano (média dos meses RCL disponíveis)
+  const rclLastMes=RCL_MENSAL[lastComp]||43000000;
+  const pctRCL=(folhaUltMes/rclLastMes)*100;
+
+  // ── Achados ───────────────────────────────────────────────────────────
+  // 1. Teto Municipal
+  const monthPeak={};
+  agg2.forEach(r=>{
+    if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+    if(FS.anos.size>0&&!FS.anos.has(r[0]))return;
+    const mi=r[2], comp=r[0]*100+r[1];
+    if(!monthPeak[mi])monthPeak[mi]={};
+    monthPeak[mi][comp]=(monthPeak[mi][comp]||0)+r[6];
+  });
+  const tetoRows=[];
+  Object.entries(monthPeak).forEach(([mi,byC])=>{
+    const peak=Math.max(...Object.values(byC));
+    if(peak>TETO)tetoRows.push({mi:+mi,peak});
+  });
+  tetoRows.sort((a,b)=>b.peak-a.peak);
+  const tetoStf=tetoRows.filter(r=>r.peak>TETO_STF).length;
+
+  // 2. HE Sistemática
+  const heByMiAno={};
+  agg2.forEach(r=>{
+    if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+    if(FS.anos.size>0&&!FS.anos.has(r[0]))return;
+    if(!EV_EXTRA.has(r[3]))return;
+    const mi=r[2], ano=r[0];
+    if(!heByMiAno[mi])heByMiAno[mi]={};
+    if(!heByMiAno[mi][ano])heByMiAno[mi][ano]={meses:new Set(),total:0};
+    heByMiAno[mi][ano].meses.add(r[1]);
+    heByMiAno[mi][ano].total+=r[6];
+  });
+  const heSist=[];
+  Object.entries(heByMiAno).forEach(([mi,byA])=>{
+    Object.entries(byA).forEach(([ano,d])=>{
+      if(d.meses.size>=10)heSist.push({mi:+mi,ano:+ano,meses:d.meses.size,total:d.total});
+    });
+  });
+  heSist.sort((a,b)=>b.total-a.total);
+
+  // 3. Acumulação (reusa lógica)
+  const acumCasos=audCalcularAcumulacoes();
+  const acumDuplos=acumCasos.filter(c=>c.nv===2);
+  const acumTri=acumCasos.filter(c=>c.nv>=3);
+  let nIrreg=0,nExcec=0,nPossivel=0;
+  acumDuplos.forEach(c=>{
+    const cls=audClassificarAcumulacao(c.vinculos);
+    if(cls.tipo==='IRREGULAR')nIrreg++;
+    else if(cls.tipo==='EXCECAO')nExcec++;
+    else if(cls.tipo==='POSSIVEL')nPossivel++;
+  });
+  const ATIVOS=new Set([0,4,5,8]);
+  const aposAtivo=acumCasos.filter(c=>{const ris=new Set(c.vinculos.map(v=>v.ri));return ris.has(6)&&[...ris].some(r=>ATIVOS.has(r));});
+  const pensaoDupla=acumCasos.filter(c=>{const ris=new Set(c.vinculos.map(v=>v.ri));return (ris.has(7)&&ris.has(10))||(ris.has(7)&&c.vinculos.filter(v=>v.ri===7).length>=2)||(ris.has(10)&&c.vinculos.filter(v=>v.ri===10).length>=2);});
+
+  // 4. Top 20 maiores remunerações (por pico mensal)
+  const top20=tetoRows.slice(0,20).map(r=>r);
+  // Se não tiver casos acima do teto, pegar top 20 absolutos
+  if(top20.length<20){
+    const allPeaks=Object.entries(monthPeak).map(([mi,byC])=>({mi:+mi,peak:Math.max(...Object.values(byC))})).sort((a,b)=>b.peak-a.peak).slice(0,20);
+    top20.splice(0,top20.length,...allPeaks);
+  }
+
+  // 5. Concentração por cargo
+  const cargoTot={};
+  const cargoCount={};
+  agg4.forEach(r=>{
+    if(FS.anos.size>0&&!FS.anos.has(r[1]))return;
+    const prof=srv_profile[r[0]]||[0,0,0];
+    const cgIdx=prof[0];
+    cargoTot[cgIdx]=(cargoTot[cgIdx]||0)+r[3];
+  });
+  Object.keys(srv_profile).forEach(mi=>{
+    const cg=srv_profile[mi][0];
+    cargoCount[cg]=(cargoCount[cg]||0)+1;
+  });
+  const cargoRank=Object.entries(cargoTot).map(([cg,tot])=>({cg:+cg,tot,nm:cargos[cg]||'?',cnt:cargoCount[cg]||0})).sort((a,b)=>b.tot-a.tot).slice(0,10);
+
+  // 6. Crescimento por ano
+  const anosOrd=Object.keys(folhaPorAno).map(Number).sort();
+  const cresc={};
+  for(let i=1;i<anosOrd.length;i++){
+    const a=anosOrd[i],p=anosOrd[i-1];
+    cresc[a]=folhaPorAno[p]>0?((folhaPorAno[a]-folhaPorAno[p])/folhaPorAno[p])*100:0;
+  }
+  const IPCA_ACM=14;
+  const crescTotal=anosOrd.length>1?((folhaPorAno[anosOrd[anosOrd.length-1]]-folhaPorAno[anosOrd[0]])/folhaPorAno[anosOrd[0]])*100:0;
+
+  // ── Construção do HTML ────────────────────────────────────────────────
+  const totalAchados=tetoRows.length+heSist.length+nIrreg+acumTri.length+aposAtivo.length+pensaoDupla.length;
+  const criticos=acumTri.length+pensaoDupla.length+aposAtivo.filter(c=>!c.vinculos.some(v=>v.ri===8)).length+tetoStf;
+  const altos=tetoRows.length-tetoStf+nIrreg;
+  const medios=heSist.length+nPossivel;
+
+  let html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Relatório de Auditoria — Folha de Pagamento</title>
+<style>
+@page{size:A4;margin:1.5cm 1.2cm}
+*{box-sizing:border-box}
+body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1e293b;font-size:10.5pt;line-height:1.5;margin:0}
+.no-print{padding:14px;background:#f1f5f9;border-bottom:1px solid #cbd5e1;display:flex;gap:10px;align-items:center;position:sticky;top:0;z-index:100}
+.no-print button{background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer}
+.no-print button:hover{background:#0284c7}
+.no-print .secondary{background:#64748b}
+.page{padding:0 0 2em;page-break-after:always}
+.page:last-child{page-break-after:auto}
+h1{font-size:18pt;color:#0c4a6e;margin:0 0 8px;line-height:1.2}
+h2{font-size:14pt;color:#0c4a6e;border-bottom:2px solid #0ea5e9;padding-bottom:4px;margin:24px 0 12px;page-break-after:avoid}
+h3{font-size:11pt;color:#1e293b;margin:14px 0 6px;page-break-after:avoid}
+h4{font-size:10pt;color:#475569;margin:10px 0 4px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+p{margin:0 0 6px}
+table{width:100%;border-collapse:collapse;font-size:9pt;margin:8px 0}
+th{background:#0c4a6e;color:#fff;padding:5px 7px;text-align:left;font-weight:700;font-size:8.5pt;text-transform:uppercase;letter-spacing:.3px}
+td{padding:4px 7px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+tr:nth-child(even) td{background:#f8fafc}
+.r{text-align:right} .c{text-align:center}
+.kpi-row{display:flex;gap:10px;margin:10px 0;flex-wrap:wrap}
+.kpi{flex:1;min-width:130px;padding:10px 12px;border-radius:6px;border:1px solid #e2e8f0}
+.kpi .l{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
+.kpi .v{font-size:16pt;font-weight:800;margin-top:2px}
+.kpi .s{font-size:8.5pt;opacity:.85;margin-top:2px}
+.kpi.red{background:#fee2e2;color:#7f1d1d;border-color:#fca5a5}
+.kpi.orange{background:#fed7aa;color:#7c2d12;border-color:#fdba74}
+.kpi.yellow{background:#fef3c7;color:#713f12;border-color:#fcd34d}
+.kpi.blue{background:#dbeafe;color:#1e3a8a;border-color:#93c5fd}
+.kpi.green{background:#dcfce7;color:#14532d;border-color:#86efac}
+.kpi.gray{background:#f1f5f9;color:#334155;border-color:#cbd5e1}
+.box{padding:10px 14px;border-radius:6px;margin:10px 0;border-left:4px solid #0ea5e9;background:#f0f9ff}
+.box.red{background:#fef2f2;border-left-color:#dc2626;color:#7f1d1d}
+.box.warn{background:#fffbeb;border-left-color:#f59e0b;color:#78350f}
+.box.ok{background:#f0fdf4;border-left-color:#16a34a;color:#14532d}
+.legal{background:#f1f5f9;padding:8px 12px;border-radius:4px;font-size:8.5pt;color:#475569;line-height:1.6;margin:8px 0}
+.legal strong{color:#0c4a6e}
+.cover{text-align:center;padding-top:120px;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;page-break-after:always}
+.cover .municipio{font-size:14pt;color:#64748b;margin-bottom:8px}
+.cover .titulo{font-size:32pt;font-weight:800;color:#0c4a6e;line-height:1.1;margin:20px 0;max-width:80%}
+.cover .subtitulo{font-size:13pt;color:#475569;margin:10px 0}
+.cover .periodo{font-size:16pt;color:#0ea5e9;font-weight:700;margin:30px 0}
+.cover .footer{margin-top:auto;padding-top:60px;font-size:9pt;color:#94a3b8}
+.cover .seal{margin:30px 0;font-size:60pt}
+.severity-crit{color:#dc2626;font-weight:700}
+.severity-high{color:#ea580c;font-weight:700}
+.severity-med{color:#ca8a04;font-weight:700}
+.severity-low{color:#16a34a;font-weight:700}
+.compliance{padding:6px 12px;margin:4px 0;border-radius:4px;display:flex;align-items:center;gap:10px;font-size:10pt}
+.compliance.ok{background:#dcfce7;color:#14532d}
+.compliance.warn{background:#fef3c7;color:#713f12}
+.compliance.err{background:#fee2e2;color:#7f1d1d}
+.toc-item{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted #cbd5e1;font-size:10pt}
+.assinaturas{margin-top:60px;display:flex;justify-content:space-between;gap:40px;page-break-inside:avoid}
+.ass-block{flex:1;text-align:center;padding-top:30px;border-top:1px solid #1e293b;font-size:9pt}
+@media print{
+  .no-print{display:none}
+  body{font-size:9.5pt}
+  h1{font-size:16pt} h2{font-size:13pt} h3{font-size:10.5pt}
+  table{font-size:8.5pt} th{font-size:7.5pt} .kpi .v{font-size:14pt}
+  .cover .titulo{font-size:24pt}
+}
+</style></head><body>
+<div class="no-print">
+  <strong>📄 Relatório de Auditoria</strong>
+  <button onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
+  <button class="secondary" onclick="window.close()">Fechar</button>
+  <span style="margin-left:auto;font-size:11px;color:#64748b">Use Ctrl+P (Windows) ou Cmd+P (Mac) para salvar como PDF</span>
+</div>
+
+<!-- CAPA -->
+<div class="cover">
+  <div class="municipio">MUNICÍPIO DE PAULO AFONSO — BAHIA</div>
+  <div class="seal">🏛️</div>
+  <div class="titulo">Relatório de Auditoria da Folha de Pagamento</div>
+  <div class="subtitulo">Diagnóstico técnico baseado no Guia de Irregularidades em Folha de Pagamento — TCM/BA 2023</div>
+  <div class="periodo">Período: ${periodo}</div>
+  <div class="subtitulo">Gerado em ${dataNow} às ${horaNow}</div>
+  <div class="footer">
+    Fundamentação: CF/88 art. 37 · LRF Lei 101/2000 · EC 41/2003 · EC 103/2019 · Lei 8.429/92 · LC 152/2015<br>
+    Decreto-Lei 201/67 · Súmula 246/TCU · Acórdãos TCU 198/2018, 2217/2016, 2.290/2011
+  </div>
+</div>
+
+<!-- 1. SUMÁRIO EXECUTIVO -->
+<div class="page">
+<h1>1. Sumário Executivo</h1>
+<p>Este relatório apresenta o diagnóstico técnico da folha de pagamento do Município de Paulo Afonso/BA, abrangendo o período de <strong>${periodo}</strong>, com base nos dados extraídos da folha e nas diretrizes do Guia de Irregularidades em Folha de Pagamento publicado pelo Tribunal de Contas dos Municípios da Bahia (TCM/BA, 2023).</p>
+
+<h3>Indicadores Gerais</h3>
+<div class="kpi-row">
+  <div class="kpi blue"><div class="l">Folha Total no Período</div><div class="v">${fR(totalFolha)}</div></div>
+  <div class="kpi blue"><div class="l">Servidores Cadastrados</div><div class="v">${fN(totalServidores)}</div></div>
+  <div class="kpi blue"><div class="l">Última Competência</div><div class="v">${mNm[lastComp%100]}/${Math.floor(lastComp/100)}</div><div class="s">Folha: ${fR(folhaUltMes)}</div></div>
+  <div class="kpi ${pctRCL>=54?'red':pctRCL>=48.6?'orange':'green'}"><div class="l">Folha / RCL (${mNm[lastComp%100]}/${Math.floor(lastComp/100)})</div><div class="v">${fP(pctRCL)}</div><div class="s">RCL: ${fR(rclLastMes)}</div></div>
+</div>
+
+<h3>Resumo dos Achados</h3>
+<div class="kpi-row">
+  <div class="kpi red"><div class="l">🚨 Críticos</div><div class="v">${criticos}</div><div class="s">Tríplice acum., pensão dupla, teto STF</div></div>
+  <div class="kpi orange"><div class="l">⚠️ Alta Severidade</div><div class="v">${altos}</div><div class="s">Teto municipal, acumulação irregular</div></div>
+  <div class="kpi yellow"><div class="l">📌 Média Severidade</div><div class="v">${medios}</div><div class="s">HE sistemática, requer análise</div></div>
+  <div class="kpi gray"><div class="l">Total de Apontamentos</div><div class="v">${totalAchados}</div></div>
+</div>
+
+<h3>Panorama Sintético</h3>
+<table>
+<thead><tr><th>Achado</th><th class="c">Casos</th><th class="c">Severidade</th><th>Base Legal</th></tr></thead>
+<tbody>
+<tr><td>Servidores acima do Teto Municipal (R$ ${fR(TETO).replace('R$ ','')})</td><td class="c">${tetoRows.length}</td><td class="c"><span class="severity-high">ALTA</span></td><td>CF art. 37 XI</td></tr>
+<tr><td>Servidores acima do Teto STF (R$ 41.650,92)</td><td class="c">${tetoStf}</td><td class="c"><span class="severity-crit">CRÍTICA</span></td><td>CF art. 37 XI</td></tr>
+<tr><td>HE Sistemática (10+ meses/ano)</td><td class="c">${heSist.length}</td><td class="c"><span class="severity-med">MÉDIA</span></td><td>CF art. 37 XIII · CLT art. 59</td></tr>
+<tr><td>Acumulação dupla irregular aparente</td><td class="c">${nIrreg}</td><td class="c"><span class="severity-high">ALTA</span></td><td>CF art. 37 XVI</td></tr>
+<tr><td>Acumulação dupla com exceção constitucional</td><td class="c">${nExcec}</td><td class="c"><span class="severity-low">VERIFICAR</span></td><td>CF art. 37 XVI a/b/c</td></tr>
+<tr><td>Tríplice acumulação</td><td class="c">${acumTri.length}</td><td class="c"><span class="severity-crit">CRÍTICA</span></td><td>Carvalho Filho · Di Pietro</td></tr>
+<tr><td>Aposentados em folha de ativos</td><td class="c">${aposAtivo.length}</td><td class="c"><span class="severity-crit">CRÍTICA</span></td><td>CF art. 37 §10</td></tr>
+<tr><td>Pensão dupla</td><td class="c">${pensaoDupla.length}</td><td class="c"><span class="severity-crit">CRÍTICA</span></td><td>EC 103/2019 art. 24</td></tr>
+</tbody>
+</table>
+
+<h3>Conclusão Preliminar</h3>
+<div class="box ${criticos>0?'red':'warn'}">
+${criticos>0?
+  `<strong>Atenção requerida.</strong> Foram identificados <strong>${criticos} achados de severidade crítica</strong> que exigem ação imediata da Administração. Recomenda-se a constituição de comissão interna de regularização e a comunicação ao Controle Interno e ao TCM/BA.`:
+  `Não foram identificados achados de severidade crítica nos dados analisados. Permanecem ${altos+medios} apontamentos de média/alta severidade que devem ser tratados conforme plano de ação consolidado.`}
+</div>
+</div>
+
+<!-- 2. METODOLOGIA -->
+<div class="page">
+<h1>2. Metodologia e Limitações</h1>
+<h3>Fonte dos Dados</h3>
+<p>Dados extraídos da folha de pagamento do Município de Paulo Afonso/BA, abrangendo ${fN(totalServidores)} servidores cadastrados e o período de ${periodo}. Os dados foram processados em formato estruturado, com classificação por regime, secretaria, cargo e evento de pagamento.</p>
+
+<h3>Critérios de Análise</h3>
+<p>As análises seguem rigorosamente o <strong>Guia de Irregularidades em Folha de Pagamento — TCM/BA 2023</strong> e a legislação vigente (CF/88, LRF, EC 41/2003, EC 103/2019, LC 152/2015). Cada achado é classificado por severidade e fundamentado em norma constitucional ou infraconstitucional aplicável.</p>
+
+<h3>Limitações da Auditoria Automática</h3>
+<div class="box warn">
+<strong>Os dados disponíveis NÃO permitem verificação automática de:</strong>
+<ul style="margin:6px 0 0 18px;padding:0">
+  <li><strong>Idade do servidor</strong> — aposentadoria compulsória aos 75 anos (LC 152/2015, Guia TCM/BA pág. 20)</li>
+  <li><strong>Aposentadoria por invalidez</strong> com condições de retorno (Guia TCM/BA pág. 21, Acórdãos TCU 198/2018 e 2217/2016)</li>
+  <li><strong>CPF cross-órgão</strong> para identificar acumulação interfederativa (TCM/BA pág. 9, Súmula 246/TCU)</li>
+  <li><strong>Carga horária</strong> dos vínculos para análise de compatibilidade de horários (Guia TCM/BA pág. 12)</li>
+  <li><strong>Tipo de aposentadoria</strong> (voluntária, compulsória, por invalidez)</li>
+</ul>
+<p style="margin-top:8px">Apontamentos baseados em <em>identidade de nome</em> requerem confirmação manual via consulta ao CPF do servidor.</p>
+</div>
+
+<h3>Filtros Aplicados na Análise</h3>
+<table>
+<tr><td><strong>Anos</strong></td><td>${FS.anos.size?[...FS.anos].sort().join(', '):'Todos (2023–2026)'}</td></tr>
+<tr><td><strong>Regimes</strong></td><td>${FS.ris.size?[...FS.ris].map(ri=>(regimes[ri]||'?').replace(/^\d+ - /,'')).join(', '):'Todos'}</td></tr>
+<tr><td><strong>Secretarias</strong></td><td>${FS.sis.size?[...FS.sis].map(si=>(secs[si]||'?').replace(/^\d+ - /,'')).slice(0,5).join(', ')+(FS.sis.size>5?` (+${FS.sis.size-5})`:''):'Todas'}</td></tr>
+<tr><td><strong>Eventos</strong></td><td>${FS.eis.size?`${FS.eis.size} eventos selecionados`:'Todos'}</td></tr>
+<tr><td><strong>Competências</strong></td><td>${FS.comps.size?`${FS.comps.size} competências selecionadas`:'Todas'}</td></tr>
+</table>
+</div>
+
+<!-- 3. INDICADORES FISCAIS (LRF) -->
+<div class="page">
+<h1>3. Indicadores Fiscais — Lei de Responsabilidade Fiscal</h1>
+<p>A Lei Complementar 101/2000 (LRF) estabelece limites para gastos com pessoal nos Municípios. Conforme art. 19, II, o limite total é de <strong>60% da Receita Corrente Líquida (RCL)</strong>, com alertas escalonados.</p>
+
+<h3>Posição Atual (${mNm[lastComp%100]}/${Math.floor(lastComp/100)})</h3>
+<div class="kpi-row">
+  <div class="kpi blue"><div class="l">Folha Mensal</div><div class="v">${fR(folhaUltMes)}</div></div>
+  <div class="kpi blue"><div class="l">RCL Mensal</div><div class="v">${fR(rclLastMes)}</div></div>
+  <div class="kpi ${pctRCL>=54?'red':pctRCL>=51.3?'orange':pctRCL>=48.6?'yellow':'green'}"><div class="l">Folha / RCL</div><div class="v">${fP(pctRCL)}</div></div>
+  <div class="kpi gray"><div class="l">Projeção Anual</div><div class="v">${fR(folhaAnualProj)}</div></div>
+</div>
+
+<h3>Limites LRF Aplicáveis ao Município</h3>
+<table>
+<thead><tr><th>Limite</th><th class="r">% RCL</th><th class="r">Valor (R$)</th><th class="r">Margem Disponível</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Limite de Alerta</td><td class="r">48,6%</td><td class="r">${fR(rclLastMes*0.486)}</td><td class="r">${fR(rclLastMes*0.486-folhaUltMes)}</td><td>${pctRCL<48.6?'<span class="severity-low">✓ Dentro</span>':'<span class="severity-med">⚠ Ultrapassado</span>'}</td></tr>
+<tr><td>Limite Prudencial</td><td class="r">51,3%</td><td class="r">${fR(rclLastMes*0.513)}</td><td class="r">${fR(rclLastMes*0.513-folhaUltMes)}</td><td>${pctRCL<51.3?'<span class="severity-low">✓ Dentro</span>':'<span class="severity-high">⚠ Ultrapassado</span>'}</td></tr>
+<tr><td>Limite Máximo (LRF art. 20)</td><td class="r">54,0%</td><td class="r">${fR(rclLastMes*0.54)}</td><td class="r">${fR(rclLastMes*0.54-folhaUltMes)}</td><td>${pctRCL<54?'<span class="severity-low">✓ Dentro</span>':'<span class="severity-crit">🚨 EXCEDIDO</span>'}</td></tr>
+</tbody>
+</table>
+
+<div class="legal">
+<strong>⚖️ Fundamentação:</strong> LRF art. 19 e 20 (limites de gastos com pessoal); LRF art. 22 (limite prudencial = 95% do máximo); CF art. 169 (despesa com pessoal). TCM/BA recomenda monitoramento mensal contínuo. Em caso de superação do limite máximo, aplicam-se medidas compulsórias da LRF art. 23 (redução de despesas em até 8 meses).
+</div>
+
+<h3>Evolução da Relação Folha/RCL</h3>
+<table>
+<thead><tr><th>Mês</th><th class="r">Folha</th><th class="r">RCL</th><th class="r">%</th><th>Status</th></tr></thead>
+<tbody>
+${(()=>{const linhas=Object.keys(RCL_MENSAL).sort().slice(-12).map(c=>{
+  const k=Number(c); const folha=agg1.filter(r=>r[0]*100+r[1]===k).reduce((s,r)=>s+r[5],0);
+  const rcl=RCL_MENSAL[k]||0; const p=rcl>0?(folha/rcl)*100:0;
+  return `<tr><td>${mNm[k%100]}/${Math.floor(k/100)}</td><td class="r">${fR(folha)}</td><td class="r">${fR(rcl)}</td><td class="r"><strong>${fP(p)}</strong></td><td>${p>=54?'<span class="severity-crit">EXCEDIDO</span>':p>=51.3?'<span class="severity-high">PRUDENCIAL</span>':p>=48.6?'<span class="severity-med">ALERTA</span>':'<span class="severity-low">OK</span>'}</td></tr>`;
+}).join(''); return linhas;})()}
+</tbody>
+</table>
+</div>
+
+<!-- 4. ACHADOS DETALHADOS -->
+<div class="page">
+<h1>4. Achados Detalhados</h1>
+
+<h2>4.1 Teto Remuneratório Municipal — CF art. 37, XI</h2>
+<div class="kpi-row">
+  <div class="kpi red"><div class="l">Acima Teto Municipal</div><div class="v">${tetoRows.length}</div><div class="s">limite: ${fR(TETO)}</div></div>
+  <div class="kpi ${tetoStf>0?'red':'gray'}"><div class="l">Acima Teto STF</div><div class="v">${tetoStf}</div><div class="s">limite: ${fR(TETO_STF)}</div></div>
+</div>
+${tetoRows.length>0?`<h4>Top 15 Servidores Acima do Teto</h4>
+<table>
+<thead><tr><th>#</th><th>Servidor</th><th>Mat.</th><th>Cargo</th><th>Secretaria</th><th class="r">Pico Mensal</th><th class="c">Status</th></tr></thead>
+<tbody>${tetoRows.slice(0,15).map((r,i)=>{
+  const prof=srv_profile[r.mi]||[0,0,0];
+  return `<tr><td>${i+1}</td><td>${nomes[r.mi]||'?'}</td><td>${mats[r.mi]||'?'}</td><td>${(cargos[prof[0]]||'?').slice(0,30)}</td><td>${(secs[prof[1]]||'?').replace(/^\d+ - /,'').slice(0,30)}</td><td class="r"><strong>${fR(r.peak)}</strong></td><td class="c">${r.peak>TETO_STF?'<span class="severity-crit">+STF</span>':'<span class="severity-high">+MUN</span>'}</td></tr>`;
+}).join('')}</tbody>
+</table>`:'<div class="box ok">✓ Nenhum servidor identificado acima do teto municipal.</div>'}
+<div class="legal">
+<strong>⚖️ Fundamentação:</strong> CF art. 37 XI (EC 41/2003) — "nenhum servidor pode perceber remuneração superior ao subsídio mensal, em espécie, do <strong>Prefeito</strong>, no caso dos Municípios". Guia TCM/BA pág. 19. Súmula 246/TCU. Acórdão TCU 2.290/2011 (devolução do excesso).
+</div>
+<div class="legal" style="background:#fef3c7;color:#713f12"><strong>Ação:</strong> Notificar formalmente os servidores listados; instaurar processo administrativo para apuração; calcular valores a serem ressarcidos; revisar gratificações ou vantagens irregulares. <strong>Prazo:</strong> 60 dias.</div>
+
+<h2>4.2 Acumulação Dupla de Cargos — CF art. 37, XVI</h2>
+<div class="kpi-row">
+  <div class="kpi red"><div class="l">Irregular Aparente</div><div class="v">${nIrreg}</div></div>
+  <div class="kpi green"><div class="l">Exceção Constitucional</div><div class="v">${nExcec}</div></div>
+  <div class="kpi yellow"><div class="l">Requer Análise</div><div class="v">${nPossivel}</div></div>
+</div>
+${acumDuplos.length>0?`<h4>Top 20 Casos de Acumulação Dupla</h4>
+<table>
+<thead><tr><th>#</th><th>Servidor</th><th>Vínculos Identificados</th><th class="c">Classificação</th><th class="r">Total</th></tr></thead>
+<tbody>${acumDuplos.slice(0,20).map((c,i)=>{
+  const cls=audClassificarAcumulacao(c.vinculos);
+  const vincH=c.vinculos.map(v=>`Mat. ${mats[v.mi]||v.mi} — ${(cargos[v.mi]||v.cargo||'?').slice(0,28)} (${(regimes[v.ri]||'?').replace(/^\d+ - /,'')})`).join('<br>');
+  return `<tr><td>${i+1}</td><td><strong>${c.nome}</strong></td><td style="font-size:8pt">${vincH}</td><td class="c"><span class="severity-${cls.tipo==='IRREGULAR'?'high':cls.tipo==='TRIPLICE'?'crit':cls.tipo==='EXCECAO'?'low':'med'}">${cls.tipo}</span></td><td class="r"><strong>${fR(c.totalGeral)}</strong></td></tr>`;
+}).join('')}</tbody>
+</table>`:'<div class="box ok">✓ Nenhum caso detectado.</div>'}
+<div class="legal">
+<strong>⚖️ Fundamentação:</strong> CF art. 37 XVI — vedada acumulação remunerada de cargos. Exceções: (a) 2 professores; (b) professor + técnico/científico; (c) 2 cargos de saúde regulamentada. Guia TCM/BA pág. 9. Decreto-Lei 201/67 art. 1º XIII. Súmula 246/TCU.
+</div>
+
+<h2>4.3 Tríplice Acumulação</h2>
+${acumTri.length>0?`<div class="box red"><strong>🚨 ${acumTri.length} caso(s) identificado(s)</strong> — Tríplice acumulação é vedada sem exceção constitucional (Guia TCM/BA pág. 10–11).</div>
+<table>
+<thead><tr><th>#</th><th>Servidor</th><th class="c">Vínculos</th><th class="r">Total Acumulado</th></tr></thead>
+<tbody>${acumTri.slice(0,15).map((c,i)=>`<tr><td>${i+1}</td><td><strong>${c.nome}</strong></td><td class="c"><span class="severity-crit">${c.nv}</span></td><td class="r"><strong>${fR(c.totalGeral)}</strong></td></tr>`).join('')}</tbody>
+</table>`:'<div class="box ok">✓ Nenhum caso de tríplice acumulação detectado.</div>'}
+
+<h2>4.4 Aposentado em Folha de Ativos — CF art. 37, §10</h2>
+${aposAtivo.length>0?`<div class="kpi-row"><div class="kpi red"><div class="l">Casos</div><div class="v">${aposAtivo.length}</div></div></div>
+<table>
+<thead><tr><th>#</th><th>Servidor</th><th class="c">Regimes Identificados</th><th class="c">Status</th><th class="r">Total</th></tr></thead>
+<tbody>${aposAtivo.slice(0,15).map((c,i)=>{
+  const rg=c.vinculos.map(v=>(regimes[v.ri]||'?').replace(/^\d+ - /,'')).join(' + ');
+  const acum=c.vinculos.some(v=>v.ri===8);
+  return `<tr><td>${i+1}</td><td><strong>${c.nome}</strong></td><td class="c" style="font-size:8.5pt">${rg}</td><td class="c">${acum?'<span class="severity-low">PERMITIDO</span>':'<span class="severity-crit">IRREGULAR</span>'}</td><td class="r"><strong>${fR(c.totalGeral)}</strong></td></tr>`;
+}).join('')}</tbody>
+</table>`:'<div class="box ok">✓ Nenhum caso detectado.</div>'}
+<div class="legal"><strong>⚖️ Fundamentação:</strong> CF art. 37 §10 — vedada percepção simultânea de proventos com remuneração de cargo ativo. Ressalvas: cargo eletivo, em comissão ou cargos acumuláveis. Guia TCM/BA pág. 17.</div>
+
+<h2>4.5 Pensão Dupla — EC 103/2019 art. 24</h2>
+${pensaoDupla.length>0?`<div class="box red"><strong>${pensaoDupla.length} caso(s)</strong> de possível pensão dupla detectados.</div>
+<table>
+<thead><tr><th>#</th><th>Beneficiário</th><th class="c">Vínculos de Pensão</th><th class="r">Total</th></tr></thead>
+<tbody>${pensaoDupla.slice(0,15).map((c,i)=>{
+  const vp=c.vinculos.filter(v=>v.ri===7||v.ri===10);
+  return `<tr><td>${i+1}</td><td><strong>${c.nome}</strong></td><td class="c">${vp.length}</td><td class="r"><strong>${fR(c.totalGeral)}</strong></td></tr>`;
+}).join('')}</tbody>
+</table>`:'<div class="box ok">✓ Nenhum caso detectado.</div>'}
+<div class="legal"><strong>⚖️ Fundamentação:</strong> EC 103/2019 art. 24 — vedada acumulação de mais de uma pensão por morte deixada por cônjuge/companheiro no mesmo regime. Guia TCM/BA pág. 18.</div>
+
+<h2>4.6 Horas Extras Sistemáticas</h2>
+${heSist.length>0?`<div class="kpi-row"><div class="kpi orange"><div class="l">Servidor-anos com 10+ meses de HE</div><div class="v">${heSist.length}</div></div><div class="kpi orange"><div class="l">Valor Total Pago</div><div class="v">${fR(heSist.reduce((s,r)=>s+r.total,0))}</div></div></div>
+<h4>Top 15 Casos por Valor</h4>
+<table>
+<thead><tr><th>#</th><th>Servidor</th><th>Mat.</th><th class="c">Ano</th><th class="c">Meses</th><th class="r">Total HE</th></tr></thead>
+<tbody>${heSist.slice(0,15).map((r,i)=>`<tr><td>${i+1}</td><td>${nomes[r.mi]||'?'}</td><td>${mats[r.mi]||'?'}</td><td class="c">${r.ano}</td><td class="c"><strong>${r.meses}</strong></td><td class="r"><strong>${fR(r.total)}</strong></td></tr>`).join('')}</tbody>
+</table>`:'<div class="box ok">✓ Nenhum caso de HE em 10+ meses detectado no período/filtro.</div>'}
+<div class="legal"><strong>⚖️ Fundamentação:</strong> CF art. 37 XIII (vedação à vinculação remuneratória irregular). CLT art. 59 (limite 2h/dia, 44h/mês). Lei 8.112/90 art. 74. HE recorrente em todos os meses é indício de estrutura salarial deficiente.</div>
+</div>
+
+<!-- 5. TOP 20 REMUNERAÇÕES -->
+<div class="page">
+<h1>5. Top 20 Maiores Remunerações Individuais</h1>
+<p>Pico mensal de remuneração no período analisado. Marca verde: dentro do teto municipal. Amarelo: entre teto municipal e STF. Vermelho: acima do teto STF.</p>
+<table>
+<thead><tr><th>#</th><th>Servidor</th><th>Mat.</th><th>Cargo</th><th>Secretaria</th><th>Regime</th><th class="r">Pico Mensal</th><th class="c">Status</th></tr></thead>
+<tbody>${top20.map((r,i)=>{
+  const prof=srv_profile[r.mi]||[0,0,0];
+  const status=r.peak>TETO_STF?'<span class="severity-crit">+STF</span>':r.peak>TETO?'<span class="severity-high">+MUN</span>':'<span class="severity-low">OK</span>';
+  return `<tr><td>${i+1}</td><td>${nomes[r.mi]||'?'}</td><td>${mats[r.mi]||'?'}</td><td>${(cargos[prof[0]]||'?').slice(0,28)}</td><td>${(secs[prof[1]]||'?').replace(/^\d+ - /,'').slice(0,28)}</td><td>${(regimes[prof[2]]||'?').replace(/^\d+ - /,'').slice(0,18)}</td><td class="r"><strong>${fR(r.peak)}</strong></td><td class="c">${status}</td></tr>`;
+}).join('')}</tbody>
+</table>
+</div>
+
+<!-- 6. CONCENTRAÇÃO POR CARGO -->
+<div class="page">
+<h1>6. Concentração da Folha por Cargo</h1>
+<p>Os 10 cargos com maior gasto total no período. Identifica onde mudanças (reajustes, criação de vagas, extinção) têm maior impacto.</p>
+<table>
+<thead><tr><th>#</th><th>Cargo</th><th class="c">Ocupantes</th><th class="r">Custo Total no Período</th><th class="r">Custo Médio/Servidor</th><th class="r">% da Folha</th></tr></thead>
+<tbody>${cargoRank.map((c,i)=>`<tr><td>${i+1}</td><td><strong>${c.nm}</strong></td><td class="c">${c.cnt}</td><td class="r"><strong>${fR(c.tot)}</strong></td><td class="r">${fR(c.cnt>0?c.tot/c.cnt:0)}</td><td class="r">${fP((c.tot/totalFolha)*100)}</td></tr>`).join('')}</tbody>
+</table>
+<div class="legal"><strong>⚖️ Relevância:</strong> Concentração superior a 5% em um único cargo merece análise estratégica de plano de cargos (CF art. 39 §1º). Cargos com custo médio elevado em relação ao mercado podem indicar irregularidades remuneratórias.</div>
+</div>
+
+<!-- 7. CRESCIMENTO 2023-2026 -->
+<div class="page">
+<h1>7. Análise de Crescimento da Folha (${periodo})</h1>
+<table>
+<thead><tr><th>Ano</th><th class="r">Folha Anual</th><th class="r">Crescimento Anual</th><th class="c">vs IPCA</th></tr></thead>
+<tbody>${anosOrd.map((a,i)=>{
+  const cv=cresc[a]||0; const acima=i===0?'—':(cv>4.5?'<span class="severity-high">↑ Acima</span>':cv>0?'<span class="severity-low">↓ Próximo</span>':'<span class="severity-low">↓ Abaixo</span>');
+  return `<tr><td><strong>${a}</strong></td><td class="r">${fR(folhaPorAno[a]||0)}</td><td class="r">${i===0?'—':(cv>=0?'+':'')+fP(cv)}</td><td class="c">${acima}</td></tr>`;
+}).join('')}</tbody>
+</table>
+
+<div class="kpi-row">
+  <div class="kpi ${crescTotal>IPCA_ACM?'red':'green'}"><div class="l">Crescimento Acumulado</div><div class="v">${fP(crescTotal)}</div><div class="s">${periodo}</div></div>
+  <div class="kpi gray"><div class="l">IPCA Acumulado (Est.)</div><div class="v">~${IPCA_ACM}%</div></div>
+  <div class="kpi ${crescTotal>IPCA_ACM?'red':'green'}"><div class="l">Excesso s/ Inflação</div><div class="v">${(crescTotal-IPCA_ACM>=0?'+':'')+fP(crescTotal-IPCA_ACM)}</div></div>
+</div>
+<div class="legal"><strong>⚖️ Análise:</strong> ${crescTotal>IPCA_ACM?`Crescimento da folha (${fP(crescTotal)}) supera a inflação acumulada (${IPCA_ACM}%) em ${fP(crescTotal-IPCA_ACM)}. Este excesso pode comprometer o equilíbrio fiscal de médio prazo (LRF art. 21).`:`Crescimento da folha (${fP(crescTotal)}) está alinhado ou abaixo da inflação acumulada (${IPCA_ACM}%).`}</div>
+</div>
+
+<!-- 8. PLANO DE AÇÃO -->
+<div class="page">
+<h1>8. Plano de Ação Consolidado</h1>
+<table>
+<thead><tr><th>#</th><th>Achado</th><th class="c">Prioridade</th><th>Ação Recomendada</th><th>Responsável</th><th class="c">Prazo</th></tr></thead>
+<tbody>
+${criticos>0?`<tr><td>1</td><td>Achados críticos (tríplice acumulação, pensão dupla, +STF)</td><td class="c"><span class="severity-crit">IMEDIATA</span></td><td>Instaurar processo administrativo individualizado; suspender pagamentos suspeitos; comunicar TCM/BA</td><td>SEAM · PGM · CGM</td><td class="c">15 dias</td></tr>`:''}
+${tetoRows.length>0?`<tr><td>2</td><td>${tetoRows.length} servidores acima do teto municipal</td><td class="c"><span class="severity-high">ALTA</span></td><td>Notificar servidores; calcular ressarcimento; revisar gratificações</td><td>SEFAZ · PGM</td><td class="c">60 dias</td></tr>`:''}
+${nIrreg>0?`<tr><td>3</td><td>${nIrreg} acumulações duplas irregulares aparentes</td><td class="c"><span class="severity-high">ALTA</span></td><td>Confirmar via CPF; analisar compatibilidade de horários; instaurar PAD se confirmada irregularidade</td><td>SEAM · CGM</td><td class="c">90 dias</td></tr>`:''}
+${heSist.length>0?`<tr><td>4</td><td>${heSist.length} casos de HE sistemática (10+ meses)</td><td class="c"><span class="severity-med">MÉDIA</span></td><td>Auditar plano de cargos; implementar controle de ponto eletrônico; revisar dimensionamento de equipes</td><td>SEAM · Secretarias</td><td class="c">120 dias</td></tr>`:''}
+${nExcec>0?`<tr><td>5</td><td>${nExcec} acumulações com possível exceção constitucional</td><td class="c"><span class="severity-low">VERIFICAR</span></td><td>Confirmar exceção (professor/saúde); verificar compatibilidade de horários; documentar nos autos</td><td>SEAM</td><td class="c">90 dias</td></tr>`:''}
+${pctRCL>=51.3?`<tr><td>6</td><td>Folha/RCL = ${fP(pctRCL)} (zona prudencial/máxima)</td><td class="c"><span class="severity-high">ALTA</span></td><td>Implementar plano de contenção da LRF art. 23; suspender admissões e progressões</td><td>SEFAZ · Gabinete</td><td class="c">Imediato</td></tr>`:''}
+<tr><td>${pctRCL>=51.3?7:6}</td><td>Limitações de auditoria (idade, CPF, invalidez)</td><td class="c"><span class="severity-med">MÉDIA</span></td><td>Integrar base de dados com TSE/Receita/INSS para cruzamento; obter data de nascimento dos servidores</td><td>SMTI · SEAM</td><td class="c">180 dias</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- 9. QUADRO DE COMPLIANCE -->
+<div class="page">
+<h1>9. Quadro de Compliance Normativo</h1>
+<p>Avaliação automática do cumprimento de obrigações legais relacionadas à gestão da folha de pagamento.</p>
+<div class="compliance ${pctRCL<54?'ok':'err'}">
+  ${pctRCL<54?'✅':'❌'} <strong>LRF art. 19</strong> — Gastos com pessoal dentro do limite de 54% da RCL <span style="margin-left:auto;font-weight:700">${fP(pctRCL)}</span>
+</div>
+<div class="compliance ${tetoStf===0?'ok':'err'}">
+  ${tetoStf===0?'✅':'❌'} <strong>CF art. 37 XI</strong> — Nenhum servidor acima do teto STF <span style="margin-left:auto;font-weight:700">${tetoStf} caso(s)</span>
+</div>
+<div class="compliance ${tetoRows.length===0?'ok':'warn'}">
+  ${tetoRows.length===0?'✅':'⚠️'} <strong>CF art. 37 XI</strong> — Nenhum servidor acima do teto municipal <span style="margin-left:auto;font-weight:700">${tetoRows.length} caso(s)</span>
+</div>
+<div class="compliance ${acumTri.length===0?'ok':'err'}">
+  ${acumTri.length===0?'✅':'❌'} <strong>CF art. 37 XVI</strong> — Sem tríplice acumulação <span style="margin-left:auto;font-weight:700">${acumTri.length} caso(s)</span>
+</div>
+<div class="compliance ${pensaoDupla.length===0?'ok':'err'}">
+  ${pensaoDupla.length===0?'✅':'❌'} <strong>EC 103/2019 art. 24</strong> — Sem pensão dupla indevida <span style="margin-left:auto;font-weight:700">${pensaoDupla.length} caso(s)</span>
+</div>
+<div class="compliance ${nIrreg===0?'ok':'warn'}">
+  ${nIrreg===0?'✅':'⚠️'} <strong>CF art. 37 XVI</strong> — Acumulação dupla irregular aparente <span style="margin-left:auto;font-weight:700">${nIrreg} caso(s)</span>
+</div>
+<div class="compliance warn">
+  ⚠️ <strong>LC 152/2015</strong> — Verificação 75+ não disponível (falta data de nascimento)
+</div>
+<div class="compliance warn">
+  ⚠️ <strong>Acórdãos TCU 198/2018, 2217/2016</strong> — Verificação de aposentadoria por invalidez não disponível
+</div>
+<div class="compliance ok">
+  ✅ <strong>Lei 12.527/2011 (LAI)</strong> — Dados da folha disponíveis para análise técnica
+</div>
+<div class="compliance ok">
+  ✅ <strong>LGPD</strong> — Anonimização aplicável conforme política do município
+</div>
+</div>
+
+<!-- 10. RECOMENDAÇÕES ESTRATÉGICAS -->
+<div class="page">
+<h1>10. Recomendações Estratégicas</h1>
+<p>Ações de médio e longo prazo para fortalecimento da gestão da folha de pagamento.</p>
+
+<h3>10.1 Governança e Compliance</h3>
+<ul style="margin:6px 0 12px 18px;padding:0">
+  <li>Constituir <strong>Comitê de Gestão de Pessoas</strong> com participação de SEAM, SEFAZ, PGM e CGM para análise mensal dos indicadores apresentados.</li>
+  <li>Implementar <strong>painel de controle interno mensal</strong> com os indicadores deste relatório (Folha/RCL, casos de acumulação, HE sistemática, variação salarial).</li>
+  <li>Atualizar trimestralmente o <strong>Radar SIGA/TCM-BA</strong> com os indicadores de transparência.</li>
+</ul>
+
+<h3>10.2 Plano de Cargos e Salários</h3>
+<ul style="margin:6px 0 12px 18px;padding:0">
+  ${heSist.length>20?`<li><strong>Revisar dimensionamento de equipes</strong> nas áreas com HE sistemática (especialmente Saúde). HE em 10+ meses indica dimensionamento insuficiente.</li>`:''}
+  <li>Revisar <strong>política de gratificações</strong> para eliminar dependência estrutural de HE/plantões como complemento remuneratório.</li>
+  <li>Implementar <strong>ponto eletrônico</strong> nas unidades com maior incidência de HE.</li>
+  <li>Atualizar <strong>tabela de cargos vigente</strong> alinhada com referências regionais (TCM/BA radar).</li>
+</ul>
+
+<h3>10.3 Concursos e Contratação Temporária</h3>
+<ul style="margin:6px 0 12px 18px;padding:0">
+  ${(folhaPorRi[5]||0)/totalFolha>0.30?`<li>⚠️ <strong>Temporários representam ${fP((folhaPorRi[5]||0)/totalFolha*100)} da folha</strong> — acima do recomendado (30%). Planejar <strong>concurso público</strong> nas áreas críticas.</li>`:''}
+  <li>Mapear vínculos temporários renovados continuamente que devem ser convertidos via concurso (Súmula 685/STF).</li>
+  <li>Adotar planejamento plurianual de admissões alinhado à LRF.</li>
+</ul>
+
+<h3>10.4 Cruzamento de Dados</h3>
+<ul style="margin:6px 0 12px 18px;padding:0">
+  <li>Obter via convênio com a Receita Federal/INSS o <strong>cruzamento por CPF</strong> para identificar acumulação interfederativa.</li>
+  <li>Integrar a base de RH com data de nascimento para automatizar a verificação dos <strong>75 anos (LC 152/2015)</strong>.</li>
+  <li>Cruzar com folha do Estado e União para detectar acumulações em outras esferas.</li>
+</ul>
+
+<h3>10.5 Comunicação e Transparência</h3>
+<ul style="margin:6px 0 12px 18px;padding:0">
+  <li>Publicar <strong>versão pública anonimizada deste relatório</strong> no Portal da Transparência (LAI).</li>
+  <li>Disponibilizar à Câmara Municipal os indicadores de Folha/RCL mensalmente.</li>
+  <li>Comunicar achados ao Controle Interno e, quando aplicável, ao Ministério Público.</li>
+</ul>
+</div>
+
+<!-- ANEXOS -->
+<div class="page">
+<h1>Anexo I — Glossário Legal</h1>
+<table>
+<tbody>
+<tr><td style="width:18%"><strong>RCL</strong></td><td>Receita Corrente Líquida — base de cálculo dos limites de gastos com pessoal da LRF.</td></tr>
+<tr><td><strong>LRF</strong></td><td>Lei Complementar 101/2000 — Lei de Responsabilidade Fiscal.</td></tr>
+<tr><td><strong>RPPS</strong></td><td>Regime Próprio de Previdência Social — para servidores efetivos do município.</td></tr>
+<tr><td><strong>RGPS</strong></td><td>Regime Geral de Previdência Social — INSS.</td></tr>
+<tr><td><strong>RGF</strong></td><td>Relatório de Gestão Fiscal — instrumento de transparência da LRF.</td></tr>
+<tr><td><strong>RREO</strong></td><td>Relatório Resumido da Execução Orçamentária — instrumento de transparência da LRF.</td></tr>
+<tr><td><strong>PAD</strong></td><td>Processo Administrativo Disciplinar.</td></tr>
+<tr><td><strong>Teto Constitucional</strong></td><td>Limite máximo de remuneração no serviço público (CF art. 37 XI).</td></tr>
+<tr><td><strong>Acumulação</strong></td><td>Exercício simultâneo de mais de um cargo/emprego/função pública (CF art. 37 XVI).</td></tr>
+<tr><td><strong>Cargos acumuláveis</strong></td><td>Exceções constitucionais à vedação: 2 professores; professor+técnico; 2 cargos de saúde.</td></tr>
+<tr><td><strong>EC 41/2003</strong></td><td>Emenda que instituiu o teto constitucional.</td></tr>
+<tr><td><strong>EC 103/2019</strong></td><td>Reforma da Previdência — alterou regras de aposentadoria e pensões.</td></tr>
+<tr><td><strong>LC 152/2015</strong></td><td>Aposentadoria compulsória aos 75 anos.</td></tr>
+<tr><td><strong>Súmula 246/TCU</strong></td><td>Acumulação se dirige à titularidade, não apenas à remuneração.</td></tr>
+</tbody>
+</table>
+
+<h2>Anexo II — Ficha Técnica do Relatório</h2>
+<table>
+<tbody>
+<tr><td><strong>Data/Hora de Geração</strong></td><td>${dataNow} às ${horaNow}</td></tr>
+<tr><td><strong>Período Auditado</strong></td><td>${periodo}</td></tr>
+<tr><td><strong>Total de Servidores Analisados</strong></td><td>${fN(totalServidores)}</td></tr>
+<tr><td><strong>Total de Registros Processados</strong></td><td>${fN(agg1.length+agg2.length)} linhas (agg1 + agg2)</td></tr>
+<tr><td><strong>Filtros Aplicados</strong></td><td>${FS.anos.size||FS.ris.size||FS.sis.size||FS.eis.size?'Sim — ver Seção 2':'Nenhum (período completo)'}</td></tr>
+<tr><td><strong>Base Normativa</strong></td><td>Guia TCM/BA 2023 · CF/88 · LRF · EC 41/2003 · EC 103/2019 · LC 152/2015</td></tr>
+<tr><td><strong>Metodologia</strong></td><td>Diagnóstico automatizado sobre dados estruturados da folha</td></tr>
+<tr><td><strong>Limitações</strong></td><td>Idade, CPF, invalidez, carga horária — ver Seção 2</td></tr>
+</tbody>
+</table>
+
+<h2>Anexo III — Referências Completas</h2>
+<ul style="margin:6px 0 12px 18px;padding:0;font-size:9pt;line-height:1.6">
+  <li>BRASIL. Constituição da República Federativa do Brasil (1988). Brasília, DF: Senado Federal.</li>
+  <li>BRASIL. Lei Complementar nº 101, de 4/5/2000. Lei de Responsabilidade Fiscal.</li>
+  <li>BRASIL. Emenda Constitucional nº 41/2003. Reforma da Previdência (teto).</li>
+  <li>BRASIL. Emenda Constitucional nº 103/2019. Reforma da Previdência.</li>
+  <li>BRASIL. Lei Complementar nº 152/2015. Aposentadoria compulsória.</li>
+  <li>BRASIL. Lei nº 8.429/1992. Improbidade administrativa.</li>
+  <li>BRASIL. Decreto-Lei nº 201/1967. Crimes de responsabilidade dos Prefeitos.</li>
+  <li>TRIBUNAL DE CONTAS DOS MUNICÍPIOS DA BAHIA. Guia de Irregularidades em Folha de Pagamento. 1ª ed. Salvador, 2023.</li>
+  <li>TRIBUNAL DE CONTAS DA UNIÃO. Súmula 246. Acórdãos 198/2018, 2217/2016, 2.290/2011.</li>
+  <li>DI PIETRO, Maria Sylvia Zanella. Direito Administrativo. 19ª ed.</li>
+  <li>CARVALHO FILHO, José dos Santos. Manual de Direito Administrativo. 32ª ed.</li>
+</ul>
+
+<div class="assinaturas">
+  <div class="ass-block">Responsável Técnico<br>SEAM</div>
+  <div class="ass-block">Controle Interno<br>CGM</div>
+  <div class="ass-block">Procuradoria<br>PGM</div>
+</div>
+</div>
+
+</body></html>`;
+
+  // Abrir em nova janela
+  const w=window.open('','_blank','width=1200,height=900');
+  if(!w){alert('Por favor permita pop-ups para abrir o relatório.');return;}
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>{try{w.focus();w.print();}catch(e){console.warn(e);}},900);
 }
 
 </script>
