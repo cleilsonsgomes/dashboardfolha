@@ -831,11 +831,11 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     <div style="padding:4px 18px 10px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:#fef2f2;border-top:1px solid #fecaca;border-bottom:1px solid #fecaca">
       <div style="display:flex;flex-direction:column;gap:2px">
         <label style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Subsídio do Prefeito (R$)</label>
-        <input id="aud-teto-pref" type="text" value="R$ 23.000,00" style="width:140px;padding:5px 8px;border:1px solid #fca5a5;border-radius:4px;font-size:12px" oninput="audTetoInput(this)" onblur="audTetoFmt(this)" onchange="renderAudit()">
-        <input type="hidden" id="aud-teto-pref-raw" value="23000">
+        <input id="aud-teto-pref" type="text" value="R$ 33.763,00" style="width:140px;padding:5px 8px;border:1px solid #fca5a5;border-radius:4px;font-size:12px" oninput="audTetoInput(this)" onblur="audTetoFmt(this)" onchange="renderAudit()">
+        <input type="hidden" id="aud-teto-pref-raw" value="33763">
       </div>
       <div style="font-size:10.5px;color:#7f1d1d;line-height:1.5;flex:1;min-width:240px">
-        Default sugerido: R$ 23.000 (estimativa Paulo Afonso/BA). <strong>Edite com o valor real da lei municipal vigente.</strong> Teto Federal (Ministro STF) = R$ 41.650,92 — exibido como referência secundária.
+        Subsídio do Prefeito de Paulo Afonso/BA: R$ 33.763,00. <strong>Edite com o valor real da lei municipal vigente.</strong> Teto Federal (Ministro STF) = R$ 41.650,92 — exibido como referência secundária.
       </div>
     </div>
     <div id="aud-teto" style="padding:8px 18px 14px"></div>
@@ -3101,7 +3101,7 @@ function renderAudit(){
   // ── Análise 1: Teto Constitucional ──────────────────────────────────────
   {
     const tetoEl_raw=document.getElementById('aud-teto-pref-raw');
-    const TETO=Number(tetoEl_raw?tetoEl_raw.value:0)||23000;
+    const TETO=Number(tetoEl_raw?tetoEl_raw.value:0)||33763;
     const TETO_STF=41650.92;
     const fRa=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
     const monthPeak={};
