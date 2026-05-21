@@ -803,6 +803,9 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   <div class="info-box" style="background:#fef3c7;border-color:#fde68a;color:#713f12;margin-bottom:18px">
     🔍 <strong>Diagnóstico Automático:</strong> achados calculados sobre os dados reais da folha, com base nos filtros globais ativos. Recomendações alinhadas às legislações vigentes.
   </div>
+  <div class="info-box" style="background:#eff6ff;border:1px solid #bae6fd;color:#0c4a6e;margin-bottom:18px;padding:10px 14px;border-radius:8px;font-size:11.5px;line-height:1.7">
+    <strong>ℹ️ Limitações da Auditoria Automática</strong> — Os dados desta folha <strong>não permitem</strong> verificar automaticamente: <strong>idade do servidor</strong> (aposentadoria compulsória 75+, LC 152/2015, Guia TCM/BA pág. 20); <strong>aposentadoria por invalidez</strong> com condições de retorno (Guia TCM/BA pág. 21, Acórdãos TCU 198/2018 e 2217/2016); <strong>CPF cross-órgão</strong> para acumulação interfederativa; <strong>carga horária</strong> para compatibilidade de horários (Guia TCM/BA pág. 12). Os indicadores de acumulação abaixo são feitos por <em>identidade de nomes</em> e devem ser confirmados manualmente.
+  </div>
   <div id="aud-comparativo" style="margin-bottom:18px"></div>
   <div class="kpi-grid" id="aud-kpi"></div>
   <div id="aud-sev-filter" style="display:flex;gap:8px;margin:16px 0 20px;flex-wrap:wrap"></div>
@@ -823,8 +826,18 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   </div>
   <!-- ── AUDITORIA: Teto Constitucional ── -->
   <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
-    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#dc2626">🏛️ Teto Constitucional — CF art. 37, XI</div>
-    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Servidores com pico de remuneração mensal acima do subsídio do Ministro do STF (R$ 41.650,92)</div>
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#dc2626">🏛️ Teto Remuneratório Municipal — CF art. 37, XI</div>
+    <div style="padding:0 18px 6px;font-size:12px;color:var(--mu)">No âmbito municipal o teto é o <strong>subsídio do Prefeito</strong> (Guia TCM/BA pág. 19). Configure abaixo:</div>
+    <div style="padding:4px 18px 10px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:#fef2f2;border-top:1px solid #fecaca;border-bottom:1px solid #fecaca">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <label style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Subsídio do Prefeito (R$)</label>
+        <input id="aud-teto-pref" type="text" value="R$ 23.000,00" style="width:140px;padding:5px 8px;border:1px solid #fca5a5;border-radius:4px;font-size:12px" oninput="audTetoInput(this)" onblur="audTetoFmt(this)" onchange="renderAudit()">
+        <input type="hidden" id="aud-teto-pref-raw" value="23000">
+      </div>
+      <div style="font-size:10.5px;color:#7f1d1d;line-height:1.5;flex:1;min-width:240px">
+        Default sugerido: R$ 23.000 (estimativa Paulo Afonso/BA). <strong>Edite com o valor real da lei municipal vigente.</strong> Teto Federal (Ministro STF) = R$ 41.650,92 — exibido como referência secundária.
+      </div>
+    </div>
     <div id="aud-teto" style="padding:8px 18px 14px"></div>
     <div style="background:#fef2f2;border-top:1px solid #fecaca;padding:10px 18px;font-size:10.5px;color:#991b1b;line-height:1.7">
       <strong>⚖️ Fundamentação:</strong> CF art. 37, XI (EC 41/2003): nenhum servidor pode perceber remuneração superior ao subsídio mensal do Ministro do STF. Para municípios, o teto local é o subsídio do Prefeito, não podendo superar o federal (R$ 41.650,92). TCU — Acórdão nº 1.943/2009-Plenário: verificação deve abranger a totalidade das verbas, incluindo vantagens pessoais. Descumprimento gera devolução e responsabilização do ordenador (LC 101/2000 art. 20).
@@ -864,6 +877,39 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
     <div id="aud-giro" style="padding:8px 18px 14px"></div>
     <div style="background:#eff6ff;border-top:1px solid #bae6fd;padding:10px 18px;font-size:10.5px;color:#0c4a6e;line-height:1.7">
       <strong>⚖️ Fundamentação:</strong> CF art. 37, V: cargos em comissão destinam-se exclusivamente a direção, chefia e assessoramento — giro elevado indica desvio de finalidade. TCM/BA — Acórdão nº 892/2021: rotatividade excessiva compromete continuidade dos serviços e viola o princípio da eficiência (CF art. 37 caput). ATRICON — Resolução nº 01/2021 (Radar da Transparência Pública): estabilidade do quadro de comissionados como indicador de governança.
+    </div>
+  </div>
+  <!-- ── AUDITORIA: Acumulação de Cargos por Identidade de Nome ── -->
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#dc2626">⚠️ Acumulação de Cargos — Identidade de Nome (CF art. 37, XVI)</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Servidores com mesmo nome em <strong>matrículas distintas</strong>, possíveis acumulações de cargos/empregos/funções</div>
+    <div id="aud-acumulacao" style="padding:8px 18px 14px"></div>
+    <div style="background:#fef2f2;border-top:1px solid #fecaca;padding:10px 18px;font-size:10.5px;color:#991b1b;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> CF art. 37, XVI: "É vedada a acumulação remunerada de cargos, empregos e funções públicas". Exceções: (a) dois cargos de professor; (b) professor + técnico/científico; (c) dois cargos privativos de saúde regulamentada. Guia TCM/BA pág. 9 cita Súmula 246/TCU e Decreto-Lei 201/67 art. 1º XIII (responsabilidade do Prefeito). Casos detectados acima requerem confirmação manual por CPF e análise de compatibilidade de horários (Guia TCM/BA pág. 12).
+    </div>
+  </div>
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#7f1d1d">🚨 Tríplice Acumulação (≥ 3 vínculos)</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Nomes com 3 ou mais matrículas distintas — <strong>sempre irregular</strong>, sem exceção constitucional</div>
+    <div id="aud-triplice" style="padding:8px 18px 14px"></div>
+    <div style="background:#fef2f2;border-top:1px solid #fecaca;padding:10px 18px;font-size:10.5px;color:#7f1d1d;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> Guia TCM/BA pág. 10–11 (Carvalho Filho): "é inadmissível a acumulação remunerada de três ou mais cargos e empregos, ainda que todos sejam passíveis de dupla acumulação". Di Pietro: "as exceções somente admitem dois cargos, emprego ou função, inexistindo qualquer hipótese de tríplice acumulação". Único atenuante: vereador com licença de um cargo.
+    </div>
+  </div>
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#dc2626">👤 Aposentado em Folha de Ativos — CF art. 37, §10</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Mesmo nome em "Aposentados" e em regime ativo (Estatutário, Temporário, Celetista, Cargo em Comissão)</div>
+    <div id="aud-apos-ativo" style="padding:8px 18px 14px"></div>
+    <div style="background:#fef2f2;border-top:1px solid #fecaca;padding:10px 18px;font-size:10.5px;color:#991b1b;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> CF art. 37, §10 (Guia TCM/BA pág. 17): "é vedada a percepção simultânea de proventos de aposentadoria... com a remuneração de cargo, emprego ou função pública", ressalvado: (a) cargo eletivo ou em comissão; (b) outra aposentadoria de cargos acumuláveis; (c) cargo ativo se cargos acumuláveis.
+    </div>
+  </div>
+  <div class="cc" style="margin-top:18px;padding:0;overflow:hidden">
+    <div style="padding:14px 18px 6px;font-weight:700;font-size:13px;color:#dc2626">💀 Pensão Dupla — EC 103/2019 art. 24</div>
+    <div style="padding:0 18px 10px;font-size:12px;color:var(--mu)">Mesmo nome recebendo em mais de um regime de pensão (Pensionistas + Beneficiários de Pensão)</div>
+    <div id="aud-pensao-dupla" style="padding:8px 18px 14px"></div>
+    <div style="background:#fef2f2;border-top:1px solid #fecaca;padding:10px 18px;font-size:10.5px;color:#991b1b;line-height:1.7">
+      <strong>⚖️ Fundamentação:</strong> EC 103/2019 art. 24 (Guia TCM/BA pág. 18): "é vedada a acumulação de mais de uma pensão por morte deixada por cônjuge ou companheiro, no âmbito do mesmo regime de previdência social".
     </div>
   </div>
   <!-- ── AUDITORIA: Concentração / Pareto ── -->
@@ -3050,10 +3096,13 @@ function renderAudit(){
 
   // Ativa filtro "Todos" por padrão
   audFilter('all');
+  try{renderAcumulacao();}catch(e){console.error('renderAcumulacao:',e);}
 
   // ── Análise 1: Teto Constitucional ──────────────────────────────────────
   {
-    const TETO=41650.92;
+    const tetoEl_raw=document.getElementById('aud-teto-pref-raw');
+    const TETO=Number(tetoEl_raw?tetoEl_raw.value:0)||23000;
+    const TETO_STF=41650.92;
     const fRa=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
     const monthPeak={};
     agg2.forEach(r=>{
@@ -3071,12 +3120,25 @@ function renderAudit(){
       if(peak>TETO)tetoRows.push([+mi,peak,avg]);
     });
     tetoRows.sort((a,b)=>b[1]-a[1]);
+    const tetoStfRows=tetoRows.filter(r=>r[1]>TETO_STF);
     const tetoEl=document.getElementById('aud-teto');
     if(tetoEl){
       if(!tetoRows.length){
-        tetoEl.innerHTML=`<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum servidor ultrapassou o teto constitucional de ${fRa(TETO)}/mês no período filtrado.</p>`;
+        tetoEl.innerHTML=`<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum servidor ultrapassou o teto municipal de ${fRa(TETO)}/mês no período filtrado.</p>`;
       } else {
-        tetoEl.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+        tetoEl.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="background:#dc2626;color:#fff;border-radius:8px;padding:10px 14px;flex:1;min-width:160px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Acima Teto Municipal</div>
+            <div style="font-size:22px;font-weight:800">${tetoRows.length}</div>
+            <div style="font-size:10px;opacity:.85">limite: ${fRa(TETO)}</div>
+          </div>
+          <div style="background:${tetoStfRows.length>0?'#7f1d1d':'#94a3b8'};color:#fff;border-radius:8px;padding:10px 14px;flex:1;min-width:160px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Acima Teto STF (referência)</div>
+            <div style="font-size:22px;font-weight:800">${tetoStfRows.length}</div>
+            <div style="font-size:10px;opacity:.85">limite: ${fRa(TETO_STF)}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:10px">
           <div><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Acima do teto</div><div style="font-size:22px;font-weight:700;color:#dc2626">${tetoRows.length} servidor(es)</div></div>
           <div><div style="font-size:10px;color:#991b1b;font-weight:700;text-transform:uppercase">Teto STF</div><div style="font-size:22px;font-weight:700;color:#dc2626">${fRa(TETO)}/mês</div></div>
         </div>
@@ -4930,6 +4992,158 @@ function simularImpacto(){
   });
 
   document.getElementById('imp-result').style.display='';
+}
+
+// ── Teto Municipal: formatação ───────────────────────────────────────────────
+function audTetoInput(el){
+  const raw=el.value.replace(/[^0-9,]/g,'').replace(',','.');
+  const num=parseFloat(raw.replace(/\./g,'').replace(',','.'));
+  const h=document.getElementById('aud-teto-pref-raw');
+  if(h&&!isNaN(num))h.value=num;
+}
+function audTetoFmt(el){
+  const h=document.getElementById('aud-teto-pref-raw');
+  const v=Number(h?h.value:0);
+  if(v>0)el.value='R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ── Análise de Acumulação de Cargos (por identidade de nome) ─────────────────
+function audCalcularAcumulacoes(){
+  const byName={};
+  const norm=s=>(s||'').trim().toUpperCase().replace(/\s+/g,' ');
+  nomes.forEach((nm,mi)=>{
+    if(!nm)return;
+    const key=norm(nm);
+    if(key.length<5)return;
+    if(!byName[key])byName[key]=[];
+    byName[key].push(mi);
+  });
+  const acumuladores=Object.entries(byName).filter(([_,mis])=>mis.length>=2);
+  const casos=[];
+  acumuladores.forEach(([nome,mis])=>{
+    const vinculos=mis.map(mi=>{
+      const prof=srv_profile[mi]||[0,0,0];
+      let tot=0;
+      agg4.forEach(r=>{
+        if(r[A4_MI]!==mi)return;
+        if(FS.anos.size>0&&!FS.anos.has(r[A4_ANO]))return;
+        tot+=r[A4_VAL];
+      });
+      return {mi, cargo:cargos[prof[0]]||'?', si:prof[1], ri:prof[2], tot};
+    });
+    const totalGeral=vinculos.reduce((s,v)=>s+v.tot,0);
+    if(totalGeral<=0)return;
+    casos.push({nome, vinculos, totalGeral, nv:vinculos.length});
+  });
+  return casos;
+}
+
+function audClassificarAcumulacao(vinculos){
+  const cargosUp=vinculos.map(v=>(v.cargo||'').toUpperCase());
+  const regimesV=vinculos.map(v=>v.ri);
+  const profCount=cargosUp.filter(c=>/PROFESSOR|PROFESSORA|DOCENTE|MAGIST/.test(c)).length;
+  const saudeCount=cargosUp.filter(c=>/MEDIC|ENFERMEIR|FARMAC|FISIOTERAP|FONOAUD|ODONT|PSICOL|NUTRI|VETERIN|TERAP|AGENTE COMUN|AGENTE DE ENDEMIA|TECN.{0,5}ENFERM|TECN.{0,5}RADIO/.test(c)).length;
+  const tecCient=cargosUp.filter(c=>/ENGENH|ANALIS|CIENT|ARQUIT|CONTAD|ADVOG|AUDIT/.test(c)).length;
+  if(vinculos.length>=3)return {tipo:'TRIPLICE',exceto:false,explicacao:'Tríplice acumulação — sempre irregular (Guia TCM/BA pág. 10–11)'};
+  if(profCount>=2)return {tipo:'EXCECAO',exceto:true,explicacao:'Possível exceção: dois cargos de PROFESSOR (CF 37 XVI a) — verificar compatibilidade de horários'};
+  if(saudeCount>=2)return {tipo:'EXCECAO',exceto:true,explicacao:'Possível exceção: dois cargos de SAÚDE regulamentada (CF 37 XVI c)'};
+  if(profCount>=1&&tecCient>=1)return {tipo:'EXCECAO',exceto:true,explicacao:'Possível exceção: PROFESSOR + TÉCNICO/CIENTÍFICO (CF 37 XVI b)'};
+  if(regimesV.includes(8)&&vinculos.length===2)return {tipo:'POSSIVEL',exceto:false,explicacao:'Inclui Cargo em Comissão — acumulável apenas com aposentadoria ou cargos acumuláveis'};
+  return {tipo:'IRREGULAR',exceto:false,explicacao:'Sem exceção constitucional aparente — requer análise detalhada'};
+}
+
+function renderAcumulacao(){
+  if(typeof FS==='undefined')return;
+  const casos=audCalcularAcumulacoes();
+  const fR=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const duplos=casos.filter(c=>c.nv===2).sort((a,b)=>b.totalGeral-a.totalGeral);
+  const triplos=casos.filter(c=>c.nv>=3).sort((a,b)=>b.totalGeral-a.totalGeral);
+
+  // Acumulação dupla
+  const elAcum=document.getElementById('aud-acumulacao');
+  if(elAcum){
+    if(!duplos.length){
+      elAcum.innerHTML='<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum caso de acumulação dupla detectado por identidade de nome.</p>';
+    } else {
+      let nIrreg=0,nExcec=0,nPossivel=0;
+      const linhas=duplos.slice(0,100).map((c,i)=>{
+        const cls=audClassificarAcumulacao(c.vinculos);
+        if(cls.tipo==='IRREGULAR')nIrreg++;else if(cls.tipo==='EXCECAO')nExcec++;else if(cls.tipo==='POSSIVEL')nPossivel++;
+        const corBg=cls.tipo==='IRREGULAR'?'#fee2e2':cls.tipo==='EXCECAO'?'#dcfce7':'#fef9c3';
+        const corBd=cls.tipo==='IRREGULAR'?'#fecaca':cls.tipo==='EXCECAO'?'#bbf7d0':'#fde68a';
+        const corTxt=cls.tipo==='IRREGULAR'?'#991b1b':cls.tipo==='EXCECAO'?'#166534':'#854d0e';
+        const vincH=c.vinculos.map(v=>{
+          const rg=(regimes[v.ri]||'?').replace(/^\d+ - /,'');
+          const sc=(secs[v.si]||'?').replace(/^\d+ - /,'').slice(0,40);
+          return `<div style="font-size:10.5px;color:#475569;line-height:1.5">• Mat. ${mats[v.mi]||v.mi} · ${v.cargo||'?'} · <strong>${rg}</strong> · ${sc} · ${fR(v.tot)}</div>`;
+        }).join('');
+        return `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:8px 10px;color:#94a3b8;font-size:11px">${i+1}</td><td style="padding:8px 10px"><div style="font-weight:700;font-size:12px;color:#1e293b">${c.nome}</div>${vincH}</td><td style="padding:8px 10px;text-align:center"><span style="background:${corBg};color:${corTxt};border:1px solid ${corBd};padding:3px 8px;border-radius:11px;font-size:10px;font-weight:700;white-space:nowrap">${cls.tipo}</span><div style="font-size:9.5px;color:#64748b;margin-top:4px;max-width:200px">${cls.explicacao}</div></td><td style="padding:8px 10px;text-align:right;font-weight:700;color:#dc2626">${fR(c.totalGeral)}</td></tr>`;
+      }).join('');
+      elAcum.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"><div style="background:#dc2626;color:#fff;border-radius:8px;padding:8px 14px;flex:1;min-width:120px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Irregular aparente</div><div style="font-size:22px;font-weight:800">${nIrreg}</div></div><div style="background:#16a34a;color:#fff;border-radius:8px;padding:8px 14px;flex:1;min-width:120px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Possível exceção</div><div style="font-size:22px;font-weight:800">${nExcec}</div></div><div style="background:#ca8a04;color:#fff;border-radius:8px;padding:8px 14px;flex:1;min-width:120px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Requer análise</div><div style="font-size:22px;font-weight:800">${nPossivel}</div></div><div style="background:#64748b;color:#fff;border-radius:8px;padding:8px 14px;flex:1;min-width:120px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Total dupla</div><div style="font-size:22px;font-weight:800">${duplos.length}</div></div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">#</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">Servidor / Vínculos</th><th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--mu)">Classificação</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--mu)">Total Acumulado</th></tr></thead><tbody>${linhas}</tbody></table></div>${duplos.length>100?`<div style="font-size:11px;color:var(--mu);padding:8px;text-align:center">Exibindo 100 primeiros de ${duplos.length} casos</div>`:''}`;
+    }
+  }
+
+  // Tríplice
+  const elTri=document.getElementById('aud-triplice');
+  if(elTri){
+    if(!triplos.length){
+      elTri.innerHTML='<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum caso de tríplice acumulação detectado.</p>';
+    } else {
+      const linhas=triplos.slice(0,50).map((c,i)=>{
+        const vincH=c.vinculos.map(v=>{
+          const rg=(regimes[v.ri]||'?').replace(/^\d+ - /,'');
+          const sc=(secs[v.si]||'?').replace(/^\d+ - /,'').slice(0,40);
+          return `<div style="font-size:10.5px;color:#475569;line-height:1.5">• Mat. ${mats[v.mi]||v.mi} · ${v.cargo||'?'} · <strong>${rg}</strong> · ${sc} · ${fR(v.tot)}</div>`;
+        }).join('');
+        return `<tr style="border-bottom:1px solid #f1f5f9;background:#fef2f2"><td style="padding:8px 10px;color:#7f1d1d;font-weight:800">${i+1}</td><td style="padding:8px 10px"><div style="font-weight:800;font-size:12.5px;color:#7f1d1d">${c.nome} <span style="background:#7f1d1d;color:#fff;padding:2px 6px;border-radius:10px;font-size:10px;margin-left:6px">${c.nv} VÍNCULOS</span></div>${vincH}</td><td style="padding:8px 10px;text-align:right;font-weight:800;color:#7f1d1d">${fR(c.totalGeral)}</td></tr>`;
+      }).join('');
+      elTri.innerHTML=`<div style="background:#7f1d1d;color:#fff;border-radius:8px;padding:10px 14px;margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Casos detectados</div><div style="font-size:28px;font-weight:900">${triplos.length}</div><div style="font-size:11px;opacity:.9;margin-top:4px">Tríplice acumulação é vedada sem exceção pela CF/88</div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">#</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">Servidor / Vínculos</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--mu)">Total Acumulado</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+    }
+  }
+
+  // Aposentado em ativo (ri=6 + ri=0/4/5/8)
+  const ATIVOS=new Set([0,4,5,8]);
+  const apos=casos.filter(c=>{const ris=new Set(c.vinculos.map(v=>v.ri));return ris.has(6)&&[...ris].some(r=>ATIVOS.has(r));}).sort((a,b)=>b.totalGeral-a.totalGeral);
+  const elApos=document.getElementById('aud-apos-ativo');
+  if(elApos){
+    if(!apos.length){
+      elApos.innerHTML='<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum aposentado identificado simultaneamente em regime ativo.</p>';
+    } else {
+      const linhas=apos.slice(0,50).map((c,i)=>{
+        const vincH=c.vinculos.map(v=>{
+          const rg=(regimes[v.ri]||'?').replace(/^\d+ - /,'');
+          const sc=(secs[v.si]||'?').replace(/^\d+ - /,'').slice(0,40);
+          const isApos=v.ri===6,isCom=v.ri===8;
+          const tag=isApos?'<span style="background:#7c2d12;color:#fff;padding:1px 5px;border-radius:8px;font-size:9px;margin-left:4px">APOSENTADO</span>':(isCom?'<span style="background:#16a34a;color:#fff;padding:1px 5px;border-radius:8px;font-size:9px;margin-left:4px">ACUMULÁVEL</span>':'<span style="background:#dc2626;color:#fff;padding:1px 5px;border-radius:8px;font-size:9px;margin-left:4px">ATIVO</span>');
+          return `<div style="font-size:10.5px;color:#475569;line-height:1.5">• Mat. ${mats[v.mi]||v.mi} · ${v.cargo||'?'}${tag} · <strong>${rg}</strong> · ${sc} · ${fR(v.tot)}</div>`;
+        }).join('');
+        const acumulavel=c.vinculos.some(v=>v.ri===8);
+        return `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:8px 10px;color:#94a3b8">${i+1}</td><td style="padding:8px 10px"><div style="font-weight:700;font-size:12px;color:#1e293b">${c.nome}</div>${vincH}</td><td style="padding:8px 10px;text-align:center">${acumulavel?'<span style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">PERMITIDO</span>':'<span style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">IRREGULAR</span>'}</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:#dc2626">${fR(c.totalGeral)}</td></tr>`;
+      }).join('');
+      elApos.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"><div style="background:#dc2626;color:#fff;border-radius:8px;padding:8px 14px;flex:1;min-width:160px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Aposentados + Ativos</div><div style="font-size:22px;font-weight:800">${apos.length}</div></div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">#</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">Servidor / Vínculos</th><th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--mu)">Status</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--mu)">Total</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+    }
+  }
+
+  // Pensão Dupla (ri=7 Pensionistas + ri=10 Beneficiários de Pensão)
+  const pensaoDupla=casos.filter(c=>{
+    const ris=new Set(c.vinculos.map(v=>v.ri));
+    return (ris.has(7)&&ris.has(10))||(ris.has(7)&&c.vinculos.filter(v=>v.ri===7).length>=2)||(ris.has(10)&&c.vinculos.filter(v=>v.ri===10).length>=2);
+  }).sort((a,b)=>b.totalGeral-a.totalGeral);
+  const elPens=document.getElementById('aud-pensao-dupla');
+  if(elPens){
+    if(!pensaoDupla.length){
+      elPens.innerHTML='<p style="color:#059669;font-size:12px;margin:4px 0">✓ Nenhum caso de pensão dupla detectado.</p>';
+    } else {
+      const linhas=pensaoDupla.slice(0,50).map((c,i)=>{
+        const vincH=c.vinculos.filter(v=>v.ri===7||v.ri===10).map(v=>{
+          const rg=(regimes[v.ri]||'?').replace(/^\d+ - /,'');
+          return `<div style="font-size:10.5px;color:#475569;line-height:1.5">• Mat. ${mats[v.mi]||v.mi} · <strong>${rg}</strong> · ${fR(v.tot)}</div>`;
+        }).join('');
+        return `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:8px 10px;color:#94a3b8">${i+1}</td><td style="padding:8px 10px"><div style="font-weight:700;font-size:12px;color:#1e293b">${c.nome}</div>${vincH}</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:#dc2626">${fR(c.totalGeral)}</td></tr>`;
+      }).join('');
+      elPens.innerHTML=`<div style="background:#dc2626;color:#fff;border-radius:8px;padding:8px 14px;margin-bottom:10px;display:inline-block;min-width:160px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.85">Casos detectados</div><div style="font-size:22px;font-weight:800">${pensaoDupla.length}</div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">#</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--mu)">Beneficiário / Pensões</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--mu)">Total</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+    }
+  }
 }
 
 </script>
