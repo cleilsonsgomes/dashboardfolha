@@ -1267,6 +1267,7 @@ function filtA2(){
 const ALL_TABS=['comp','cresc','plant','he','dup','srv','ins','grat','sim','cargo','audit','estag','pesq','imp','irreg'];
 let inited={};
 let charts={};
+let _chPareto=null; // movido pra cima — evita TDZ quando init() chama renderCompPareto
 
 function switchTab(name){
   ALL_TABS.forEach(t=>{
@@ -7119,7 +7120,7 @@ function _gerarParecerBtn(encodedJson){
 window._gerarParecerBtn = _gerarParecerBtn;
 
 // ── Pareto de Eventos ────────────────────────────────────────────────────────
-let _chPareto=null;
+// (_chPareto declarado no topo, junto com charts={}, para evitar TDZ)
 function renderCompPareto(){
   const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const fP=v=>(v||0).toFixed(1)+'%';
