@@ -1085,6 +1085,8 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       <option value="1">🟢 Baixa</option>
     </select>
     <button onclick="irrgExportPDF()" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer">📄 Exportar PDF</button>
+    <button onclick="(function(){const s=PARECER.cacheStats();alert('📊 Cache de Pareceres\\n\\nPareceres armazenados: '+s.n+'\\nEspaço usado: '+(s.sz/1024).toFixed(1)+' KB\\n\\n💡 Pareceres já gerados não consomem tokens da API ao reabrir.');})()" style="background:#64748b;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer" title="Estatísticas do cache de pareceres">💾 Cache</button>
+    <button onclick="PARECER.cacheLimpar()" style="background:#e2e8f0;color:#475569;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer" title="Limpar todos os pareceres em cache">🗑</button>
   </div>
   <div id="irreg-body" style="padding:0 18px 24px"></div>
 </div>
@@ -6818,6 +6820,7 @@ function renderIrreg(){
         const nm=nomes[a.mi]||('Mat. '+(mats[a.mi]||a.mi));
         const cargo=(cargos[a.cargoIdx]||'?').slice(0,35);
         const aEnc=encodeURIComponent(JSON.stringify(a));
+        const emCache=!!(window.PARECER&&window.PARECER._cacheBuscar(a));
         html+=`<tr style="border-bottom:1px solid #f1f5f9${isDemitido(a.mi)?';opacity:.6':''}">
           <td style="padding:6px 8px;font-weight:600;color:#1e293b">${nm}<div style="margin-top:2px">${statusBadge(a.mi)}</div></td>
           <td style="padding:6px 8px;color:#475569;font-size:10.5px">${cargo}</td>
@@ -6827,7 +6830,7 @@ function renderIrreg(){
           </td>
           <td style="padding:6px 8px;text-align:right;font-weight:700;color:#dc2626">${fR(a.valor)}</td>
           <td style="padding:6px 8px;text-align:center">
-            <button onclick="_gerarParecerBtn('${aEnc}')" style="background:#7c3aed;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap" title="Gerar parecer técnico com Claude AI">📝 Parecer</button>
+            <button onclick="_gerarParecerBtn('${aEnc}')" style="background:${emCache?'#16a34a':'#7c3aed'};color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap" title="${emCache?'Parecer em cache — abre sem consumir API':'Gerar parecer técnico com Claude AI'}">${emCache?'💾 Ver Parecer':'📝 Parecer'}</button>
           </td>
         </tr>
         <tr style="background:#fffbeb;border-bottom:2px solid #f1f5f9">
@@ -6960,19 +6963,77 @@ const PARECER={
     'GRAT':'pagamento de gratificação exclusiva de cargo efetivo a regime incompatível',
     'INS':'pagamento de adicional de insalubridade/periculosidade em cargo possivelmente incompatível'
   },
-  async gerar(achado){
+  // ── Cache de pareceres (localStorage) ──────────────────────────────────
+  CACHE_KEY:'pareceres_cache_v1',
+  _cacheGet(){
+    try{ return JSON.parse(localStorage.getItem(this.CACHE_KEY)||'{}'); }catch(e){ return {}; }
+  },
+  _cacheSet(obj){
+    try{ localStorage.setItem(this.CACHE_KEY,JSON.stringify(obj)); }catch(e){
+      // Quota cheia: limpa os 50% mais antigos
+      const entries=Object.entries(obj).sort((a,b)=>(a[1].ts||0)-(b[1].ts||0));
+      const keep=Object.fromEntries(entries.slice(Math.floor(entries.length/2)));
+      try{ localStorage.setItem(this.CACHE_KEY,JSON.stringify(keep)); }catch(e2){}
+    }
+  },
+  _hashAchado(a){
+    // Chave estável: tipo + matrícula + valor arredondado + primeiros 60 chars da descrição
+    const desc=(a.desc||'').slice(0,60);
+    const val=Math.round((a.valor||0)*100);
+    return `${a.tipo}|${a.mi}|${val}|${desc}`;
+  },
+  _cacheBuscar(achado){
+    const c=this._cacheGet();
+    return c[this._hashAchado(achado)]||null;
+  },
+  _cacheSalvar(achado,texto){
+    const c=this._cacheGet();
+    c[this._hashAchado(achado)]={texto,ts:Date.now(),mat:mats[achado.mi]||achado.mi,nome:nomes[achado.mi]||'',tipo:achado.tipo};
+    this._cacheSet(c);
+  },
+  cacheStats(){
+    const c=this._cacheGet();
+    const n=Object.keys(c).length;
+    const sz=new Blob([JSON.stringify(c)]).size;
+    return {n,sz};
+  },
+  cacheLimpar(){
+    const st=this.cacheStats();
+    if(!st.n){ alert('Cache vazio.'); return; }
+    if(confirm(`Limpar ${st.n} parecer(es) em cache (~${(st.sz/1024).toFixed(1)} KB)?`)){
+      localStorage.removeItem(this.CACHE_KEY);
+      alert('✅ Cache limpo.');
+    }
+  },
+
+  async gerar(achado, forcar){
+    // Verifica cache
+    if(!forcar){
+      const cached=this._cacheBuscar(achado);
+      if(cached){
+        this._lastFromCache=true;
+        this._showModal(achado,cached.texto);
+        return;
+      }
+    }
     if(!ASSIST.apiKey){
       alert('⚠️ Configure a chave da Claude API no Assistente (botão flutuante 🤖) antes de gerar pareceres.');
       ASSIST.toggle();
       return;
     }
+    this._lastFromCache=false;
     this._showModal(achado, '⏳ Gerando parecer com Claude API...');
     try{
       const texto=await this._callAPI(achado);
+      this._cacheSalvar(achado,texto);
       this._showModal(achado, texto);
     }catch(e){
       this._showModal(achado, `❌ Erro ao gerar parecer:\n\n${e.message}\n\nVerifique sua chave da API no assistente.`);
     }
+  },
+  regenerar(){
+    if(!this._lastAchado) return;
+    this.gerar(this._lastAchado, true);
   },
   async _callAPI(a){
     const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -7046,10 +7107,12 @@ Use linguagem formal de parecer público. Máximo 600 palavras. NÃO use markdow
           </div>
           <textarea id="parecer-modal-texto" style="flex:1;border:none;padding:18px 22px;font-family:'Georgia',serif;font-size:13.5px;line-height:1.7;color:#1e293b;resize:none;outline:none;min-height:420px"></textarea>
           <div style="padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;gap:8px;flex-wrap:wrap;background:#f8fafc;border-radius:0 0 14px 14px">
+            <span id="parecer-cache-badge" style="display:none;background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:12px;padding:4px 10px;font-size:10.5px;font-weight:600;align-self:center">💾 Reaproveitado do cache</span>
             <button onclick="PARECER.copiar()" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">📋 Copiar</button>
             <button onclick="PARECER.baixarTxt()" style="background:#64748b;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">💾 Baixar .txt</button>
             <button onclick="PARECER.exportarWord()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">📄 Baixar .doc</button>
             <button onclick="PARECER.exportarPdf()" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">🖨️ PDF (imprimir)</button>
+            <button onclick="PARECER.regenerar()" style="background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer" title="Ignora cache e gera um novo parecer com a API">🔄 Regenerar</button>
             <button onclick="document.getElementById('parecer-modal').style.display='none'" style="background:#e2e8f0;color:#475569;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer;margin-left:auto">Fechar</button>
           </div>
         </div>`;
@@ -7057,6 +7120,8 @@ Use linguagem formal de parecer público. Máximo 600 palavras. NÃO use markdow
     }
     document.getElementById('parecer-modal-sub').textContent=`${nomes[achado.mi]||'Servidor'} · ${(secs[achado.si]||'').replace(/^\d+ - /,'')} · ${this.TIPO_DESC[achado.tipo]||achado.tipo}`;
     document.getElementById('parecer-modal-texto').value=texto;
+    const badge=document.getElementById('parecer-cache-badge');
+    if(badge) badge.style.display=this._lastFromCache?'inline-block':'none';
     this._lastAchado=achado;
     modal.style.display='flex';
   },
