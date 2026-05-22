@@ -7094,12 +7094,24 @@ Use linguagem formal de parecer público. Máximo 600 palavras. NÃO use markdow
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 };
+// Expor globalmente para inline handlers funcionarem mesmo durante carregamento
+window.PARECER = PARECER;
 
 // Função auxiliar para gerar parecer a partir do encoded JSON (usada nos botões)
 function _gerarParecerBtn(encodedJson){
-  try{ PARECER.gerar(JSON.parse(decodeURIComponent(encodedJson))); }
-  catch(e){ alert('Erro: '+e.message); }
+  if(!window.PARECER){
+    alert('⏳ Sistema ainda carregando. Aguarde alguns segundos e tente novamente.');
+    return;
+  }
+  try{ window.PARECER.gerar(JSON.parse(decodeURIComponent(encodedJson))); }
+  catch(e){
+    if(/before initialization/.test(e.message))
+      alert('⏳ Sistema ainda carregando. Aguarde alguns segundos.');
+    else
+      alert('Erro: '+e.message);
+  }
 }
+window._gerarParecerBtn = _gerarParecerBtn;
 
 // ── Pareto de Eventos ────────────────────────────────────────────────────────
 let _chPareto=null;
