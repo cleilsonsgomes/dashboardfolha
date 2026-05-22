@@ -7100,11 +7100,16 @@ window.PARECER = PARECER;
 // Função auxiliar para gerar parecer a partir do encoded JSON (usada nos botões)
 function _gerarParecerBtn(encodedJson){
   if(!window.PARECER){
-    alert('⏳ Sistema ainda carregando. Aguarde alguns segundos e tente novamente.');
+    if(window.__SCRIPT_READY__){
+      alert('❌ Erro: módulo de pareceres não carregou. Abra o Console (F12) e verifique se há erros em vermelho.');
+    } else {
+      alert('⏳ Sistema ainda carregando. Aguarde 5-10 segundos e tente novamente.');
+    }
     return;
   }
   try{ window.PARECER.gerar(JSON.parse(decodeURIComponent(encodedJson))); }
   catch(e){
+    console.error('Erro ao gerar parecer:', e);
     if(/before initialization/.test(e.message))
       alert('⏳ Sistema ainda carregando. Aguarde alguns segundos.');
     else
@@ -7219,6 +7224,10 @@ function renderCompPareto(){
   if(totalEventos>30)tbl+=`<div style="text-align:center;padding:8px;font-size:10.5px;color:var(--mu)">Exibindo top 30 de ${totalEventos} eventos analisados</div>`;
   document.getElementById('comp-pareto-tbl').innerHTML=tbl;
 }
+
+// ── Sinaliza que o script terminou de carregar ───────────────────────────
+window.__SCRIPT_READY__ = true;
+console.log('✅ Dashboard script carregado. PARECER:', !!window.PARECER, '| ASSIST:', !!window.ASSIST);
 
 </script>
 </body>
