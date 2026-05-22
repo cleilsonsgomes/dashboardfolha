@@ -7199,14 +7199,14 @@ function renderCompPareto(){
   const top30=enriched.slice(0,30);
   const CAT_NM=['Base Salarial','Gratificações','Extras/Plantões','Férias','Outros'];
   let tbl=`<table style="width:100%;border-collapse:collapse;font-size:11.5px">
-    <thead><tr style="background:#0c4a6e;color:#fff">
-      <th style="padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase">#</th>
-      <th style="padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase">Classe</th>
-      <th style="padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase">Rubrica</th>
-      <th style="padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase">Categoria</th>
-      <th style="padding:6px 10px;text-align:right;font-size:9.5px;text-transform:uppercase">Valor</th>
-      <th style="padding:6px 10px;text-align:right;font-size:9.5px;text-transform:uppercase">% Total</th>
-      <th style="padding:6px 10px;text-align:right;font-size:9.5px;text-transform:uppercase">% Acumul.</th>
+    <thead><tr>
+      <th style="background:#0c4a6e !important;color:#fff !important;padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase;font-weight:700">#</th>
+      <th style="background:#0c4a6e !important;color:#fff !important;padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase;font-weight:700">Classe</th>
+      <th style="background:#0c4a6e !important;color:#fff !important;padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase;font-weight:700">Rubrica</th>
+      <th style="background:#0c4a6e !important;color:#fff !important;padding:6px 10px;text-align:left;font-size:9.5px;text-transform:uppercase;font-weight:700">Categoria</th>
+      <th style="background:#0c4a6e !important;color:#fff !important;padding:6px 10px;text-align:right;font-size:9.5px;text-transform:uppercase;font-weight:700">Valor</th>
+      <th style="background:#0c4a6e !important;color:#fff !important;padding:6px 10px;text-align:right;font-size:9.5px;text-transform:uppercase;font-weight:700">% Total</th>
+      <th style="background:#0c4a6e !important;color:#fff !important;padding:6px 10px;text-align:right;font-size:9.5px;text-transform:uppercase;font-weight:700">% Acumul.</th>
     </tr></thead><tbody>`;
   top30.forEach((r,i)=>{
     const cor=r.cls==='A'?'#dc2626':r.cls==='B'?'#f97316':'#ca8a04';
