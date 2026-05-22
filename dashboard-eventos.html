@@ -6792,11 +6792,13 @@ function renderIrreg(){
               <th style="padding:5px 8px;text-align:left;font-size:9.5px;text-transform:uppercase">Problema Identificado</th>
               <th style="padding:5px 8px;text-align:center;font-size:9.5px;text-transform:uppercase">Criticidade</th>
               <th style="padding:5px 8px;text-align:right;font-size:9.5px;text-transform:uppercase">Valor (R$)</th>
+              <th style="padding:5px 8px;text-align:center;font-size:9.5px;text-transform:uppercase">Ação</th>
             </tr></thead>
             <tbody>`;
       dados.items.forEach(a=>{
         const nm=nomes[a.mi]||('Mat. '+(mats[a.mi]||a.mi));
         const cargo=(cargos[a.cargoIdx]||'?').slice(0,35);
+        const aEnc=encodeURIComponent(JSON.stringify(a));
         html+=`<tr style="border-bottom:1px solid #f1f5f9${isDemitido(a.mi)?';opacity:.6':''}">
           <td style="padding:6px 8px;font-weight:600;color:#1e293b">${nm}<div style="margin-top:2px">${statusBadge(a.mi)}</div></td>
           <td style="padding:6px 8px;color:#475569;font-size:10.5px">${cargo}</td>
@@ -6805,9 +6807,12 @@ function renderIrreg(){
             <span style="background:${criticoBg(a.critico)};color:${criticoTxt(a.critico)};border:1px solid ${criticoBd(a.critico)};padding:2px 7px;border-radius:10px;font-size:9.5px;font-weight:700;white-space:nowrap">${criticoLabel(a.critico)}</span>
           </td>
           <td style="padding:6px 8px;text-align:right;font-weight:700;color:#dc2626">${fR(a.valor)}</td>
+          <td style="padding:6px 8px;text-align:center">
+            <button onclick="_gerarParecerBtn('${aEnc}')" style="background:#7c3aed;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap" title="Gerar parecer técnico com Claude AI">📝 Parecer</button>
+          </td>
         </tr>
         <tr style="background:#fffbeb;border-bottom:2px solid #f1f5f9">
-          <td colspan="5" style="padding:5px 8px 7px 28px">
+          <td colspan="6" style="padding:5px 8px 7px 28px">
             <span style="font-size:10px;color:#92400e;font-weight:600">📌 Resolução: </span><span style="font-size:10px;color:#78350f">${a.resolucao}</span>
             <span style="font-size:9.5px;color:#94a3b8;margin-left:8px">| ${a.base}</span>
           </td>
@@ -6877,6 +6882,157 @@ function irrgExportPDF(){
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Irregularidades - Relatório</title></head><body>${body}</body></html>`);
   w.document.close();
   setTimeout(()=>{w.focus();w.print();},600);
+}
+
+// ════════════════════════════════════════════════════════════════
+// GERADOR DE PARECERES (Tab 11 + Tab 15) — via Claude API
+// ════════════════════════════════════════════════════════════════
+const PARECER={
+  TIPO_DESC:{
+    'TETO':'remuneração acima do teto constitucional municipal',
+    'HE':'pagamento sistemático de horas extras (caráter não eventual)',
+    'ACUM':'acumulação de cargos públicos',
+    'GRAT':'pagamento de gratificação exclusiva de cargo efetivo a regime incompatível',
+    'INS':'pagamento de adicional de insalubridade/periculosidade em cargo possivelmente incompatível'
+  },
+  async gerar(achado){
+    if(!ASSIST.apiKey){
+      alert('⚠️ Configure a chave da Claude API no Assistente (botão flutuante 🤖) antes de gerar pareceres.');
+      ASSIST.toggle();
+      return;
+    }
+    this._showModal(achado, '⏳ Gerando parecer com Claude API...');
+    try{
+      const texto=await this._callAPI(achado);
+      this._showModal(achado, texto);
+    }catch(e){
+      this._showModal(achado, `❌ Erro ao gerar parecer:\n\n${e.message}\n\nVerifique sua chave da API no assistente.`);
+    }
+  },
+  async _callAPI(a){
+    const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const nm=nomes[a.mi]||('Mat. '+(mats[a.mi]||a.mi));
+    const cargo=cargos[a.cargoIdx]||'?';
+    const sec=(secs[a.si]||'?').replace(/^\d+ - /,'');
+    const adm=admissoes[a.mi]?dataBR(admissoes[a.mi]):'não informada';
+    const dem=demissoes[a.mi]?` (demitido em ${dataBR(demissoes[a.mi])})`:'';
+    const cpfM=cpfs[a.mi]?cpfMask(cpfs[a.mi]):'não informado';
+    const tipoDesc=this.TIPO_DESC[a.tipo]||a.tipo;
+    const compRef=new Date().toLocaleDateString('pt-BR');
+    const sys=`Você é um auditor da Controladoria Geral do Município de Paulo Afonso/BA. Sua função é elaborar pareceres técnicos formais e fundamentados, endereçados ao(à) Secretário(a) da pasta responsável pelo servidor objeto da análise. Escreva em português formal, em tom institucional, citando expressamente os dispositivos legais aplicáveis (CF/88, LRF/LC 101/2000, Lei 8.112/90, CLT, súmulas STF/STJ, acórdãos TCM/BA quando cabível). NÃO invente dados não fornecidos.`;
+    const user=`Elabore um PARECER TÉCNICO formal para o(a) Secretário(a) da pasta sobre o caso abaixo:
+
+═══════════════════════════════════════════════════════════
+DADOS DO CASO
+═══════════════════════════════════════════════════════════
+Servidor: ${nm}${dem}
+Matrícula: ${mats[a.mi]||a.mi}
+CPF: ${cpfM}
+Cargo: ${cargo}
+Secretaria: ${sec}
+Admissão: ${adm}
+
+TIPO DE IRREGULARIDADE: ${tipoDesc}
+PROBLEMA IDENTIFICADO: ${a.desc}
+VALOR ENVOLVIDO: ${fR(a.valor)}
+CRITICIDADE: ${a.critico===3?'ALTA':a.critico===2?'MÉDIA':'BAIXA'}
+BASE LEGAL APLICÁVEL: ${a.base}
+RESOLUÇÃO TÉCNICA SUGERIDA: ${a.resolucao}
+
+═══════════════════════════════════════════════════════════
+ESTRUTURA OBRIGATÓRIA DO PARECER
+═══════════════════════════════════════════════════════════
+1. CABEÇALHO (Ofício/Parecer nº, Para, De, Data ${compRef}, Ref.)
+2. I — DOS FATOS (descrição objetiva da irregularidade)
+3. II — DA ANÁLISE JURÍDICA (fundamentação com artigos e leis específicas)
+4. III — DOS RISCOS (responsabilização, devolução ao erário, glosa, improbidade administrativa quando aplicável)
+5. IV — DAS RECOMENDAÇÕES (medidas pontuais que a Secretaria deve adotar com prazos sugeridos)
+6. V — DA CONCLUSÃO
+7. Espaço para assinatura do controlador
+
+Use linguagem formal de parecer público. Máximo 600 palavras. NÃO use markdown — apenas texto corrido com cabeçalhos em CAIXA ALTA.`;
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':ASSIST.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:ASSIST.model||'claude-haiku-4-5',max_tokens:1800,system:sys,messages:[{role:'user',content:user}]})
+    });
+    if(!resp.ok){
+      let m=`HTTP ${resp.status}`;
+      try{const d=await resp.json();m=d.error?.message||m;}catch(e){}
+      throw new Error(m);
+    }
+    const data=await resp.json();
+    return data.content?.[0]?.text||'(Sem resposta)';
+  },
+  _showModal(achado, texto){
+    let modal=document.getElementById('parecer-modal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='parecer-modal';
+      modal.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;padding:24px';
+      modal.innerHTML=`
+        <div style="background:#fff;border-radius:14px;max-width:820px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
+          <div style="padding:14px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:#0f172a;color:#fff;border-radius:14px 14px 0 0">
+            <div>
+              <div style="font-size:15px;font-weight:700">📝 Parecer Técnico</div>
+              <div id="parecer-modal-sub" style="font-size:11px;opacity:.75;margin-top:2px"></div>
+            </div>
+            <button onclick="document.getElementById('parecer-modal').style.display='none'" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer">×</button>
+          </div>
+          <textarea id="parecer-modal-texto" style="flex:1;border:none;padding:18px 22px;font-family:'Georgia',serif;font-size:13.5px;line-height:1.7;color:#1e293b;resize:none;outline:none;min-height:420px"></textarea>
+          <div style="padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;gap:8px;flex-wrap:wrap;background:#f8fafc;border-radius:0 0 14px 14px">
+            <button onclick="PARECER.copiar()" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">📋 Copiar</button>
+            <button onclick="PARECER.baixarTxt()" style="background:#64748b;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">💾 Baixar .txt</button>
+            <button onclick="PARECER.exportarWord()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">📄 Baixar .doc</button>
+            <button onclick="PARECER.exportarPdf()" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">🖨️ PDF (imprimir)</button>
+            <button onclick="document.getElementById('parecer-modal').style.display='none'" style="background:#e2e8f0;color:#475569;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer;margin-left:auto">Fechar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+    }
+    document.getElementById('parecer-modal-sub').textContent=`${nomes[achado.mi]||'Servidor'} · ${(secs[achado.si]||'').replace(/^\d+ - /,'')} · ${this.TIPO_DESC[achado.tipo]||achado.tipo}`;
+    document.getElementById('parecer-modal-texto').value=texto;
+    this._lastAchado=achado;
+    modal.style.display='flex';
+  },
+  copiar(){
+    const t=document.getElementById('parecer-modal-texto');
+    t.select(); document.execCommand('copy');
+    const orig=document.activeElement;
+    alert('✅ Parecer copiado para a área de transferência.');
+  },
+  baixarTxt(){
+    const txt=document.getElementById('parecer-modal-texto').value;
+    const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+    this._download(blob,'parecer','txt');
+  },
+  exportarWord(){
+    const txt=document.getElementById('parecer-modal-texto').value;
+    const html=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><style>body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.6;margin:2.5cm}</style></head><body><pre style="white-space:pre-wrap;font-family:'Times New Roman',serif">${txt.replace(/</g,'&lt;')}</pre></body></html>`;
+    const blob=new Blob(['﻿'+html],{type:'application/msword'});
+    this._download(blob,'parecer','doc');
+  },
+  exportarPdf(){
+    const txt=document.getElementById('parecer-modal-texto').value;
+    const w=window.open('','_blank');
+    w.document.write(`<!DOCTYPE html><html><head><meta charset='utf-8'><title>Parecer Técnico</title><style>body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.7;margin:2.5cm;color:#1e293b}pre{white-space:pre-wrap;font-family:inherit}@media print{body{margin:1.5cm}}</style></head><body><pre>${txt.replace(/</g,'&lt;')}</pre></body></html>`);
+    w.document.close();
+    setTimeout(()=>{w.focus();w.print();},400);
+  },
+  _download(blob,nome,ext){
+    const a=this._lastAchado;
+    const mat=mats[a.mi]||a.mi;
+    const fname=`parecer_${a.tipo}_${mat}_${new Date().toISOString().slice(0,10)}.${ext}`;
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a'); link.href=url; link.download=fname; link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+};
+
+// Função auxiliar para gerar parecer a partir do encoded JSON (usada nos botões)
+function _gerarParecerBtn(encodedJson){
+  try{ PARECER.gerar(JSON.parse(decodeURIComponent(encodedJson))); }
+  catch(e){ alert('Erro: '+e.message); }
 }
 
 // ── Pareto de Eventos ────────────────────────────────────────────────────────
