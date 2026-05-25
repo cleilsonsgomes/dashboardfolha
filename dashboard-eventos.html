@@ -578,13 +578,29 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
     <div class="cc" style="padding:14px">
       <div class="ch" style="margin-bottom:10px">Selecionar Eventos para Excluir</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <button class="pb" onclick="simSelectCat(0)">Marcar Base Salarial</button>
-        <button class="pb" onclick="simSelectCat(1)">Marcar Gratificações</button>
-        <button class="pb" onclick="simSelectCat(2)">Marcar Extras/Plantões</button>
-        <button class="pb" onclick="simSelectCat(3)">Marcar Férias</button>
-        <button class="pb" onclick="simClearAll()" style="border-color:#dc2626;color:#dc2626">Limpar tudo</button>
+      <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;margin-bottom:6px">Grupos principais</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="pb" onclick="simSelectCat(0)">💵 Base Salarial</button>
+        <button class="pb" onclick="simSelectCat(1)">🎁 Gratificações</button>
+        <button class="pb" onclick="simSelectCat(3)">🏖️ Férias</button>
       </div>
+      <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;margin-bottom:6px">Sub-grupos específicos</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="pb" onclick="simSelectRegex('HORA EXTRA|H\\\\.?\\\\s?E\\\\.?\\\\b','HE')">⏱️ Horas Extras</button>
+        <button class="pb" onclick="simSelectRegex('PLANT[AÃ]O','Plantões')">🏥 Plantões</button>
+        <button class="pb" onclick="simSelectRegex('NOTURNO','Noturno')">🌙 Adic. Noturno</button>
+        <button class="pb" onclick="simSelectRegex('INSALUB','Insalubridade')">☣️ Insalubridade</button>
+        <button class="pb" onclick="simSelectRegex('PERICULOSID','Periculosidade')">⚠️ Periculosidade</button>
+        <button class="pb" onclick="simSelectRegex('PRODUTIVIDADE|PRODUÇÃO|PRODUCAO','Produtividade')">📈 Produtividade</button>
+        <button class="pb" onclick="simSelectRegex('AUX[IÍ]LIO|BOLSA','Auxílios')">🍽️ Auxílios/Bolsas</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="pb" onclick="simClearAll()" style="border-color:#dc2626;color:#dc2626">🗑 Limpar seleção</button>
+        <button class="pb" onclick="simTopExpand()" id="sim-top-btn" style="border-color:#0ea5e9;color:#0ea5e9">📊 Top 10 mais caros</button>
+        <button class="pb" onclick="simSugerir()" id="sim-sug-btn" style="border-color:#f59e0b;color:#f59e0b">💡 Sugerir eventos para revisar</button>
+      </div>
+      <div id="sim-top-painel" style="display:none;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px"></div>
+      <div id="sim-sug-painel" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px"></div>
       <input class="tsearch" id="sim-ev-busca" placeholder="Buscar evento…" oninput="simFilterEvs(this.value)" style="width:100%;margin-bottom:8px">
       <div id="sim-ev-list" style="max-height:380px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px"></div>
     </div>
@@ -2330,6 +2346,100 @@ function simSelectCat(cat){
   simCalc();
 }
 
+// Marca todos os eventos cujo nome bate com a regex
+function simSelectRegex(pattern,label){
+  const re=new RegExp(pattern,'i');
+  let n=0, val=0;
+  const evVal={};
+  filtA1().forEach(r=>{ evVal[r[A1_EI]]=(evVal[r[A1_EI]]||0)+r[A1_VAL]; });
+  Object.keys(evVal).forEach(ei=>{
+    const nome=ev_names[+ei]||'';
+    if(re.test(nome)){ simExcluded.add(+ei); n++; val+=evVal[ei]; }
+  });
+  simBuildEvList((document.getElementById('sim-ev-busca')||{value:''}).value);
+  simCalc();
+  if(n===0){
+    alert(`Nenhum evento encontrado para "${label}".`);
+  }
+}
+
+// Painel Top 10 mais caros com checkbox direto
+function simTopExpand(){
+  const p=document.getElementById('sim-top-painel');
+  if(p.style.display!=='none'){ p.style.display='none'; return; }
+  const evVal={};
+  filtA1().forEach(r=>{ evVal[r[A1_EI]]=(evVal[r[A1_EI]]||0)+r[A1_VAL]; });
+  const top=Object.entries(evVal).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  p.innerHTML=`<div style="font-weight:700;color:#0c4a6e;margin-bottom:6px;font-size:11.5px">📊 Top 10 eventos mais caros (folha filtrada)</div>`+
+    top.map(([ei,v],i)=>{
+      const cat=evCat(+ei);
+      const chk=simExcluded.has(+ei)?'checked':'';
+      return `<label style="display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:11px;cursor:pointer">
+        <input type="checkbox" ${chk} onchange="simToggle(${+ei},this.checked);simTopExpand();simTopExpand();" style="accent-color:#dc2626">
+        <span style="color:#94a3b8;font-weight:700;width:18px">${i+1}.</span>
+        <span style="flex:1">${ev_names[+ei]||('Ev '+ei)}</span>
+        <span class="badge" style="background:${CC[cat]}22;color:${CC[cat]}">${CAT[cat]}</span>
+        <span style="color:#dc2626;font-weight:700;white-space:nowrap">${fK(v)}</span>
+      </label>`;
+    }).join('');
+  p.style.display='block';
+}
+
+// Sugere eventos sistemáticos / suspeitos para revisar
+function simSugerir(){
+  const p=document.getElementById('sim-sug-painel');
+  if(p.style.display!=='none'){ p.style.display='none'; return; }
+  // Identifica eventos que aparecem em todas as competências do período filtrado
+  // (sistemáticos) e tenham termos como "EVENTUAL", "ESPORADICO", "GRATIF"...
+  const evByComp={};
+  const evVal={};
+  const compsSet=new Set();
+  filtA1().forEach(r=>{
+    const c=r[A1_ANO]*100+r[A1_MES];
+    compsSet.add(c);
+    if(!evByComp[r[A1_EI]])evByComp[r[A1_EI]]=new Set();
+    evByComp[r[A1_EI]].add(c);
+    evVal[r[A1_EI]]=(evVal[r[A1_EI]]||0)+r[A1_VAL];
+  });
+  const nComps=compsSet.size;
+  const suspeitas=[];
+  Object.keys(evByComp).forEach(ei=>{
+    const nome=(ev_names[+ei]||'').toUpperCase();
+    const meses=evByComp[ei].size;
+    const cobertura=meses/nComps;
+    // Suspeito: EVENTUAL/ESPORADICO presente em ≥80% dos meses
+    if(/EVENTUAL|ESPORADICO|EXTRAORDIN[AÁ]RIO/.test(nome) && cobertura>=0.8){
+      suspeitas.push({ei:+ei,nome,val:evVal[ei],meses,motivo:'Eventual/Esporádico em ≥80% dos meses'});
+    }
+    // Suspeito: HE em todos os meses do período
+    else if(/HORA EXTRA/.test(nome) && cobertura>=0.9 && evVal[ei]>50000){
+      suspeitas.push({ei:+ei,nome,val:evVal[ei],meses,motivo:'HE em quase todos os meses (caráter sistemático)'});
+    }
+    // Suspeito: Gratificação sem produtividade comprovada
+    else if(/GRATIF.*ESPECIAL|GRATIF.*EXCEPCIONAL/.test(nome)){
+      suspeitas.push({ei:+ei,nome,val:evVal[ei],meses,motivo:'Gratificação genérica — exige base legal específica'});
+    }
+  });
+  suspeitas.sort((a,b)=>b.val-a.val);
+  if(suspeitas.length===0){
+    p.innerHTML='<div style="color:#92400e;font-weight:600">✓ Nenhum evento marcadamente suspeito encontrado no filtro atual.</div>';
+  } else {
+    p.innerHTML=`<div style="font-weight:700;color:#92400e;margin-bottom:6px;font-size:11.5px">💡 ${suspeitas.length} evento(s) sugerido(s) para revisão</div>`+
+      suspeitas.slice(0,12).map(s=>{
+        const chk=simExcluded.has(s.ei)?'checked':'';
+        return `<label style="display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:11px;cursor:pointer;border-bottom:1px solid #fef3c7">
+          <input type="checkbox" ${chk} onchange="simToggle(${s.ei},this.checked);simSugerir();simSugerir();" style="accent-color:#dc2626">
+          <div style="flex:1">
+            <div style="font-weight:600">${s.nome}</div>
+            <div style="color:#92400e;font-size:9.5px">${s.motivo} — ${s.meses}/${nComps} meses</div>
+          </div>
+          <span style="color:#dc2626;font-weight:700;white-space:nowrap">${fK(s.val)}</span>
+        </label>`;
+      }).join('');
+  }
+  p.style.display='block';
+}
+
 function simClearAll(){
   simExcluded.clear();
   simBuildEvList('');
@@ -2369,7 +2479,7 @@ function simCalc(){
   const totalSim=totalAtual-totalExcl;
   const pct=totalAtual>0?(totalExcl/totalAtual*100).toFixed(1):0;
 
-  // KPIs
+  // KPIs principais
   document.getElementById('kpi-sim').innerHTML=[
     {l:'Folha Atual',v:fK(totalAtual),s:'período filtrado',c:'#1d4ed8'},
     {l:'Economia Simulada',v:fK(totalExcl),s:pct+'% da folha',c:'#dc2626'},
@@ -2379,6 +2489,34 @@ function simCalc(){
     <div class="kpi-l">${k.l}</div>
     <div class="kpi-v" style="color:${k.c};font-size:18px">${k.v}</div>
     <div class="kpi-s">${k.s}</div></div>`).join('');
+
+  // Mini-KPIs por sub-grupo (gasto total no filtro atual)
+  const subgrupos=[
+    {nm:'⏱️ HE',pat:/HORA EXTRA|H\.?\s?E\.?\b/i,c:'#dc2626'},
+    {nm:'🏥 Plantões',pat:/PLANT[AÃ]O/i,c:'#ea580c'},
+    {nm:'🌙 Noturno',pat:/NOTURNO/i,c:'#7c3aed'},
+    {nm:'☣️ Insalub.',pat:/INSALUB/i,c:'#0891b2'},
+    {nm:'⚠️ Pericul.',pat:/PERICULOSID/i,c:'#b91c1c'},
+    {nm:'📈 Produt.',pat:/PRODUTIVIDADE|PRODUÇÃO|PRODUCAO/i,c:'#16a34a'},
+    {nm:'🍽️ Auxílios',pat:/AUX[IÍ]LIO|BOLSA/i,c:'#0ea5e9'},
+  ];
+  const subVals=subgrupos.map(sg=>{
+    let v=0;
+    rows.forEach(r=>{ if(sg.pat.test(ev_names[r[A1_EI]]||'')) v+=r[A1_VAL]; });
+    return {...sg, v};
+  }).filter(s=>s.v>0).sort((a,b)=>b.v-a.v);
+  let miniEl=document.getElementById('sim-mini-kpis');
+  if(!miniEl){
+    miniEl=document.createElement('div');
+    miniEl.id='sim-mini-kpis';
+    miniEl.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:-8px 0 16px';
+    document.getElementById('kpi-sim').after(miniEl);
+  }
+  miniEl.innerHTML=subVals.map(s=>`<div style="background:#fff;border:1px solid #e2e8f0;border-left:3px solid ${s.c};border-radius:6px;padding:8px 10px">
+    <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">${s.nm}</div>
+    <div style="font-size:14px;font-weight:800;color:${s.c}">${fK(s.v)}</div>
+    <div style="font-size:9.5px;color:var(--mu)">${((s.v/totalAtual)*100).toFixed(1)}% da folha</div>
+  </div>`).join('');
 
   // Gráfico por Categoria
   destroyChart('ch-sim-cat');
