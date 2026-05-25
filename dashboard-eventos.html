@@ -2317,7 +2317,12 @@ function simBuildEvList(q=''){
   // Valor por evento no filtro atual
   const evVal={};
   rows.forEach(r=>{ evVal[r[A1_EI]]=(evVal[r[A1_EI]]||0)+r[A1_VAL]; });
-  const sorted=Object.entries(evVal).sort((a,b)=>b[1]-a[1]);
+  // Ordem alfabética pelo nome do evento
+  const sorted=Object.entries(evVal).sort((a,b)=>{
+    const na=(ev_names[+a[0]]||'').toLowerCase();
+    const nb=(ev_names[+b[0]]||'').toLowerCase();
+    return na.localeCompare(nb,'pt-BR');
+  });
   const qL=q.toLowerCase();
   const visible=sorted.filter(([ei])=>!qL||ev_names[+ei].toLowerCase().includes(qL));
   el.innerHTML=visible.map(([ei,val])=>{
