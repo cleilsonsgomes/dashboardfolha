@@ -1161,6 +1161,12 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       </select>
     </div>
     <div>
+      <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;display:block;margin-bottom:3px">Competência base</label>
+      <select class="sf" id="plano-comp" onchange="renderPlano()" style="min-width:140px">
+        <option value="">Última disponível</option>
+      </select>
+    </div>
+    <div>
       <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;display:block;margin-bottom:3px">Meta de redução</label>
       <div style="display:flex;gap:6px;align-items:center">
         <input type="range" id="plano-meta" min="5" max="30" value="10" step="1" oninput="document.getElementById('plano-meta-val').textContent=this.value+'%';renderPlano()" style="width:140px">
@@ -7505,19 +7511,32 @@ function _planoBuildSecOptions(){
   agg1.forEach(r=>{ if(!EXCLUIR_COMPS.has(r[0]*100+r[1])) sisAtivos.add(r[3]); });
   const lista=[...sisAtivos].map(si=>({si,nm:(secs[si]||'?').replace(/^\d+ - /,'')})).sort((a,b)=>a.nm.localeCompare(b.nm,'pt-BR'));
   lista.forEach(s=>{ const o=document.createElement('option'); o.value=s.si; o.textContent=s.nm; sel.appendChild(o); });
+  // Competências disponíveis
+  const selComp=document.getElementById('plano-comp');
+  if(selComp){
+    const comps=[...new Set(agg2.filter(r=>!EXCLUIR_COMPS.has(r[0]*100+r[1])).map(r=>r[0]*100+r[1]))].sort((a,b)=>b-a);
+    const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    comps.forEach(c=>{
+      const o=document.createElement('option');
+      o.value=c;
+      const ano=Math.floor(c/100), mes=c%100;
+      o.textContent=`${meses[mes-1]}/${ano}`;
+      selComp.appendChild(o);
+    });
+  }
   _planoSecOptionsBuilt=true;
 }
 
-function _planoMedianaSalarioCargo(){
-  // Mediana de remuneração por cargoIdx (últimos 4 meses)
+function _planoMedianaSalarioCargo(compAlvo){
+  // Mediana de remuneração por cargoIdx — na competência escolhida (ou última)
   const compsRec=[...new Set(agg2.filter(r=>!EXCLUIR_COMPS.has(r[0]*100+r[1])).map(r=>r[0]*100+r[1]))].sort();
-  const ult4=new Set(compsRec.slice(-4));
-  const porCargo={}; // cargoIdx → [salários médios mensais]
-  const miMensal={}; // mi → tot 4m
-  agg2.forEach(r=>{ if(ult4.has(r[0]*100+r[1])) miMensal[r[2]]=(miMensal[r[2]]||0)+r[6]; });
+  const compRef = compAlvo || compsRec[compsRec.length-1];
+  const porCargo={}; // cargoIdx → [salários mensais]
+  const miMensal={};
+  agg2.forEach(r=>{ if(r[0]*100+r[1]===compRef) miMensal[r[2]]=(miMensal[r[2]]||0)+r[6]; });
   Object.keys(miMensal).forEach(mi=>{
     const ci=(srv_profile[mi]||[0])[0];
-    const sal=miMensal[mi]/ult4.size;
+    const sal=miMensal[mi];
     if(!porCargo[ci])porCargo[ci]=[];
     porCargo[ci].push(sal);
   });
@@ -7589,29 +7608,27 @@ function _planoColetarPorSec(si){
     crescimento, porRegime, nServAtivos, misSec};
 }
 
-function _planoColetarDemissoes(si, threshold, mediana){
+function _planoColetarDemissoes(si, threshold, mediana, compAlvo){
   // Coleta candidatos a demissão na secretaria, organizados por trilha
+  // compAlvo: competência específica (AAAAMM) ou null=usar última disponível
   const trilha1=[], trilha2=[], trilha3=[], trilha4=[];
 
-  // Folha média mensal por mi — usa agg2 (últimos 4 meses) ou agg4 (anual/12) como fallback
+  // ── Folha mensal de cada servidor na competência escolhida ────────────
   const compsRec=[...new Set(agg2.filter(r=>!EXCLUIR_COMPS.has(r[0]*100+r[1])).map(r=>r[0]*100+r[1]))].sort();
-  const ult4=new Set(compsRec.slice(-4));
-  // 1. Marca quem aparece em agg2 nos últimos 4 meses
-  const miEmAgg2=new Set();
-  agg2.forEach(r=>{ if(ult4.has(r[0]*100+r[1])) miEmAgg2.add(r[2]); });
-  // 2. Calcula folha média via agg2
+  const compRef = compAlvo || compsRec[compsRec.length-1];
+  const anoRef = Math.floor(compRef/100);
   const miFolha={};
-  agg2.forEach(r=>{ if(ult4.has(r[0]*100+r[1])) miFolha[r[2]]=(miFolha[r[2]]||0)+r[6]; });
-  Object.keys(miFolha).forEach(mi=>{ miFolha[mi]=miFolha[mi]/ult4.size; });
-  // 3. Fallback: para servidores SEM dados em agg2 nos últimos 4 meses, usar agg4 do ano corrente
-  const anoCorr=Math.max(...compsRec.map(c=>Math.floor(c/100)));
-  const folhaAgg4={};
+  // Folha REAL daquela competência via agg2
+  agg2.forEach(r=>{ if(r[0]*100+r[1]===compRef) miFolha[r[2]]=(miFolha[r[2]]||0)+r[6]; });
+  // Fallback agg4: para quem NÃO aparece em agg2 no mês escolhido, mas tem ano em agg4
+  const miEmAgg2Mes=new Set(Object.keys(miFolha).map(k=>+k));
+  const folhaAgg4Ano={};
   agg4.forEach(r=>{
-    if(r[A4_ANO]!==anoCorr)return;
-    if(miEmAgg2.has(r[A4_MI]))return; // já contabilizado via agg2
-    folhaAgg4[r[A4_MI]]=(folhaAgg4[r[A4_MI]]||0)+r[A4_VAL];
+    if(r[A4_ANO]!==anoRef)return;
+    if(miEmAgg2Mes.has(r[A4_MI]))return;
+    folhaAgg4Ano[r[A4_MI]]=(folhaAgg4Ano[r[A4_MI]]||0)+r[A4_VAL];
   });
-  Object.keys(folhaAgg4).forEach(mi=>{ miFolha[mi]=folhaAgg4[mi]/12; });
+  Object.keys(folhaAgg4Ano).forEach(mi=>{ miFolha[mi]=folhaAgg4Ano[mi]/12; });
 
   // Acumulação ilegal (precomputa)
   const acumCasos=audCalcularAcumulacoes();
@@ -7739,12 +7756,13 @@ function renderPlano(){
   const fK=v=>v>=1e6?'R$ '+(v/1e6).toFixed(2)+' mi':v>=1000?'R$ '+(v/1e3).toFixed(0)+'k':'R$ '+v.toFixed(0);
 
   const secFlt=(document.getElementById('plano-sec')||{}).value;
+  const compFlt=+((document.getElementById('plano-comp')||{}).value||0)||null;
   const metaPct=+((document.getElementById('plano-meta')||{}).value||10);
   const horFlt=(document.getElementById('plano-hor')||{}).value;
   const trilhaFlt=(document.getElementById('plano-trilha')||{}).value;
   const thresh=+((document.getElementById('plano-impacto')||{}).value||0);
 
-  const mediana=_planoMedianaSalarioCargo();
+  const mediana=_planoMedianaSalarioCargo(compFlt);
 
   // Determina secretarias a processar
   let secsIds;
@@ -7808,7 +7826,7 @@ function renderPlano(){
     ];
 
     // Demissões
-    const dem=_planoColetarDemissoes(d.si, thresh, mediana);
+    const dem=_planoColetarDemissoes(d.si, thresh, mediana, compFlt);
 
     // Aplica filtro de horizonte
     let listaCurto=acoesCurto, listaMedio=acoesMedio, listaLongo=acoesLongo;
@@ -7836,12 +7854,17 @@ function renderPlano(){
     resumoGlobal.totalPAD+=(trilhas[3]||[]).length;
 
     // Render do bloco da secretaria
+    // Determina competência efetiva de exibição
+    const _meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const _compUsada = compFlt || d.ultMes;
+    const _compTxt = _compUsada ? `${_meses[(_compUsada%100)-1]}/${Math.floor(_compUsada/100)}` : '—';
     html+=`<div style="border:1px solid #e2e8f0;border-radius:12px;margin-bottom:18px;overflow:hidden;background:#fff">
       <!-- Cabeçalho -->
       <div style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
         <div>
           <div style="font-size:16px;font-weight:800">${d.nome}</div>
           <div style="font-size:11px;opacity:.75;margin-top:3px">${d.nServAtivos} servidores ativos · Folha mensal ${fR(d.folhaUltMes)} · ${d.crescimento>0?'📈 +':'📉 '}${d.crescimento.toFixed(1)}% em 12 meses</div>
+          <div style="font-size:10.5px;opacity:.6;margin-top:2px">Salário/mês de referência: <strong style="color:#fbbf24">${_compTxt}</strong></div>
         </div>
         <div style="text-align:right">
           <div style="font-size:9.5px;opacity:.7;text-transform:uppercase;letter-spacing:.3px">Meta ${metaPct}% · Anual</div>
@@ -8001,9 +8024,10 @@ async function planoNotificarSecretario(){
   if(!secFlt){ alert('Selecione uma secretaria específica antes de gerar a Notificação.'); return; }
   const si=+secFlt;
   const d=_planoColetarPorSec(si);
+  const compFlt=+((document.getElementById('plano-comp')||{}).value||0)||null;
   const metaPct=+((document.getElementById('plano-meta')||{}).value||10);
-  const mediana=_planoMedianaSalarioCargo();
-  const dem=_planoColetarDemissoes(si,0,mediana);
+  const mediana=_planoMedianaSalarioCargo(compFlt);
+  const dem=_planoColetarDemissoes(si,0,mediana,compFlt);
   const achados=_irrgColetarAchados().filter(a=>a.si===si);
   const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
