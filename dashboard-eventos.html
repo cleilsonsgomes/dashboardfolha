@@ -7593,12 +7593,19 @@ function _planoColetarDemissoes(si, threshold, mediana){
   // Coleta candidatos a demissão na secretaria, organizados por trilha
   const trilha1=[], trilha2=[], trilha3=[], trilha4=[];
 
-  // Folha média últimos 4 meses por mi
+  // Folha média últimos 4 meses por mi (com fallback agg4 anual / 12)
   const compsRec=[...new Set(agg2.filter(r=>!EXCLUIR_COMPS.has(r[0]*100+r[1])).map(r=>r[0]*100+r[1]))].sort();
   const ult4=new Set(compsRec.slice(-4));
   const miFolha={};
   agg2.forEach(r=>{ if(ult4.has(r[0]*100+r[1])) miFolha[r[2]]=(miFolha[r[2]]||0)+r[6]; });
   Object.keys(miFolha).forEach(mi=>{ miFolha[mi]=miFolha[mi]/ult4.size; });
+  // Fallback: para servidores que não aparecem em agg2 mas têm agg4 do ano corrente
+  const anoCorr=Math.max(...compsRec.map(c=>Math.floor(c/100)));
+  agg4.forEach(r=>{
+    if(r[A4_ANO]!==anoCorr)return;
+    if(miFolha[r[A4_MI]])return; // já tem do agg2
+    miFolha[r[A4_MI]]=(miFolha[r[A4_MI]]||0)+r[A4_VAL]/12;
+  });
 
   // Acumulação ilegal (precomputa)
   const acumCasos=audCalcularAcumulacoes();
@@ -7634,6 +7641,8 @@ function _planoColetarDemissoes(si, threshold, mediana){
     if(prof[1]!==si)return;
     if(isDemitido(mi))return;
     const fol=miFolha[mi]||0;
+    // Pula servidores sem folha registrada (cargo vago / nomeação recente sem pagamento)
+    if(fol<=0) return;
     if(fol<threshold)return;
     const cargo=cargos[prof[0]]||'?';
     const regime=(regimes[prof[2]]||'?').replace(/^\d+ - /,'');
