@@ -7801,24 +7801,8 @@ function _planoColetarDemissoes(si, threshold, mediana, compAlvo){
         procedimento:'Notificar para opção em 15 dias úteis. Persistindo, instaurar PAD para exoneração de um dos vínculos.'});
     }
 
-    // TRILHA 3 EXPANDIDA — Possível afastado prolongado (sem agg2 nos últimos 3 meses)
-    const ult3=compsRec.slice(-3);
-    const apareceUlt3=agg2.some(r=>r[2]===mi && ult3.includes(r[0]*100+r[1]));
-    const apareceAgg4=agg4.some(r=>r[A4_MI]===mi);
-    if(!apareceUlt3 && apareceAgg4 && fol>0){
-      trilha3.push({mi,cargo,fol,economiaAno:0,regime,regimeIdx:ri,
-        motivos:['Sem registro mensal nos últimos 3 meses — possível afastado prolongado'],
-        base:'Lei 8.213/91 · CF Art. 40 §1° I (verificar aposentadoria por invalidez)',
-        procedimento:'Verificar se há atestado/laudo justificando afastamento. Avaliar aposentadoria por invalidez ou retorno ao trabalho.'});
-    }
-
-    // TRILHA 3 EXPANDIDA — Servidor "fantasma" (só agg4, nunca agg2)
-    if(!agg2.some(r=>r[2]===mi) && apareceAgg4){
-      trilha3.push({mi,cargo,fol,economiaAno:fol*12*0.5,regime,regimeIdx:ri,
-        motivos:['Servidor sem detalhamento mensal em folha — pagamento sem rastreamento de eventos'],
-        base:'LRF Art. 18 · TCM/BA Resolução 1120/05 Art. 11 II',
-        procedimento:'Auditar pagamentos. Exigir registro mensal completo de eventos no sistema de folha.'});
-    }
+    // TRILHA 3 EXPANDIDA — Afastado prolongado (REMOVIDA: agg2 nem sempre cobre todos os servidores → gera falsos positivos)
+    // TRILHA 3 EXPANDIDA — Servidor "fantasma" (REMOVIDA: ausência em agg2 é característica do dataset, não irregularidade)
 
     // TRILHA 3 EXPANDIDA — Candidato a PIA (>30 anos serviço)
     const admPIA=admissoes[mi];
