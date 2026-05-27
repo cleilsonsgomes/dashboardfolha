@@ -76,6 +76,10 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 .pb:disabled{opacity:.3;cursor:default}
 .info-box{background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;font-size:12px;margin-bottom:16px;color:#78350f;line-height:1.5}
 .srv-card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.glossario{border-bottom:1px dotted #94a3b8;cursor:help;text-decoration:none}
+.glossario:hover{background:#fef3c7;border-bottom-color:#92400e}
+.watermark-minuta{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:160px;color:rgba(220,38,38,.05);font-weight:900;pointer-events:none;z-index:0;letter-spacing:6px}
+@media print{.watermark-minuta{color:rgba(220,38,38,.12);position:fixed}}
 </style>
 </head>
 <body>
@@ -1201,8 +1205,31 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
         <option value="10000">≥ R$ 10.000</option>
       </select>
     </div>
-    <button onclick="planoExportPdf()" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;align-self:flex-end">📄 PDF Executivo</button>
-    <button onclick="planoNotificarSecretario()" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;align-self:flex-end">📋 Notificar Secretário (Claude AI)</button>
+    <div>
+      <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;display:block;margin-bottom:3px">Status</label>
+      <select class="sf" id="plano-status-flt" onchange="renderPlano()" style="min-width:140px">
+        <option value="">Todos</option>
+        <option value="pendente">📋 Pendente</option>
+        <option value="estudo">🔄 Em estudo</option>
+        <option value="execucao">⚙️ Em execução</option>
+        <option value="concluido">✅ Concluído</option>
+        <option value="descartado">❌ Descartado</option>
+      </select>
+    </div>
+    <button onclick="planoExportPdf()" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;align-self:flex-end">📄 PDF</button>
+    <button onclick="planoExportCsv()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;align-self:flex-end" title="Exportar plano consolidado em CSV">📥 CSV</button>
+    <button onclick="planoSalvarVersao()" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;align-self:flex-end" title="Salvar snapshot do plano atual">💾 Salvar versão</button>
+    <button onclick="planoHistoricoVersoes()" style="background:#64748b;color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:11px;font-weight:600;cursor:pointer;align-self:flex-end" title="Ver histórico de versões salvas">📜</button>
+    <button onclick="planoNotificarSecretario()" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;align-self:flex-end">📋 Notificar (AI)</button>
+    <button onclick="planoAnaliseEstrategica()" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;align-self:flex-end" title="Análise crítica do Claude sobre o cenário completo">🧠 Análise Estratégica (AI)</button>
+  </div>
+
+  <div style="padding:0 18px 8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:10.5px;font-weight:700;color:var(--mu);text-transform:uppercase">🎮 Aplicar cenário:</span>
+    <button onclick="WFLOW.cenario('conservador')" style="background:#16a34a;color:#fff;border:none;border-radius:5px;padding:5px 10px;font-size:10.5px;font-weight:600;cursor:pointer">🟢 Conservador</button>
+    <button onclick="WFLOW.cenario('moderado')" style="background:#f59e0b;color:#fff;border:none;border-radius:5px;padding:5px 10px;font-size:10.5px;font-weight:600;cursor:pointer">🟡 Moderado</button>
+    <button onclick="WFLOW.cenario('agressivo')" style="background:#dc2626;color:#fff;border:none;border-radius:5px;padding:5px 10px;font-size:10.5px;font-weight:600;cursor:pointer">🔴 Agressivo</button>
+    <span id="plano-kanban-contadores" style="margin-left:auto;font-size:11px;color:var(--mu)"></span>
   </div>
 
   <div id="plano-body" style="padding:0 18px 24px"></div>
@@ -7773,9 +7800,380 @@ function _planoColetarDemissoes(si, threshold, mediana, compAlvo){
         base:'CF/88 Art. 37 XVI/XVII',
         procedimento:'Notificar para opção em 15 dias úteis. Persistindo, instaurar PAD para exoneração de um dos vínculos.'});
     }
+
+    // TRILHA 3 EXPANDIDA — Possível afastado prolongado (sem agg2 nos últimos 3 meses)
+    const ult3=compsRec.slice(-3);
+    const apareceUlt3=agg2.some(r=>r[2]===mi && ult3.includes(r[0]*100+r[1]));
+    const apareceAgg4=agg4.some(r=>r[A4_MI]===mi);
+    if(!apareceUlt3 && apareceAgg4 && fol>0){
+      trilha3.push({mi,cargo,fol,economiaAno:0,regime,regimeIdx:ri,
+        motivos:['Sem registro mensal nos últimos 3 meses — possível afastado prolongado'],
+        base:'Lei 8.213/91 · CF Art. 40 §1° I (verificar aposentadoria por invalidez)',
+        procedimento:'Verificar se há atestado/laudo justificando afastamento. Avaliar aposentadoria por invalidez ou retorno ao trabalho.'});
+    }
+
+    // TRILHA 3 EXPANDIDA — Servidor "fantasma" (só agg4, nunca agg2)
+    if(!agg2.some(r=>r[2]===mi) && apareceAgg4){
+      trilha3.push({mi,cargo,fol,economiaAno:fol*12*0.5,regime,regimeIdx:ri,
+        motivos:['Servidor sem detalhamento mensal em folha — pagamento sem rastreamento de eventos'],
+        base:'LRF Art. 18 · TCM/BA Resolução 1120/05 Art. 11 II',
+        procedimento:'Auditar pagamentos. Exigir registro mensal completo de eventos no sistema de folha.'});
+    }
+
+    // TRILHA 3 EXPANDIDA — Candidato a PIA (>30 anos serviço)
+    if(adm && estatutarioEstavel(ri)){
+      const anosServ=(new Date()-new Date(adm))/(1000*60*60*24*365.25);
+      if(anosServ>=30){
+        trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,regimeIdx:ri,
+          motivos:[`${anosServ.toFixed(1)} anos de serviço — candidato a aposentadoria voluntária`],
+          base:'CF/88 Art. 40 §1° III · EC 103/2019',
+          procedimento:'Sugerir adesão a Programa de Incentivo à Aposentadoria (PIA) se houver. Convidar à aposentadoria voluntária.'});
+      }
+    }
   });
 
   return {trilha1, trilha2, trilha3, trilha4};
+}
+
+// Helper local
+function estatutarioEstavel(ri){ return REG_ESTAVEIS.has(ri); }
+function _planoCheckReincidencia(cpf){
+  if(!cpf) return false;
+  // Verifica se existe outro vínculo do mesmo CPF demitido
+  let demit=false, ativo=false;
+  cpfs.forEach((c,i)=>{
+    if(!c||c.lstrip)return;
+    if((c||'').lstrip&&(c.lstrip()===cpf))return;
+  });
+  // fallback simples
+  const others=[];
+  cpfs.forEach((c,i)=>{ if(c===cpf) others.push(i); });
+  if(others.length>=2){
+    others.forEach(mi2=>{ if(isDemitido(mi2)) demit=true; else ativo=true; });
+    return demit && ativo;
+  }
+  return false;
+}
+
+// ── ANÁLISES AVANÇADAS por SECRETARIA (regressão + ABC + benchmark + sazonalidade) ──
+function _planoAnalisesAvancadas(d,compFlt){
+  const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fK=v=>v>=1e6?'R$ '+(v/1e6).toFixed(2)+'mi':v>=1000?'R$ '+(v/1e3).toFixed(0)+'k':'R$ '+v.toFixed(0);
+
+  // (a) Regressão linear sobre folha mensal últimos 12m
+  const folhaPorComp={};
+  agg1.forEach(r=>{
+    if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+    if(r[3]!==d.si)return;
+    folhaPorComp[r[0]*100+r[1]]=(folhaPorComp[r[0]*100+r[1]]||0)+r[5];
+  });
+  const comps=Object.keys(folhaPorComp).map(Number).sort();
+  const ult12=comps.slice(-12);
+  const serie=ult12.map(c=>folhaPorComp[c]||0);
+  const n=serie.length;
+  let sx=0,sy=0,sxy=0,sx2=0;
+  serie.forEach((y,i)=>{ sx+=i; sy+=y; sxy+=i*y; sx2+=i*i; });
+  const slope = n>1 ? (n*sxy - sx*sy)/(n*sx2 - sx*sx)||0 : 0;
+  const intercept = n>0 ? (sy - slope*sx)/n : 0;
+  const proj6=intercept+slope*(n+5);
+  const proj12=intercept+slope*(n+11);
+  const ultVal=serie[serie.length-1]||0;
+  const variacao6 = ultVal>0 ? ((proj6-ultVal)/ultVal*100) : 0;
+  const variacao12 = ultVal>0 ? ((proj12-ultVal)/ultVal*100) : 0;
+
+  // (b) Benchmarking: custo médio/servidor da sec vs mediana de todas
+  const custoPorServSec = d.nServAtivos>0 ? d.folhaUltMes/d.nServAtivos : 0;
+  // Mediana global
+  const sisAtivos=new Set(); agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[0]*100+r[1]))sisAtivos.add(r[3]);});
+  const custosTodas=[...sisAtivos].map(si=>{
+    let f=0,n=0;
+    agg1.forEach(r=>{ if(r[3]===si&&r[0]*100+r[1]===d.ultMes) f+=r[5]; });
+    Object.keys(srv_profile).forEach(mi=>{ if((srv_profile[mi]||[0,0])[1]===si && !isDemitido(mi)) n++; });
+    return n>0?f/n:0;
+  }).filter(v=>v>0).sort((a,b)=>a-b);
+  const medGlobal=custosTodas[Math.floor(custosTodas.length/2)]||0;
+  const diffMediana = medGlobal>0 ? ((custoPorServSec-medGlobal)/medGlobal*100) : 0;
+
+  // (c) Curva ABC — top 20% servidores absorvem X% da folha
+  const compRef = compFlt||d.ultMes;
+  const folhaPorMi={};
+  agg2.forEach(r=>{
+    if(r[0]*100+r[1]!==compRef)return;
+    if((srv_profile[r[2]]||[0,0])[1]!==d.si)return;
+    folhaPorMi[r[2]]=(folhaPorMi[r[2]]||0)+r[6];
+  });
+  const valores=Object.values(folhaPorMi).sort((a,b)=>b-a);
+  const totalSec=valores.reduce((s,v)=>s+v,0);
+  const n20=Math.max(1,Math.ceil(valores.length*0.2));
+  const top20=valores.slice(0,n20).reduce((s,v)=>s+v,0);
+  const pctAbsorvido = totalSec>0 ? (top20/totalSec*100) : 0;
+
+  // (d) Sazonalidade — pico HE/Gratificação anômalo
+  const heMes={}, gratMes={};
+  agg1.forEach(r=>{
+    if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+    if(r[3]!==d.si)return;
+    const nm=(ev_names[r[2]]||'').toUpperCase();
+    const ck=r[0]*100+r[1];
+    if(/HORA EXTRA/.test(nm)) heMes[ck]=(heMes[ck]||0)+r[5];
+    if(/GRATIF/.test(nm)) gratMes[ck]=(gratMes[ck]||0)+r[5];
+  });
+  const _mediaPico=(obj)=>{
+    const v=Object.values(obj); if(!v.length)return{med:0,pico:0,ck:null};
+    const med=v.reduce((a,b)=>a+b,0)/v.length;
+    let pico=0, ck=null;
+    Object.entries(obj).forEach(([c,vv])=>{ if(vv>pico){pico=vv;ck=+c;} });
+    return {med,pico,ck};
+  };
+  const sazHE=_mediaPico(heMes);
+  const sazGR=_mediaPico(gratMes);
+  const _mes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const _fmtComp=c=>c?`${_mes[(c%100)-1]}/${Math.floor(c/100)}`:'—';
+
+  const corVar = v => v>10?'#dc2626':v>3?'#f59e0b':v<-3?'#16a34a':'#0f172a';
+  const corBench = v => v>20?'#dc2626':v>10?'#f59e0b':'#16a34a';
+
+  return `<div style="padding:14px 18px;border-bottom:1px solid #e2e8f0">
+    <div style="font-size:11px;font-weight:800;color:#0f172a;letter-spacing:.5px;margin-bottom:10px">📈 2.5 · ANÁLISES AVANÇADAS</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+
+      <!-- Projeção -->
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 12px">
+        <div style="font-size:9.5px;font-weight:700;color:#0c4a6e;text-transform:uppercase;margin-bottom:4px">📉 Projeção (Regressão Linear)</div>
+        <div style="font-size:11px;color:#0c4a6e">Tendência: <strong>${slope>0?'📈 +':'📉 '}${fK(Math.abs(slope))}/mês</strong></div>
+        <div style="font-size:10.5px;margin-top:3px">Em 6m: <strong style="color:${corVar(variacao6)}">${variacao6>0?'+':''}${variacao6.toFixed(1)}%</strong> (${fK(proj6)})</div>
+        <div style="font-size:10.5px">Em 12m: <strong style="color:${corVar(variacao12)}">${variacao12>0?'+':''}${variacao12.toFixed(1)}%</strong> (${fK(proj12)})</div>
+      </div>
+
+      <!-- Benchmarking -->
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px">
+        <div style="font-size:9.5px;font-weight:700;color:#78350f;text-transform:uppercase;margin-bottom:4px">⚖️ Benchmarking (custo/servidor)</div>
+        <div style="font-size:13px;color:#78350f;font-weight:800">${fR(custoPorServSec)}</div>
+        <div style="font-size:10.5px;color:#92400e">Mediana municipal: ${fR(medGlobal)}</div>
+        <div style="font-size:10.5px;margin-top:3px">Diferença: <strong style="color:${corBench(diffMediana)}">${diffMediana>0?'+':''}${diffMediana.toFixed(1)}%</strong> ${diffMediana>20?'(ALTO)':diffMediana>10?'(Acima)':diffMediana<-10?'(Abaixo)':'(Em linha)'}</div>
+      </div>
+
+      <!-- Curva ABC -->
+      <div style="background:#ede9fe;border:1px solid #c4b5fd;border-radius:8px;padding:10px 12px">
+        <div style="font-size:9.5px;font-weight:700;color:#5b21b6;text-transform:uppercase;margin-bottom:4px">📊 Curva ABC (Pareto 80/20)</div>
+        <div style="font-size:13px;color:#5b21b6;font-weight:800">${pctAbsorvido.toFixed(1)}%</div>
+        <div style="font-size:10.5px;color:#6d28d9">do gasto está em ${n20} servidores</div>
+        <div style="font-size:10px;color:#7c3aed;margin-top:3px">(20% dos ${valores.length} servidores na competência)</div>
+      </div>
+
+      <!-- Sazonalidade -->
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 12px">
+        <div style="font-size:9.5px;font-weight:700;color:#7f1d1d;text-transform:uppercase;margin-bottom:4px">📅 Sazonalidade</div>
+        ${sazHE.pico>sazHE.med*1.5?`<div style="font-size:10.5px;color:#7f1d1d">⚠ HE pico ${fK(sazHE.pico)} em <strong>${_fmtComp(sazHE.ck)}</strong> (${(sazHE.pico/sazHE.med).toFixed(1)}× média)</div>`:`<div style="font-size:10px;color:#475569">HE estável (variação normal)</div>`}
+        ${sazGR.pico>sazGR.med*1.5?`<div style="font-size:10.5px;color:#7f1d1d;margin-top:3px">⚠ Gratif pico ${fK(sazGR.pico)} em <strong>${_fmtComp(sazGR.ck)}</strong></div>`:`<div style="font-size:10px;color:#475569;margin-top:3px">Gratif. estáveis</div>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── HEATMAP CONSOLIDADO — Secretaria × Tipo de Irregularidade ─────────────
+function _planoHeatmapConsolidado(){
+  const fK=v=>v>=1e6?(v/1e6).toFixed(1)+'mi':v>=1000?(v/1e3).toFixed(0)+'k':v.toFixed(0);
+  const achados=_irrgColetarAchados();
+  const TIPOS=['TETO','HE','ACUM','GRAT','INS','INSS_APOS_INCAP','INSS_APOS_ATIVO','INSS_DUPLO'];
+  const TIPO_LBL={'TETO':'⚖️ Teto','HE':'⏰ HE','ACUM':'👥 Acum','GRAT':'💸 Grat','INS':'☣️ Insalub','INSS_APOS_INCAP':'⛔ Incap','INSS_APOS_ATIVO':'👴 Apos','INSS_DUPLO':'🏥 Duplo'};
+  // Agrupa por si × tipo
+  const mat={}; const totaisPorSec={};
+  achados.forEach(a=>{
+    if(!mat[a.si]) mat[a.si]={};
+    mat[a.si][a.tipo]=(mat[a.si][a.tipo]||0)+(a.valor||0);
+    totaisPorSec[a.si]=(totaisPorSec[a.si]||0)+(a.valor||0);
+  });
+  const sisOrd=Object.keys(mat).map(Number).sort((a,b)=>totaisPorSec[b]-totaisPorSec[a]).slice(0,12);
+  if(!sisOrd.length) return '';
+  // Max para escala de cor
+  let maxV=0; sisOrd.forEach(si=>TIPOS.forEach(t=>{ if((mat[si][t]||0)>maxV)maxV=mat[si][t]||0; }));
+  const _bg=v=>{
+    if(v<=0) return '#f8fafc';
+    const intensity=Math.min(1, v/maxV);
+    const r=255, g=Math.round(237-(237-130)*intensity), b=Math.round(213-(213-50)*intensity);
+    return `rgb(${r},${g},${b})`;
+  };
+  const _txt=v=>v>maxV*0.5?'#fff':'#7f1d1d';
+  let html=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin-bottom:14px">
+    <div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:8px">🗺️ Heatmap — Secretaria × Tipo de Irregularidade (Top 12 secretarias por impacto)</div>
+    <div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:10px;min-width:100%">
+      <thead><tr><th style="padding:5px 8px;text-align:left;background:#f1f5f9;position:sticky;left:0">Secretaria</th>${TIPOS.map(t=>`<th style="padding:5px 8px;text-align:center;background:#f1f5f9;font-size:9.5px">${TIPO_LBL[t]}</th>`).join('')}<th style="padding:5px 8px;text-align:right;background:#0f172a;color:#fff">TOTAL</th></tr></thead>
+      <tbody>${sisOrd.map(si=>{
+        const sNm=(secs[si]||'?').replace(/^\d+ - /,'').slice(0,40);
+        return `<tr><td style="padding:5px 8px;font-weight:600;color:#1e293b;background:#fff;position:sticky;left:0;border-right:1px solid #e2e8f0">${sNm}</td>${TIPOS.map(t=>{
+          const v=mat[si][t]||0;
+          return `<td style="padding:6px 4px;text-align:center;background:${_bg(v)};color:${_txt(v)};font-weight:${v>0?700:400}">${v>0?'R$'+fK(v):'·'}</td>`;
+        }).join('')}<td style="padding:5px 8px;text-align:right;font-weight:800;color:#dc2626;background:#fee2e2">R$ ${fK(totaisPorSec[si])}</td></tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <div style="font-size:9.5px;color:var(--mu);margin-top:6px">💡 Intensidade da cor proporcional ao impacto financeiro. Use para identificar concentração de problemas.</div>
+  </div>`;
+  return html;
+}
+
+// ── WORKFLOW (Status + Responsável) — persistido em localStorage ───────────
+const WFLOW={
+  KEY:'plano_workflow_v1',
+  STATUS:{
+    'pendente':{lbl:'📋 Pendente',cor:'#64748b'},
+    'estudo':{lbl:'🔄 Em estudo',cor:'#0ea5e9'},
+    'execucao':{lbl:'⚙️ Em execução',cor:'#f59e0b'},
+    'concluido':{lbl:'✅ Concluído',cor:'#16a34a'},
+    'descartado':{lbl:'❌ Descartado',cor:'#94a3b8'}
+  },
+  _all(){ try{ return JSON.parse(localStorage.getItem(this.KEY)||'{}'); }catch(e){ return {}; } },
+  _save(o){ try{ localStorage.setItem(this.KEY,JSON.stringify(o)); }catch(e){} },
+  hash(achado){ return `${achado.tipo||'X'}|${achado.mi}|${Math.round(achado.valor||0)}`; },
+  get(achado){ return this._all()[this.hash(achado)]||{status:'pendente',resp:'',ts:0}; },
+  set(achado,patch){
+    const all=this._all();
+    const h=this.hash(achado);
+    all[h]={...this.get(achado),...patch,ts:Date.now()};
+    this._save(all);
+  },
+  setStatus(hash,status){
+    const all=this._all();
+    all[hash]={...(all[hash]||{}),status,ts:Date.now()};
+    this._save(all);
+    renderPlano();
+  },
+  setResp(hash,resp){
+    const all=this._all();
+    all[hash]={...(all[hash]||{}),resp,ts:Date.now()};
+    this._save(all);
+  },
+  countByStatus(){
+    const c={pendente:0,estudo:0,execucao:0,concluido:0,descartado:0};
+    Object.values(this._all()).forEach(v=>{ if(c[v.status]!==undefined) c[v.status]++; });
+    return c;
+  },
+  cenario(modo){
+    // Marca todos os achados visíveis em "execucao" segundo o cenário
+    if(!confirm(`Aplicar cenário ${modo.toUpperCase()}? Isso marca achados como "Em execução" conforme o perfil escolhido.`))return;
+    const tipos={
+      conservador:['TETO','HE','ACUM','GRAT','INS','INSS_APOS_INCAP','INSS_DUPLO'],
+      moderado:['TETO','HE','ACUM','GRAT','INS','INSS_APOS_INCAP','INSS_APOS_ATIVO','INSS_DUPLO','DEMISSAO_T1','DEMISSAO_T2'],
+      agressivo:['TETO','HE','ACUM','GRAT','INS','INSS_APOS_INCAP','INSS_APOS_ATIVO','INSS_DUPLO','DEMISSAO_T1','DEMISSAO_T2','DEMISSAO_T3']
+    };
+    const achados=_irrgColetarAchados();
+    const tiposSet=new Set(tipos[modo]||[]);
+    achados.forEach(a=>{ if(tiposSet.has(a.tipo)) this.set(a,{status:'execucao'}); });
+    alert(`✅ Cenário ${modo} aplicado. Atualize visualizando a aba.`);
+    renderPlano();
+  }
+};
+window.WFLOW=WFLOW;
+
+// ── BLOCO COMPLIANCE LRF + LIMITES por TIPO de DESPESA ────────────────────
+function _planoBlocoCompliance(){
+  const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fK=v=>v>=1e6?'R$ '+(v/1e6).toFixed(2)+' mi':v>=1000?'R$ '+(v/1e3).toFixed(0)+'k':'R$ '+v.toFixed(0);
+  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  // Folha total municipal por competência
+  const folhaPorComp={};
+  agg1.forEach(r=>{
+    if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+    folhaPorComp[r[0]*100+r[1]]=(folhaPorComp[r[0]*100+r[1]]||0)+r[5];
+  });
+  const comps=Object.keys(folhaPorComp).map(Number).sort();
+  const ultComp=comps[comps.length-1];
+  const folhaUlt=folhaPorComp[ultComp]||0;
+  const rclUlt=RCL_MENSAL[ultComp]||0;
+  const pctRCL=rclUlt>0?(folhaUlt/rclUlt)*100:0;
+
+  // Linha do tempo - últimos 12 meses
+  const ult12=comps.slice(-12);
+  const serieFolha=ult12.map(c=>folhaPorComp[c]||0);
+  const serieRCL=ult12.map(c=>RCL_MENSAL[c]||0);
+  const seriePct=ult12.map((c,i)=>serieRCL[i]>0?(serieFolha[i]/serieRCL[i])*100:0);
+
+  // Regressão linear simples sobre o % para projetar quando ultrapassa
+  const n=seriePct.length;
+  let sx=0,sy=0,sxy=0,sx2=0;
+  seriePct.forEach((y,i)=>{ const x=i; sx+=x; sy+=y; sxy+=x*y; sx2+=x*x; });
+  const slope=(n*sxy - sx*sy)/(n*sx2 - sx*sx)||0;
+  const intercept=(sy - slope*sx)/n;
+  // Quantos meses até atingir 54% e 60%?
+  const mesAte = alvo => slope>0 ? Math.max(0, Math.ceil((alvo - (intercept + slope*(n-1)))/slope)) : null;
+  const m54=mesAte(54), m60=mesAte(60);
+
+  // Cor do alerta
+  let alertCor='#16a34a', alertBg='#dcfce7', alertBd='#86efac', alertTxt='OK';
+  if(pctRCL>=60){ alertCor='#dc2626'; alertBg='#fee2e2'; alertBd='#fca5a5'; alertTxt='LIMITE LEGAL ULTRAPASSADO'; }
+  else if(pctRCL>=54){ alertCor='#f59e0b'; alertBg='#fef3c7'; alertBd='#fde68a'; alertTxt='Limite Prudencial'; }
+  else if(pctRCL>=51.3){ alertCor='#f59e0b'; alertBg='#fef9c3'; alertBd='#fef08a'; alertTxt='Limite de Alerta (95% do prudencial)'; }
+
+  // Composição por tipo no período (12m)
+  let totGeral=0,totGratif=0,totHE=0,totCC=0,totInsalub=0,totPlantao=0;
+  const ult12Set=new Set(ult12);
+  agg1.forEach(r=>{
+    if(!ult12Set.has(r[0]*100+r[1]))return;
+    totGeral+=r[5];
+    const nm=(ev_names[r[2]]||'').toUpperCase();
+    if(/GRATIF/.test(nm)) totGratif+=r[5];
+    if(/HORA EXTRA/.test(nm)) totHE+=r[5];
+    if(/PLANT[AÃ]O/.test(nm)) totPlantao+=r[5];
+    if(/INSALUB|PERICULOSID/.test(nm)) totInsalub+=r[5];
+    if(/CARGO COMISSAO/.test(nm)) totCC+=r[5];
+  });
+  const pctGratif=totGeral>0?(totGratif/totGeral)*100:0;
+  const pctHE=totGeral>0?(totHE/totGeral)*100:0;
+  const pctCC=totGeral>0?(totCC/totGeral)*100:0;
+  const pctInsalub=totGeral>0?(totInsalub/totGeral)*100:0;
+  const pctPlantao=totGeral>0?(totPlantao/totGeral)*100:0;
+
+  const _gauge = (pct,label,limite,cor)=>{
+    const over = pct>limite;
+    const corFinal = over?'#dc2626':cor;
+    const pctClamped=Math.min(pct,100);
+    return `<div style="background:#fff;border:1px solid ${over?'#fca5a5':'#e2e8f0'};border-radius:8px;padding:10px 12px;${over?'box-shadow:0 0 0 2px #fee2e2':''}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px"><span style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">${label}</span><span style="font-size:14px;font-weight:800;color:${corFinal}">${pct.toFixed(1)}%</span></div>
+      <div style="background:#f1f5f9;border-radius:4px;height:7px;overflow:hidden"><div style="width:${pctClamped}%;height:100%;background:${corFinal};transition:width .3s"></div></div>
+      <div style="font-size:9.5px;color:var(--mu);margin-top:3px">limite recomendado: ${limite}% ${over?'<strong style="color:#dc2626">⚠ ULTRAPASSADO</strong>':''}</div>
+    </div>`;
+  };
+
+  // Alerta eleitoral (próximas eleições municipais — 2028)
+  const hoje=new Date();
+  const eleicaoMun=new Date(2028,9,1); // outubro 2028 (1° turno)
+  const dias180Antes=new Date(eleicaoMun.getTime()-180*86400000);
+  let alertaEleitoral='';
+  if(hoje>=dias180Antes && hoje<eleicaoMun){
+    alertaEleitoral=`<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:11px;color:#7f1d1d"><strong>🗳️ PERÍODO ELEITORAL VEDADO</strong> — Estamos em janela de 180 dias antes do pleito municipal (out/2028). Vedadas nomeações, contratações e aumentos sem autorização específica (<span class="glossario" title="Lei 9.504/97 Art. 73 V — vedações em ano eleitoral">Lei 9.504/97 Art. 73 V</span>). Recomenda-se suspender admissões temporárias e revisar atos pendentes.</div>`;
+  }
+
+  return `<div style="background:linear-gradient(135deg,#0c4a6e,#0f172a);color:#fff;border-radius:12px;padding:16px 22px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.85;font-weight:700">⚖️ Compliance Fiscal — <span class="glossario" title="Lei de Responsabilidade Fiscal — LC 101/2000">LRF</span> Art. 19/20 (Municípios)</div>
+        <div style="font-size:24px;font-weight:800;margin-top:4px">${pctRCL.toFixed(2)}% <span style="font-size:13px;font-weight:600;opacity:.85">Folha / <span class="glossario" title="Receita Corrente Líquida — base de cálculo dos limites LRF">RCL</span></span></div>
+        <div style="font-size:11px;opacity:.7">Competência ${ultComp?meses[(ultComp%100)-1]+'/'+Math.floor(ultComp/100):'—'} · Folha ${fR(folhaUlt)} · RCL ${fR(rclUlt)}</div>
+      </div>
+      <div style="background:${alertBg};color:${alertCor};border:1px solid ${alertBd};border-radius:8px;padding:10px 14px;min-width:170px;text-align:center">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase">Status</div>
+        <div style="font-size:13px;font-weight:800;margin-top:2px">${alertTxt}</div>
+        <div style="font-size:10px;margin-top:3px">Prud. <strong>54%</strong> · Legal <strong>60%</strong></div>
+      </div>
+      <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px 14px;min-width:170px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.8">📈 Projeção (regressão)</div>
+        <div style="font-size:11.5px;margin-top:3px">Tendência: ${slope>0?'📈 +':'📉 '}${slope.toFixed(2)} p.p./mês</div>
+        ${m54!==null && slope>0 && pctRCL<54?`<div style="font-size:11px;color:#fbbf24">Atinge 54% em <strong>${m54}</strong> meses</div>`:''}
+        ${m60!==null && slope>0 && pctRCL<60?`<div style="font-size:11px;color:#fca5a5">Atinge 60% em <strong>${m60}</strong> meses</div>`:''}
+        ${slope<=0?`<div style="font-size:11px;color:#86efac">Trajetória descendente ✓</div>`:''}
+      </div>
+    </div>
+    ${alertaEleitoral}
+    <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
+      ${_gauge(pctGratif,'Gratificações',30,'#ea580c')}
+      ${_gauge(pctHE,'Horas Extras',5,'#dc2626')}
+      ${_gauge(pctPlantao,'Plantões',8,'#0891b2')}
+      ${_gauge(pctInsalub,'Insalub./Pericul.',10,'#7c3aed')}
+      ${_gauge(pctCC,'Cargos em Comissão',15,'#f59e0b')}
+    </div>
+    <div style="font-size:9.5px;opacity:.7;margin-top:10px;line-height:1.5">📌 Bases: <span class="glossario" title="Constituição Federal de 1988 — Art. 169 limita despesa de pessoal">CF/88 Art. 169</span> · <span class="glossario" title="Lei Complementar 101/2000 — Lei de Responsabilidade Fiscal">LC 101/2000</span> Art. 19, 20, 22 e 23 · <span class="glossario" title="Resolução TCM/BA nº 1120/05 — competência do controle interno municipal">Resolução TCM/BA 1120/05</span> Art. 10 V</div>
+  </div>`;
 }
 
 function renderPlano(){
@@ -7789,6 +8187,12 @@ function renderPlano(){
   const horFlt=(document.getElementById('plano-hor')||{}).value;
   const trilhaFlt=(document.getElementById('plano-trilha')||{}).value;
   const thresh=+((document.getElementById('plano-impacto')||{}).value||0);
+  const statusFlt=(document.getElementById('plano-status-flt')||{}).value;
+
+  // Contadores Kanban no header
+  const kc=WFLOW.countByStatus();
+  const kCont=document.getElementById('plano-kanban-contadores');
+  if(kCont) kCont.innerHTML=`📋 ${kc.pendente} · 🔄 ${kc.estudo} · ⚙️ ${kc.execucao} · ✅ ${kc.concluido} · ❌ ${kc.descartado}`;
 
   const mediana=_planoMedianaSalarioCargo(compFlt);
 
@@ -7898,6 +8302,11 @@ function renderPlano(){
           <div style="font-size:9.5px;opacity:.7;text-transform:uppercase;letter-spacing:.3px">Meta ${metaPct}% · Anual</div>
           <div style="font-size:18px;font-weight:800;color:#fbbf24">${fR(meta_red_anual)}</div>
           <div style="font-size:11px;color:${cobreMeta?'#86efac':'#fca5a5'};font-weight:700">${cobreMeta?'✓':'⚠'} Projeção: ${fR(ecoTotal)} (${meta_red_anual>0?((ecoTotal/meta_red_anual)*100).toFixed(0):0}% da meta)</div>
+          ${(() => {
+            const pct=meta_red_anual>0?Math.min(100,(ecoTotal/meta_red_anual)*100):0;
+            const corG=pct>=100?'#86efac':pct>=66?'#fbbf24':pct>=33?'#fb923c':'#fca5a5';
+            return `<div style="margin-top:6px;background:rgba(255,255,255,.15);border-radius:4px;height:6px;overflow:hidden;width:160px;margin-left:auto"><div style="width:${pct}%;height:100%;background:${corG};transition:width .3s"></div></div>`;
+          })()}
         </div>
       </div>
 
@@ -7923,6 +8332,9 @@ function renderPlano(){
           </tbody>
         </table>
       </div>
+
+      <!-- 2.5 ANÁLISES AVANÇADAS -->
+      ${_planoAnalisesAvancadas(d,compFlt)}
 
       ${(listaCurto.length||listaMedio.length||listaLongo.length)?`<!-- 3. PLANO DE AÇÃO -->
       <div style="padding:14px 18px;border-bottom:1px solid #e2e8f0">
@@ -7960,10 +8372,13 @@ function renderPlano(){
   });
 
   // Cabeçalho de resumo global
-  let resumoHtml='';
+  // ── Bloco Compliance LRF + Heatmap consolidado ────────────────────────────
+  const complianceHtml = _planoBlocoCompliance();
+  const heatmapHtml = _planoHeatmapConsolidado();
+  let resumoHtml=complianceHtml+heatmapHtml;
   if(secsData.length>1){
     const pctMeta=resumoGlobal.folha>0?((resumoGlobal.economiaProjetada/(resumoGlobal.folha*12*metaPct/100))*100).toFixed(0):0;
-    resumoHtml=`<div style="background:linear-gradient(135deg,#1e3a8a,#3730a3);color:#fff;border-radius:12px;padding:16px 22px;margin-bottom:16px">
+    resumoHtml+=`<div style="background:linear-gradient(135deg,#1e3a8a,#3730a3);color:#fff;border-radius:12px;padding:16px 22px;margin-bottom:16px">
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;opacity:.85;font-weight:700">Visão Consolidada</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:8px">
         <div><div style="font-size:9.5px;opacity:.7;text-transform:uppercase">Secretarias</div><div style="font-size:22px;font-weight:800">${secsData.length}</div></div>
@@ -7978,7 +8393,15 @@ function renderPlano(){
 }
 
 function _planoRenderTrilha(num, casos, titulo, cor, bg, bd, txt, bgItem, base){
-  if(!casos.length) return `<div style="background:${bg};border:1px solid ${bd};border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:11px;color:${txt}"><strong>${titulo}</strong> · ✓ Nenhum caso identificado</div>`;
+  // Filtro de status (lê do DOM diretamente — opcional)
+  const statusFlt=(document.getElementById('plano-status-flt')||{}).value||'';
+  if(statusFlt){
+    casos = casos.filter(c=>{
+      const ach={tipo:'DEMISSAO_T'+num,mi:c.mi,valor:c.economiaAno};
+      return WFLOW.get(ach).status===statusFlt;
+    });
+  }
+  if(!casos.length) return `<div style="background:${bg};border:1px solid ${bd};border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:11px;color:${txt}"><strong>${titulo}</strong> · ✓ Nenhum caso ${statusFlt?'no status escolhido':'identificado'}</div>`;
   const total=casos.reduce((s,c)=>s+c.economiaAno,0);
   // Ordena por economia desc
   casos.sort((a,b)=>b.economiaAno-a.economiaAno);
@@ -7989,16 +8412,26 @@ function _planoRenderTrilha(num, casos, titulo, cor, bg, bd, txt, bgItem, base){
       <div style="font-weight:700;color:${cor};font-size:12px">${fR(total)}/ano</div>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:11px;background:${bgItem}">
-      <thead><tr style="border-bottom:1px solid ${bd}"><th style="padding:5px 10px;text-align:left;font-size:9.5px;color:${txt};text-transform:uppercase">Servidor</th><th style="padding:5px 10px;text-align:left;font-size:9.5px;color:${txt};text-transform:uppercase">Cargo</th><th style="padding:5px 10px;text-align:left;font-size:9.5px;color:${txt};text-transform:uppercase">Motivos</th><th style="padding:5px 10px;text-align:right;font-size:9.5px;color:${txt};text-transform:uppercase">Salário/mês</th><th style="padding:5px 10px;text-align:right;font-size:9.5px;color:${txt};text-transform:uppercase">Economia/ano</th><th style="padding:5px 10px;text-align:center;font-size:9.5px;color:${txt};text-transform:uppercase">Ação</th></tr></thead>
+      <thead><tr style="border-bottom:1px solid ${bd}"><th style="padding:5px 10px;text-align:left;font-size:9.5px;color:${txt};text-transform:uppercase">Servidor</th><th style="padding:5px 10px;text-align:left;font-size:9.5px;color:${txt};text-transform:uppercase">Cargo</th><th style="padding:5px 10px;text-align:left;font-size:9.5px;color:${txt};text-transform:uppercase">Motivos</th><th style="padding:5px 10px;text-align:right;font-size:9.5px;color:${txt};text-transform:uppercase">Salário/mês</th><th style="padding:5px 10px;text-align:right;font-size:9.5px;color:${txt};text-transform:uppercase">Economia/ano</th><th style="padding:5px 10px;text-align:center;font-size:9.5px;color:${txt};text-transform:uppercase">Status</th><th style="padding:5px 10px;text-align:left;font-size:9.5px;color:${txt};text-transform:uppercase">Responsável</th><th style="padding:5px 10px;text-align:center;font-size:9.5px;color:${txt};text-transform:uppercase">📋</th></tr></thead>
       <tbody>${casos.slice(0,30).map(c=>{
         const achadoIns={tipo:'DEMISSAO_T'+num,critico:num===3?3:2,mi:c.mi,si:(srv_profile[c.mi]||[0,0])[1],cargoIdx:(srv_profile[c.mi]||[0])[0],desc:`Recomendação: ${c.procedimento}. Motivos: ${(c.motivos||[]).join('; ')||'critérios objetivos atendidos'}.`,valor:c.economiaAno,resolucao:c.procedimento,base:c.base};
         const aEnc=encodeURIComponent(JSON.stringify(achadoIns));
-        return `<tr style="border-bottom:1px solid ${bd}">
+        const wf=WFLOW.get(achadoIns);
+        const hash=WFLOW.hash(achadoIns);
+        const corStatus=WFLOW.STATUS[wf.status]?.cor||'#64748b';
+        const rowOpac=wf.status==='descartado'||wf.status==='concluido'?'opacity:.55;':'';
+        return `<tr style="border-bottom:1px solid ${bd};${rowOpac}">
           <td style="padding:6px 10px;font-weight:600;color:#0f172a">${nomes[c.mi]||'?'}<div style="color:#94a3b8;font-size:9.5px;font-weight:400">Mat. ${mats[c.mi]||c.mi}</div></td>
           <td style="padding:6px 10px;color:#475569;font-size:10.5px">${c.cargo||'?'}</td>
           <td style="padding:6px 10px;color:#475569;font-size:10px">${(c.motivos||[]).join(' · ')||'<em>—</em>'}</td>
           <td style="padding:6px 10px;text-align:right;color:#0f172a;font-weight:600">${fR(c.fol)}</td>
           <td style="padding:6px 10px;text-align:right;font-weight:700;color:${cor}">${fR(c.economiaAno)}</td>
+          <td style="padding:5px 8px;text-align:center">
+            <select onchange="WFLOW.setStatus('${hash}',this.value)" style="border:1px solid ${corStatus};color:${corStatus};background:#fff;border-radius:5px;padding:2px 4px;font-size:10px;cursor:pointer;font-weight:600">
+              ${Object.entries(WFLOW.STATUS).map(([k,v])=>`<option value="${k}" ${wf.status===k?'selected':''}>${v.lbl}</option>`).join('')}
+            </select>
+          </td>
+          <td style="padding:5px 8px"><input type="text" value="${(wf.resp||'').replace(/"/g,'&quot;')}" onblur="WFLOW.setResp('${hash}',this.value)" placeholder="atribuir…" style="border:1px solid ${bd};border-radius:4px;padding:2px 6px;font-size:10px;width:100%;max-width:120px"></td>
           <td style="padding:6px 10px;text-align:center"><button onclick="_gerarParecerBtn('${aEnc}')" style="background:#7c3aed;color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:9.5px;font-weight:600;cursor:pointer" title="Gerar Notificação">📋</button></td>
         </tr>`;
       }).join('')}</tbody>
@@ -8041,6 +8474,119 @@ function planoExportPdf(){
   w.document.write(_oficialTemplate(titulo,body));
   w.document.close();
   setTimeout(()=>{w.focus();w.print();},700);
+}
+
+// ── Persistência: versões do plano + export CSV ────────────────────────────
+const PLANO_VERSOES_KEY='plano_versoes_v1';
+function planoSalvarVersao(){
+  const nome=prompt('Nome da versão (ex.: "Análise Q1/2026"):','Plano '+new Date().toLocaleDateString('pt-BR'));
+  if(!nome)return;
+  const ver={
+    nome, ts:Date.now(),
+    secFlt:(document.getElementById('plano-sec')||{}).value,
+    compFlt:(document.getElementById('plano-comp')||{}).value,
+    metaPct:(document.getElementById('plano-meta')||{}).value,
+    horFlt:(document.getElementById('plano-hor')||{}).value,
+    workflow:WFLOW._all(),
+    contadores:WFLOW.countByStatus()
+  };
+  let arr=[]; try{arr=JSON.parse(localStorage.getItem(PLANO_VERSOES_KEY)||'[]');}catch(e){}
+  arr.push(ver);
+  try{localStorage.setItem(PLANO_VERSOES_KEY,JSON.stringify(arr));}catch(e){alert('Erro ao salvar (quota cheia)');return;}
+  alert(`✅ Versão "${nome}" salva. Total: ${arr.length} versões em cache.`);
+}
+function planoHistoricoVersoes(){
+  let arr=[]; try{arr=JSON.parse(localStorage.getItem(PLANO_VERSOES_KEY)||'[]');}catch(e){}
+  if(!arr.length){alert('📜 Nenhuma versão salva ainda. Use "💾 Salvar versão" antes.');return;}
+  const txt='📜 HISTÓRICO DE VERSÕES\n\n'+arr.map((v,i)=>`${i+1}. ${v.nome}\n   Salvo: ${new Date(v.ts).toLocaleString('pt-BR')}\n   Workflow: ${v.contadores.pendente} pend · ${v.contadores.execucao} exec · ${v.contadores.concluido} concl`).join('\n\n');
+  alert(txt);
+}
+function planoExportCsv(){
+  // Exporta plano consolidado como CSV (todas trilhas, todas secretarias filtradas)
+  const compFlt=+((document.getElementById('plano-comp')||{}).value||0)||null;
+  const mediana=_planoMedianaSalarioCargo(compFlt);
+  const secFlt=(document.getElementById('plano-sec')||{}).value;
+  let secsIds;
+  if(secFlt) secsIds=[+secFlt];
+  else { const s=new Set(); agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[0]*100+r[1]))s.add(r[3]);}); secsIds=[...s]; }
+  const hdr=['Secretaria','Trilha','Servidor','Matrícula','CPF','Cargo','Regime','Motivos','Salário/mês','Economia/ano','Procedimento','Base Legal','Status WF','Responsável'];
+  const rows=[];
+  secsIds.forEach(si=>{
+    const dem=_planoColetarDemissoes(si,0,mediana,compFlt);
+    const sNome=(secs[si]||'?').replace(/^\d+ - /,'');
+    [['T1 Imediata',dem.trilha1],['T2 Não Renovar',dem.trilha2],['T3 PAD',dem.trilha3]].forEach(([trLbl,lista])=>{
+      lista.forEach(c=>{
+        const ach={tipo:'DEMISSAO_'+trLbl.replace(/\s.*/,''),mi:c.mi,valor:c.economiaAno};
+        const wf=WFLOW.get(ach);
+        rows.push([sNome,trLbl,nomes[c.mi]||'',mats[c.mi]||c.mi,cpfMask(cpfs[c.mi]),c.cargo,c.regime,(c.motivos||[]).join('; '),c.fol.toFixed(2),c.economiaAno.toFixed(2),c.procedimento,c.base,WFLOW.STATUS[wf.status]?.lbl||wf.status,wf.resp||'']);
+      });
+    });
+  });
+  const csv='﻿'+[hdr,...rows].map(r=>r.map(c=>`"${(c+'').replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`plano_acao_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ── IA Expandida: Análise Estratégica cross-secretaria ─────────────────────
+async function planoAnaliseEstrategica(){
+  if(!ASSIST.apiKey){ alert('⚠️ Configure a chave da Claude API no Assistente.'); ASSIST.toggle(); return; }
+  const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  // Coleta resumão municipal
+  const sisAtivos=new Set(); agg1.forEach(r=>{if(!EXCLUIR_COMPS.has(r[0]*100+r[1]))sisAtivos.add(r[3]);});
+  const secsData=[...sisAtivos].map(si=>_planoColetarPorSec(si)).sort((a,b)=>b.folhaUltMes-a.folhaUltMes);
+  const top10=secsData.slice(0,10);
+  const totalFolha=secsData.reduce((s,d)=>s+d.folhaUltMes,0);
+  const achados=_irrgColetarAchados();
+  const totalAchados=achados.length;
+  const totalImpacto=achados.reduce((s,a)=>s+(a.valor||0),0);
+
+  // Snapshot pra IA
+  const ctx=`MUNICÍPIO: Paulo Afonso/BA
+DATA: ${new Date().toLocaleDateString('pt-BR')}
+FOLHA MENSAL MUNICIPAL: ${fR(totalFolha)}
+TOTAL DE SECRETARIAS: ${secsData.length}
+TOTAL DE IRREGULARIDADES DETECTADAS: ${totalAchados} · Impacto: ${fR(totalImpacto)}
+
+TOP 10 SECRETARIAS POR FOLHA:
+${top10.map((d,i)=>`${i+1}. ${d.nome} — ${fR(d.folhaUltMes)} (${d.nServAtivos} serv) — Crescimento 12m: ${d.crescimento.toFixed(1)}% — HE: ${fR(d.totHE)} — Gratif: ${fR(d.totGratif)}`).join('\n')}`;
+
+  // Pseudo-achado para reusar modal
+  const sintetico={tipo:'ANALISE_ESTRATEGICA',critico:2,mi:-1,si:-1,cargoIdx:0,desc:'Análise estratégica cross-secretaria',valor:totalImpacto,resolucao:'',base:'Análise gerencial',_ctx:ctx};
+  if(!window.PARECER){alert('Aguarde o carregamento.');return;}
+  const cached=window.PARECER._cacheBuscar(sintetico);
+  if(cached){window.PARECER._lastFromCache=true;window.PARECER._showModal(sintetico,cached.texto);return;}
+  window.PARECER._lastFromCache=false;
+  window.PARECER._showModal(sintetico,'⏳ Gerando Análise Estratégica via Claude... (20-40s)');
+
+  const sys=`Você é um consultor sênior de gestão pública e auditor de folha de pagamento, atuando como Controlador-Geral do Município. Analise dados consolidados de folha municipal e produza INSIGHTS ESTRATÉGICOS de alto nível para apoiar a tomada de decisão do Prefeito e Secretários. Tom: executivo, direto, propositivo. Use português brasileiro.`;
+  const user=`Analise os dados abaixo e gere:
+
+1. PRINCIPAIS PADRÕES ANÔMALOS detectados (3 a 5 itens)
+2. COMPARAÇÃO HISTÓRICA — tendência geral e oportunidades
+3. TOP 3 OPORTUNIDADES ESTRATÉGICAS DE REDUÇÃO (com impacto estimado)
+4. RISCOS DE NÃO ATUAR (LRF, eleições, sanções)
+5. RECOMENDAÇÕES PRIORITÁRIAS para o Prefeito (5 ações concretas)
+
+═══════════════════════════════════════════
+${ctx}
+═══════════════════════════════════════════
+
+Formato: texto corrido com cabeçalhos em CAIXA ALTA. Máximo 800 palavras. Não use markdown.`;
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':ASSIST.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:ASSIST.model||'claude-haiku-4-5',max_tokens:2400,system:sys,messages:[{role:'user',content:user}]})
+    });
+    if(!resp.ok){let m=`HTTP ${resp.status}`;try{const e=await resp.json();m=e.error?.message||m;}catch(e){}throw new Error(m);}
+    const data=await resp.json();
+    const texto=data.content?.[0]?.text||'(Sem resposta)';
+    window.PARECER._cacheSalvar(sintetico,texto);
+    window.PARECER._showModal(sintetico,texto);
+  }catch(e){window.PARECER._showModal(sintetico,`❌ Erro: ${e.message}`);}
 }
 
 async function planoNotificarSecretario(){
@@ -8241,6 +8787,18 @@ const PARECER={
     if(!this._lastAchado) return;
     this.gerar(this._lastAchado, true);
   },
+  regenerarComOpcoes(){
+    // Recupera opções do modal e gera novamente
+    if(!this._lastAchado) return;
+    this.gerar(this._lastAchado, true);
+  },
+  _getOpcoes(){
+    return {
+      dest: (document.getElementById('parecer-dest')||{}).value || 'secretario',
+      tom: (document.getElementById('parecer-tom')||{}).value || 'formal',
+      marca: (document.getElementById('parecer-marca')||{}).value || 'minuta'
+    };
+  },
   async _callAPI(a){
     const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
     const nm=nomes[a.mi]||('Mat. '+(mats[a.mi]||a.mi));
@@ -8280,6 +8838,19 @@ const PARECER={
       vincBlock='\n\nVÍNCULOS IDENTIFICADOS DO MESMO CPF:\n'+
         a.vinculos.map((v,i)=>`  ${i+1}. Matrícula ${v.mat} — ${v.cargo} — ${v.sec} (regime: ${v.regime})${v.demitido?' [VÍNCULO ENCERRADO]':' [ATIVO]'}`).join('\n');
     }
+    // Opções de tom/destinatário (do modal)
+    const opc=this._getOpcoes();
+    const tomDir = {
+      formal:'Tom INSTITUCIONAL e técnico (padrão).',
+      diplomatico:'Tom DIPLOMÁTICO, sugestivo — use "recomenda-se", "sugere-se que" — evite tom imperativo.',
+      urgente:'Tom URGENTE e imperativo — use "fica determinado", "exige-se providência imediata" — destaque riscos legais.'
+    }[opc.tom]||'';
+    const destDir = {
+      secretario:'Destinatário: SECRETÁRIO(A) da pasta. Foco: tomada de decisão executiva. Use linguagem gerencial.',
+      drh:'Destinatário: Diretor(a) do DRH/Recursos Humanos. Foco: PROCEDIMENTOS administrativos práticos. Detalhe os atos a praticar.',
+      procurador:'Destinatário: Procurador(a) Geral do Município. Foco: ANÁLISE JURÍDICA aprofundada. Cite jurisprudência específica.'
+    }[opc.dest]||'';
+    const marcaTag = opc.marca==='oficial' ? ' [VERSÃO OFICIAL]' : ' [MINUTA]';
     const sys=`Você é um auditor da Controladoria Geral do Município de Paulo Afonso/BA, atuando no Sistema de Controle Interno Municipal nos termos da Resolução TCM/BA nº 1120/05. Sua função é emitir NOTIFICAÇÕES REFERENTES A ATOS DE PESSOAL, em conformidade com:
 - Resolução TCM/BA nº 1120/05, Art. 10, V (verificar e avaliar medidas para retorno da despesa total com pessoal aos limites dos arts. 22 e 23 da LC 101/00)
 - Resolução TCM/BA nº 1120/05, Art. 11, II (acompanhamento e controle específico do sistema de pessoal ativo e inativo)
@@ -8309,6 +8880,11 @@ VALOR ENVOLVIDO: ${fR(a.valor)}
 CRITICIDADE: ${a.critico===3?'ALTA':a.critico===2?'MÉDIA':'BAIXA'}
 BASE LEGAL APLICÁVEL: ${a.base}
 RESOLUÇÃO TÉCNICA SUGERIDA: ${a.resolucao}${vincBlock}
+
+📌 INSTRUÇÕES DE TOM E DESTINATÁRIO:
+${destDir}
+${tomDir}
+Marca do documento: ${marcaTag}
 
 ═══════════════════════════════════════════════════════════
 ESTRUTURA OBRIGATÓRIA DA NOTIFICAÇÃO
@@ -8358,6 +8934,20 @@ Use linguagem formal. Máximo 700 palavras. NÃO use markdown — apenas texto c
             <button onclick="PARECER.baixarTxt()" style="background:#64748b;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">💾 Baixar .txt</button>
             <button onclick="PARECER.exportarWord()" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">📄 Baixar .doc</button>
             <button onclick="PARECER.exportarPdf()" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer">🖨️ PDF (imprimir)</button>
+            <select id="parecer-dest" onchange="PARECER.regenerarComOpcoes()" style="border:1px solid #c7d2fe;color:#3730a3;background:#fff;border-radius:6px;padding:7px 10px;font-size:11px;font-weight:600;cursor:pointer" title="Destinatário do documento">
+              <option value="secretario">📘 Para Secretário</option>
+              <option value="drh">📒 Para DRH</option>
+              <option value="procurador">📕 Para Procurador</option>
+            </select>
+            <select id="parecer-tom" onchange="PARECER.regenerarComOpcoes()" style="border:1px solid #c7d2fe;color:#3730a3;background:#fff;border-radius:6px;padding:7px 10px;font-size:11px;font-weight:600;cursor:pointer" title="Tom do documento">
+              <option value="formal">Tom: Formal</option>
+              <option value="diplomatico">Tom: Diplomático</option>
+              <option value="urgente">Tom: Urgente</option>
+            </select>
+            <select id="parecer-marca" onchange="PARECER.regenerarComOpcoes()" style="border:1px solid #c7d2fe;color:#3730a3;background:#fff;border-radius:6px;padding:7px 10px;font-size:11px;font-weight:600;cursor:pointer" title="Marca d'água no PDF/Word">
+              <option value="minuta">📝 MINUTA</option>
+              <option value="oficial">✔️ OFICIAL</option>
+            </select>
             <button onclick="PARECER.regenerar()" style="background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer" title="Ignora cache e gera um novo parecer com a API">🔄 Regenerar</button>
             <button onclick="document.getElementById('parecer-modal').style.display='none'" style="background:#e2e8f0;color:#475569;border:none;border-radius:6px;padding:8px 14px;font-size:11.5px;font-weight:600;cursor:pointer;margin-left:auto">Fechar</button>
           </div>
@@ -8382,16 +8972,19 @@ Use linguagem formal. Máximo 700 palavras. NÃO use markdown — apenas texto c
     const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
     this._download(blob,'notificacao','txt');
   },
+  _marca(){ const opc=this._getOpcoes(); return opc.marca==='oficial'?'':'<div class="watermark-minuta">MINUTA</div>'; },
   exportarWord(){
     const txt=document.getElementById('parecer-modal-texto').value;
-    const conteudo=`<h1>Notificação referente ao Ato de Pessoal</h1><pre>${txt.replace(/</g,'&lt;')}</pre>`;
+    const marca=this._marca();
+    const conteudo=`${marca}<h1>Notificação referente ao Ato de Pessoal</h1><pre>${txt.replace(/</g,'&lt;')}</pre>`;
     const html=_oficialTemplate('Notificação referente ao Ato de Pessoal',conteudo);
     const blob=new Blob(['﻿'+html],{type:'application/msword'});
     this._download(blob,'notificacao','doc');
   },
   exportarPdf(){
     const txt=document.getElementById('parecer-modal-texto').value;
-    const conteudo=`<h1>Notificação referente ao Ato de Pessoal</h1><pre>${txt.replace(/</g,'&lt;')}</pre>`;
+    const marca=this._marca();
+    const conteudo=`${marca}<h1>Notificação referente ao Ato de Pessoal</h1><pre>${txt.replace(/</g,'&lt;')}</pre>`;
     const w=window.open('','_blank');
     w.document.write(_oficialTemplate('Notificação referente ao Ato de Pessoal',conteudo));
     w.document.close();
