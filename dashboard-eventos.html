@@ -1211,6 +1211,17 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 const D = JSON.parse(document.getElementById('edata').textContent);
 const {mats,nomes,eventos,ev_names,cargos,secs,regimes,srv_profile,agg1,agg2,dup3,agg4} = D;
 const cpfs = D.cpfs||[], admissoes = D.admissoes||[], demissoes = D.demissoes||[];
+// ── Mapeamento de Regimes (índices em D.regimes) ─────────────────────────
+// ATENÇÃO: os índices abaixo refletem a ORDEM real no array D.regimes
+const REG={CELETISTA:0,AUTONOMO:1,CONS_TUTELAR:2,ESTAT_COMIS:3,ESTATUTARIO:4,TEMPORARIO:5,APOSENTADO:6,PENSIONISTA:7,COMISSAO:8,ESTAGIARIO:9,BEN_PENSAO:10,AGENTE_POL:11};
+const REG_LIVRE_EXONERACAO = new Set([REG.COMISSAO]); // Cargo em Comissão puro
+const REG_ESTAVEIS = new Set([REG.ESTATUTARIO]); // CF 41 — estabilidade após 3 anos
+const REG_HIBRIDOS = new Set([REG.ESTAT_COMIS]); // estatutário ocupando CC — pode ser destituído do CC, mas mantém efetivo
+const REG_NAO_PRORROGAVEL = new Set([REG.TEMPORARIO, REG.ESTAGIARIO]);
+const REG_CLT = new Set([REG.CELETISTA]); // rege-se pela CLT (rescisão com indenização)
+const REG_LABEL=i=>{ const r=regimes[i]||''; return r.replace(/^\d+\s*-\s*/,''); };
+function regimePodeExonerar(ri){ return REG_LIVRE_EXONERACAO.has(ri); }
+function regimeEstavel(ri){ return REG_ESTAVEIS.has(ri); }
 const inss = D.inss||{}; // mi → [{t,s,i,c,p,n}, ...]
 const INSS_TIPO_LBL={'APOS_IDADE':'Aposentadoria por idade','APOS_TC':'Aposentadoria por tempo de contribuição','APOS_PROF':'Aposentadoria por tempo de serviço (professor)','APOS_INCAP':'Aposentadoria por incapacidade permanente','APOS_INCAP_AT':'Aposentadoria por incapacidade — acidente do trabalho','APOS_ESP':'Aposentadoria especial','AUX_DOENCA':'Auxílio por incapacidade temporária','AUX_DOENCA_AT':'Auxílio por incapacidade temporária — acidente do trabalho','OUTRO':'Outro benefício'};
 const INSS_SIT_LBL={'A':'Ativo','C':'Cessado','S':'Suspenso','O':'Cessado por óbito','?':'—'};
@@ -6924,7 +6935,8 @@ function _irrgColetarAchados(){
       if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
       if(FS.anos.size>0&&!FS.anos.has(r[0]))return;
       if(!evGratEfetivo.has(r[3]))return;
-      const ri=r[5]; if(ri!==2&&ri!==6&&ri!==8)return;
+      // Gratificação de efetivo paga a temporários/estagiários/comissionados (NÃO estatutários efetivos)
+      const ri=r[5]; if(ri!==REG.TEMPORARIO && ri!==REG.ESTAGIARIO && ri!==REG.COMISSAO) return;
       const prof=srv_profile[r[2]]||[0,0,0];
       if(!gi[r[2]])gi[r[2]]={mi:r[2],si:prof[1],cargoIdx:prof[0],total:0,evs:new Set()};
       gi[r[2]].total+=r[6];
@@ -7627,21 +7639,35 @@ function _planoColetarDemissoes(si, threshold, mediana){
     const regime=(regimes[prof[2]]||'?').replace(/^\d+ - /,'');
     const ri=prof[2];
 
-    // TRILHA 1: Cargo em Comissão (regimes 4, 8) — livre exoneração
-    const isCC=ri===4||ri===8;
+    // TRILHA 1: Cargo em Comissão PURO (regime 8) — livre exoneração CF 37 II
+    // Estatutário/Comissionado (regime 3) é HÍBRIDO: pode ser destituído do CC mas mantém vínculo efetivo
+    const isCC = ri===REG.COMISSAO;
+    const isHibridoCC = ri===REG.ESTAT_COMIS;
     if(isCC){
       const med=mediana[prof[0]]||0;
       const acimaMedia=med>0&&fol>med*1.5;
       let motivos=[];
       if(acimaMedia)motivos.push(`salário ${(fol/med).toFixed(1)}× a mediana do cargo`);
-      if(miParente.has(mi))motivos.push('⚠️ possível parentesco na sec (mesma família)');
-      trilha1.push({mi,cargo,fol,economiaAno:fol*12,regime,motivos,
+      if(miParente.has(mi))motivos.push('⚠️ possível parentesco na sec (mesma família — verificar SV 13)');
+      trilha1.push({mi,cargo,fol,economiaAno:fol*12,regime,regimeIdx:ri,motivos,
         base:'CF/88 Art. 37 II — livre nomeação e exoneração',
-        procedimento:'Ato de exoneração simples — efeito imediato'});
+        procedimento:'Ato de exoneração simples — efeito imediato. Não há indenização.',
+        subtipo:'CC_PURO'});
+    } else if(isHibridoCC){
+      const med=mediana[prof[0]]||0;
+      const acimaMedia=med>0&&fol>med*1.5;
+      let motivos=['servidor estatutário ocupando função comissionada (vínculo efetivo permanece)'];
+      if(acimaMedia)motivos.push(`salário ${(fol/med).toFixed(1)}× a mediana`);
+      if(miParente.has(mi))motivos.push('⚠️ possível parentesco na sec');
+      trilha1.push({mi,cargo,fol,economiaAno:Math.max(0,fol-(med||fol*0.7))*12,regime,regimeIdx:ri,motivos,
+        base:'CF/88 Art. 37 II — destituição de função comissionada (vínculo efetivo é preservado)',
+        procedimento:'Destituir APENAS da função comissionada. Servidor retorna ao cargo efetivo de origem. NÃO é exoneração do quadro.',
+        subtipo:'HIBRIDO'});
     }
 
-    // TRILHA 2: Temporários (regime 2) ou Estagiários (regime 6) com >2 anos
-    const isTemp=ri===2, isEst=ri===6;
+    // TRILHA 2: Temporários (regime 5) ou Estagiários (regime 9) com >2 anos
+    const isTemp = ri===REG.TEMPORARIO;
+    const isEst = ri===REG.ESTAGIARIO;
     if(isTemp||isEst){
       const adm=admissoes[mi];
       let anos=0;
@@ -7651,9 +7677,9 @@ function _planoColetarDemissoes(si, threshold, mediana){
       if(longoPrazo) motivos.push(`vínculo há ${anos.toFixed(1)} anos (limite legal: 2)`);
       if(isEst&&longoPrazo) motivos.push('limite Lei 11.788/08 ultrapassado');
       if(longoPrazo||fol>=5000){
-        trilha2.push({mi,cargo,fol,economiaAno:fol*12,regime,motivos,
+        trilha2.push({mi,cargo,fol,economiaAno:fol*12,regime,regimeIdx:ri,motivos,
           base:isEst?'Lei 11.788/2008 Art. 11 (limite 2 anos)':'Lei 8.745/93 + lei municipal de contratação temporária',
-          procedimento:'Não prorrogar contrato vigente — encerrar no termo final'});
+          procedimento:'Não prorrogar contrato vigente — encerrar no termo final. NÃO há rescisão indenizada.'});
       }
     }
 
@@ -7664,27 +7690,28 @@ function _planoColetarDemissoes(si, threshold, mediana){
     const auxDoenca=benefAtivos.some(b=>INSS_AUX.has(b.t));
 
     if(aposIncap){
-      trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,
+      trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,regimeIdx:ri,
         motivos:['Aposentado por incapacidade permanente + vínculo ativo (vedado EC 103/2019)'],
         base:'CF/88 Art. 40 §1° I · EC 103/2019 Art. 6° · Lei 8.213/91',
         procedimento:'Instaurar PAD. Suspender pagamento. Devolução até 5 anos (Súmula 34 AGU)'});
-    } else if(aposOutra && (ri===0||ri===5||ri===8)){
-      trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,
-        motivos:['Aposentado RGPS + vínculo estatutário — verificar cumulação CF 37 §10'],
-        base:'CF/88 Art. 37 §10 · Súmula 555 STJ',
-        procedimento:'Notificar e verificar regime do ato concessivo. Exonerar do vínculo se incompatível'});
+    } else if(aposOutra && (ri===REG.ESTATUTARIO||ri===REG.ESTAT_COMIS)){
+      // Apenas estatutários têm vedação clara CF 37 §10. Celetistas: Súmula 555 STJ permite acumulação RGPS+cargo
+      trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,regimeIdx:ri,
+        motivos:['Aposentadoria + vínculo estatutário — verificar cumulação CF 37 §10/XVI'],
+        base:'CF/88 Art. 37 §10 e XVI · EC 20/98',
+        procedimento:'Notificar e verificar regime do ato concessivo (RPPS x RGPS) e se cargo é acumulável. Caso incompatível: instaurar PAD.'});
     }
     if(auxDoenca){
-      trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,
+      trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,regimeIdx:ri,
         motivos:['Auxílio-doença INSS ativo + folha do município (duplo recebimento)'],
         base:'Lei 8.213/91 Art. 59 · Decreto 3.048/99 Art. 75',
-        procedimento:'Suspender folha imediatamente até cessar benefício INSS'});
+        procedimento:'Suspender folha imediatamente até cessar benefício INSS. Notificar servidor e DRH para regularização.'});
     }
     if(miAcumIlegal.has(mi)){
-      trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,
+      trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,regimeIdx:ri,
         motivos:['Acumulação de cargos sem amparo constitucional'],
         base:'CF/88 Art. 37 XVI/XVII',
-        procedimento:'Notificar para opção em 15 dias úteis. Persistindo, instaurar PAD para exoneração de um dos vínculos'});
+        procedimento:'Notificar para opção em 15 dias úteis. Persistindo, instaurar PAD para exoneração de um dos vínculos.'});
     }
   });
 
@@ -7858,7 +7885,7 @@ function renderPlano(){
       <div style="padding:14px 18px">
         <div style="font-size:11px;font-weight:800;color:#0f172a;letter-spacing:.5px;margin-bottom:8px">👤 4 · SERVIDORES PARA REAVALIAÇÃO DE VÍNCULO</div>
         <div style="font-size:10.5px;color:var(--mu);margin-bottom:10px;font-style:italic">⚠️ Lista técnica baseada em critérios objetivos. Verificação caso a caso obrigatória antes de qualquer ato.</div>
-        ${_planoRenderTrilha(1,trilhas[1]||[],'🟢 EXONERAÇÃO IMEDIATA (Cargo em Comissão)','#16a34a','#dcfce7','#bbf7d0','#14532d','#fff','CF/88 Art. 37 II — livre exoneração')}
+        ${_planoRenderTrilha(1,trilhas[1]||[],'🟢 EXONERAÇÃO IMEDIATA (Cargo em Comissão puro) / DESTITUIÇÃO DA FUNÇÃO (Estatutário+CC)','#16a34a','#dcfce7','#bbf7d0','#14532d','#fff','CF/88 Art. 37 II — livre exoneração de CC. Para estatutário em CC: só destituir da função, vínculo efetivo permanece.')}
         ${_planoRenderTrilha(2,trilhas[2]||[],'🟡 NÃO PRORROGAÇÃO (Temporários/Estagiários)','#eab308','#fef9c3','#fde68a','#854d0e','#fff','Lei 8.745/93 · Lei 11.788/08')}
         ${_planoRenderTrilha(3,trilhas[3]||[],'🟠 PROCEDIMENTO ADMINISTRATIVO (PAD/Sindicância)','#ea580c','#fff7ed','#fed7aa','#7c2d12','#fff','Lei 8.112/90 · CF 41 §1° II')}
         ${_planoRenderTrilha4(d.folhaUltMes)}
@@ -7985,7 +8012,15 @@ async function planoNotificarSecretario(){
   // Monta prompt
   const acC=achados.length;
   const acTot=achados.reduce((s,a)=>s+(a.valor||0),0);
-  const sys=`Você é o(a) Controlador(a)-Geral do Município de Paulo Afonso/BA, atuando no Sistema de Controle Interno Municipal nos termos da Resolução TCM/BA nº 1120/05. Você está emitindo um PLANO DE TRABALHO SUGERIDO ao(à) Secretário(a) da pasta. Tom institucional, técnico, propositivo, orientado a resultados. Cite os fundamentos legais: CF/88 Art. 37, 169; LC 101/2000 Art. 18-23; Resolução TCM/BA 1120/05 Art. 10 V e Art. 11 II; EC 103/2019; Lei 8.213/91 quando cabível. NÃO invente dados não fornecidos. Quantifique sempre.`;
+  const sys=`Você é o(a) Controlador(a)-Geral do Município de Paulo Afonso/BA, atuando no Sistema de Controle Interno Municipal nos termos da Resolução TCM/BA nº 1120/05. Você está emitindo um PLANO DE TRABALHO SUGERIDO ao(à) Secretário(a) da pasta. Tom institucional, técnico, propositivo, orientado a resultados. Cite os fundamentos legais: CF/88 Art. 37, 169; LC 101/2000 Art. 18-23; Resolução TCM/BA 1120/05 Art. 10 V e Art. 11 II; EC 103/2019; Lei 8.213/91 quando cabível. NÃO invente dados não fornecidos. Quantifique sempre.
+
+REGRAS INVIOLÁVEIS sobre regimes de pessoal:
+1. ESTATUTÁRIOS CONCURSADOS são ESTÁVEIS (CF Art. 41) — JAMAIS recomende exoneração/demissão/dispensa direta. Só perdem o cargo por: sentença judicial, PAD com ampla defesa, avaliação de desempenho insuficiente, ou excesso LRF (CF 169 §4°, seguindo ordem legal). Para estes, recomende APURAÇÃO, PAD, GLOSA ou REGULARIZAÇÃO.
+2. COMISSIONADOS PUROS (CF Art. 37 II): livre nomeação/exoneração.
+3. ESTATUTÁRIO ocupando função COMISSIONADA: destituir SOMENTE da função comissionada — vínculo efetivo permanece.
+4. TEMPORÁRIOS/ESTAGIÁRIOS: "não prorrogação" (Lei 8.745/93 / Lei 11.788/08), nunca "exoneração".
+5. CELETISTAS: rito CLT (aviso prévio, FGTS, multa 40%).
+6. APOSENTADOS POR INCAPACIDADE trabalhando: instaurar PAD + suspender (EC 103/2019).`;
   const user=`Elabore um PLANO DE TRABALHO formal endereçado ao(à) Secretário(a) responsável pela seguinte pasta, com vistas à adequação da despesa com pessoal:
 
 ═══════════════════════════════════════════════════════════
@@ -8005,10 +8040,13 @@ DRIVERS DE CUSTO:
 IRREGULARIDADES DETECTADAS NA SECRETARIA:
 - Total de achados: ${acC} (impacto: ${fR(acTot)})
 
-CANDIDATOS A REAVALIAÇÃO DE VÍNCULO:
-- Trilha 1 (Cargo em Comissão – exoneração imediata): ${dem.trilha1.length} servidores · Economia anual: ${fR(dem.trilha1.reduce((s,c)=>s+c.economiaAno,0))}
-- Trilha 2 (Temporários/Estagiários – não prorrogação): ${dem.trilha2.length} · ${fR(dem.trilha2.reduce((s,c)=>s+c.economiaAno,0))}
-- Trilha 3 (PAD/Sindicância): ${dem.trilha3.length} · ${fR(dem.trilha3.reduce((s,c)=>s+c.economiaAno,0))}
+CANDIDATOS A REAVALIAÇÃO DE VÍNCULO (CADA TRILHA SEGUE SEU PROCEDIMENTO LEGAL — NÃO MISTURAR):
+- Trilha 1 — Cargo em Comissão PURO (exoneração imediata CF 37 II): ${dem.trilha1.length} servidores · Economia anual: ${fR(dem.trilha1.reduce((s,c)=>s+c.economiaAno,0))}
+- Trilha 2 — Temporários/Estagiários (não prorrogação Lei 8.745/93 e 11.788/08): ${dem.trilha2.length} · ${fR(dem.trilha2.reduce((s,c)=>s+c.economiaAno,0))}
+- Trilha 3 — Estatutários com irregularidade (PAD/Sindicância — NUNCA exoneração direta): ${dem.trilha3.length} · ${fR(dem.trilha3.reduce((s,c)=>s+c.economiaAno,0))}
+- Trilha 4 — Estatutários estáveis em ajuste LRF: disponível apenas se folha/RCL>54% (caso contrário, NÃO mencionar)
+
+ATENÇÃO CRÍTICA: Para a Trilha 3, use SEMPRE termos como "instaurar PAD", "apurar", "notificar para defesa", "suspender pagamento até regularização", "instaurar sindicância" — NUNCA recomende exoneração/rescisão direta de estatutário concursado.
 
 ═══════════════════════════════════════════════════════════
 ESTRUTURA OBRIGATÓRIA DO PLANO DE TRABALHO
@@ -8146,6 +8184,29 @@ const PARECER={
     const cpfM=cpfs[a.mi]?cpfMask(cpfs[a.mi]):'não informado';
     const tipoDesc=this.TIPO_DESC[a.tipo]||a.tipo;
     const compRef=new Date().toLocaleDateString('pt-BR');
+    // ── Regime do servidor (CRÍTICO — define o que pode ou não recomendar) ──
+    const profSrv=(a.mi>=0?srv_profile[a.mi]:null)||[0,0,0];
+    const riSrv=profSrv[2];
+    const regimeNome=regimes[riSrv]||'(não identificado)';
+    const estavel = REG_ESTAVEIS.has(riSrv); // Estatutário concursado (CF 41 — estabilidade)
+    const hibrido = REG_HIBRIDOS.has(riSrv); // Estatutário/Comissionado
+    const ccPuro  = REG_LIVRE_EXONERACAO.has(riSrv); // CC puro
+    const tempEst = REG_NAO_PRORROGAVEL.has(riSrv); // Temporário/Estagiário
+    const clt     = REG_CLT.has(riSrv); // Celetista
+    let regimeOrient='';
+    if(estavel){
+      regimeOrient=`\n\n⚠️ ATENÇÃO REGIME: Este servidor é ESTATUTÁRIO CONCURSADO (estável — CF Art. 41). NÃO RECOMENDE exoneração, rescisão, dispensa ou demissão. Servidor estável só perde o cargo por: (a) sentença judicial transitada em julgado; (b) PAD com ampla defesa por falta funcional; (c) avaliação de desempenho insuficiente (CF 41 §1° III + LC 150/05); (d) excesso de despesa LRF (CF 169 §4°), seguindo a ordem legal obrigatória. As recomendações devem ser de APURAÇÃO/INVESTIGAÇÃO/REGULARIZAÇÃO, jamais de desligamento direto.`;
+    } else if(hibrido){
+      regimeOrient=`\n\n⚠️ ATENÇÃO REGIME: Este servidor é ESTATUTÁRIO ocupando FUNÇÃO COMISSIONADA (regime híbrido). Se necessário desocupar a função: recomende DESTITUIÇÃO DA FUNÇÃO COMISSIONADA (não exoneração do quadro). O servidor RETORNA ao cargo efetivo de origem com estabilidade preservada. NÃO recomende rescisão/demissão do vínculo efetivo.`;
+    } else if(ccPuro){
+      regimeOrient=`\n\nREGIME: Cargo em Comissão puro — vínculo de livre nomeação e exoneração (CF Art. 37 II). Não há indenização nem necessidade de procedimento. Quando aplicável, recomende EXONERAÇÃO direta por ato do gestor.`;
+    } else if(tempEst){
+      regimeOrient=`\n\nREGIME: Contrato temporário ou estágio. Quando aplicável, recomende NÃO PRORROGAÇÃO do contrato vigente (Lei 8.745/93 ou Lei 11.788/08). NÃO use os termos "exoneração" ou "rescisão" — use "não renovação".`;
+    } else if(clt){
+      regimeOrient=`\n\nREGIME: Celetista (CLT). Quando aplicável, eventual dispensa segue rito CLT com aviso prévio, FGTS, multa 40% e demais verbas rescisórias. NÃO trate como estatutário.`;
+    } else {
+      regimeOrient=`\n\nREGIME: ${regimeNome} — verifique a legislação específica antes de qualquer recomendação de desligamento.`;
+    }
     // Detalhamento dos vínculos quando for acumulação
     let vincBlock='';
     if(a.tipo==='ACUM'&&Array.isArray(a.vinculos)&&a.vinculos.length){
@@ -8157,7 +8218,11 @@ const PARECER={
 - Resolução TCM/BA nº 1120/05, Art. 11, II (acompanhamento e controle específico do sistema de pessoal ativo e inativo)
 - CF/88, LRF/LC 101/2000, Lei 8.112/90, CLT, súmulas e acórdãos aplicáveis
 
-Escreva em português formal, em tom institucional, com fundamentação jurídica precisa. NÃO invente dados não fornecidos.`;
+REGRAS INVIOLÁVEIS:
+1. NUNCA recomende exoneração, demissão, dispensa ou rescisão de servidor ESTATUTÁRIO CONCURSADO (estável — CF Art. 41) salvo nos casos legalmente previstos (sentença judicial, PAD, avaliação de desempenho, LRF). Para estatutários, recomende APURAÇÃO, NOTIFICAÇÃO, REGULARIZAÇÃO, PAD ou GLOSA — nunca desligamento direto.
+2. SEMPRE respeite o regime informado: comissionados → exoneração; temporários/estagiários → não prorrogação; celetistas → rito CLT; estatutários → PAD ou medidas administrativas; estatutário/comissionado → destituir apenas da função, vínculo efetivo permanece.
+3. Escreva em português formal, em tom institucional, com fundamentação jurídica precisa.
+4. NÃO invente dados não fornecidos.`;
     const user=`Elabore uma NOTIFICAÇÃO REFERENTE AO ATO DE PESSOAL, formal, endereçada ao(à) Secretário(a) da pasta responsável pelo servidor abaixo identificado:
 
 ═══════════════════════════════════════════════════════════
@@ -8168,7 +8233,8 @@ Matrícula: ${mats[a.mi]||a.mi}
 CPF: ${cpfM}
 Cargo: ${cargo}
 Secretaria: ${sec}
-Admissão: ${adm}
+REGIME: ${regimeNome} ${estavel?'[ESTÁVEL — CF Art. 41]':hibrido?'[HÍBRIDO ESTATUTÁRIO+CC]':ccPuro?'[LIVRE EXONERAÇÃO]':tempEst?'[NÃO PRORROGÁVEL]':clt?'[CELETISTA — CLT]':''}
+Admissão: ${adm}${regimeOrient}
 
 TIPO DE IRREGULARIDADE: ${tipoDesc}
 PROBLEMA IDENTIFICADO: ${a.desc}
