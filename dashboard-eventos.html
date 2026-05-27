@@ -7531,14 +7531,25 @@ function _planoMedianaSalarioCargo(compAlvo){
   // Mediana de remuneração por cargoIdx — na competência escolhida (ou última)
   const compsRec=[...new Set(agg2.filter(r=>!EXCLUIR_COMPS.has(r[0]*100+r[1])).map(r=>r[0]*100+r[1]))].sort();
   const compRef = compAlvo || compsRec[compsRec.length-1];
+  const anoRef = Math.floor(compRef/100);
   const porCargo={}; // cargoIdx → [salários mensais]
   const miMensal={};
   agg2.forEach(r=>{ if(r[0]*100+r[1]===compRef) miMensal[r[2]]=(miMensal[r[2]]||0)+r[6]; });
+  // Fallback agg4 com divisor correto (meses por ano)
+  const mesesAno={};
+  agg1.forEach(r=>{ if(!EXCLUIR_COMPS.has(r[0]*100+r[1])){ if(!mesesAno[r[0]])mesesAno[r[0]]=new Set(); mesesAno[r[0]].add(r[1]); } });
+  const ja=new Set(Object.keys(miMensal).map(k=>+k));
+  const agg4mi={};
+  agg4.forEach(r=>{ if(ja.has(r[A4_MI]))return; if(!agg4mi[r[A4_MI]])agg4mi[r[A4_MI]]={}; agg4mi[r[A4_MI]][r[A4_ANO]]=(agg4mi[r[A4_MI]][r[A4_ANO]]||0)+r[A4_VAL]; });
+  Object.keys(agg4mi).forEach(mi=>{
+    let a=anoRef; if(!agg4mi[mi][a]){ const arr=Object.keys(agg4mi[mi]).map(Number).sort((x,y)=>y-x); a=arr[0]; }
+    const n=(mesesAno[a]?mesesAno[a].size:12)||12;
+    miMensal[mi]=agg4mi[mi][a]/n;
+  });
   Object.keys(miMensal).forEach(mi=>{
     const ci=(srv_profile[mi]||[0])[0];
-    const sal=miMensal[mi];
     if(!porCargo[ci])porCargo[ci]=[];
-    porCargo[ci].push(sal);
+    porCargo[ci].push(miMensal[mi]);
   });
   const med={};
   Object.keys(porCargo).forEach(ci=>{
@@ -7620,15 +7631,32 @@ function _planoColetarDemissoes(si, threshold, mediana, compAlvo){
   const miFolha={};
   // Folha REAL daquela competência via agg2
   agg2.forEach(r=>{ if(r[0]*100+r[1]===compRef) miFolha[r[2]]=(miFolha[r[2]]||0)+r[6]; });
-  // Fallback agg4: para quem NÃO aparece em agg2 no mês escolhido, mas tem ano em agg4
-  const miEmAgg2Mes=new Set(Object.keys(miFolha).map(k=>+k));
-  const folhaAgg4Ano={};
-  agg4.forEach(r=>{
-    if(r[A4_ANO]!==anoRef)return;
-    if(miEmAgg2Mes.has(r[A4_MI]))return;
-    folhaAgg4Ano[r[A4_MI]]=(folhaAgg4Ano[r[A4_MI]]||0)+r[A4_VAL];
+  // Conta meses únicos disponíveis em cada ano (usa agg1, exclui EXCLUIR_COMPS)
+  const mesesPorAno={};
+  agg1.forEach(r=>{
+    if(EXCLUIR_COMPS.has(r[0]*100+r[1]))return;
+    if(!mesesPorAno[r[0]]) mesesPorAno[r[0]]=new Set();
+    mesesPorAno[r[0]].add(r[1]);
   });
-  Object.keys(folhaAgg4Ano).forEach(mi=>{ miFolha[mi]=folhaAgg4Ano[mi]/12; });
+  // Fallback agg4: usa o ANO MAIS RECENTE com dados e divide pelo nº real de meses (não por 12)
+  const miEmAgg2Mes=new Set(Object.keys(miFolha).map(k=>+k));
+  const folhaAgg4PorAno={}; // mi → {ano: total}
+  agg4.forEach(r=>{
+    if(miEmAgg2Mes.has(r[A4_MI]))return; // já tem do agg2 (valor exato)
+    if(!folhaAgg4PorAno[r[A4_MI]]) folhaAgg4PorAno[r[A4_MI]]={};
+    folhaAgg4PorAno[r[A4_MI]][r[A4_ANO]]=(folhaAgg4PorAno[r[A4_MI]][r[A4_ANO]]||0)+r[A4_VAL];
+  });
+  Object.keys(folhaAgg4PorAno).forEach(mi=>{
+    // Preferência: ano da competência escolhida → ano mais recente com dados
+    let anoEscolha=anoRef;
+    if(!folhaAgg4PorAno[mi][anoEscolha]){
+      const anos=Object.keys(folhaAgg4PorAno[mi]).map(Number).sort((a,b)=>b-a);
+      anoEscolha=anos[0];
+    }
+    const totAno=folhaAgg4PorAno[mi][anoEscolha];
+    const nMeses=(mesesPorAno[anoEscolha]?mesesPorAno[anoEscolha].size:12)||12;
+    miFolha[mi]=totAno/nMeses;
+  });
 
   // Acumulação ilegal (precomputa)
   const acumCasos=audCalcularAcumulacoes();
