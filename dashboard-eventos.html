@@ -7821,8 +7821,9 @@ function _planoColetarDemissoes(si, threshold, mediana, compAlvo){
     }
 
     // TRILHA 3 EXPANDIDA — Candidato a PIA (>30 anos serviço)
-    if(adm && estatutarioEstavel(ri)){
-      const anosServ=(new Date()-new Date(adm))/(1000*60*60*24*365.25);
+    const admPIA=admissoes[mi];
+    if(admPIA && REG_ESTAVEIS.has(ri)){
+      const anosServ=(new Date()-new Date(admPIA))/(1000*60*60*24*365.25);
       if(anosServ>=30){
         trilha3.push({mi,cargo,fol,economiaAno:fol*12,regime,regimeIdx:ri,
           motivos:[`${anosServ.toFixed(1)} anos de serviço — candidato a aposentadoria voluntária`],
@@ -7835,24 +7836,15 @@ function _planoColetarDemissoes(si, threshold, mediana, compAlvo){
   return {trilha1, trilha2, trilha3, trilha4};
 }
 
-// Helper local
-function estatutarioEstavel(ri){ return REG_ESTAVEIS.has(ri); }
+// Helpers locais (Trilha 3)
 function _planoCheckReincidencia(cpf){
   if(!cpf) return false;
-  // Verifica se existe outro vínculo do mesmo CPF demitido
-  let demit=false, ativo=false;
-  cpfs.forEach((c,i)=>{
-    if(!c||c.lstrip)return;
-    if((c||'').lstrip&&(c.lstrip()===cpf))return;
-  });
-  // fallback simples
   const others=[];
   cpfs.forEach((c,i)=>{ if(c===cpf) others.push(i); });
-  if(others.length>=2){
-    others.forEach(mi2=>{ if(isDemitido(mi2)) demit=true; else ativo=true; });
-    return demit && ativo;
-  }
-  return false;
+  if(others.length<2) return false;
+  let demit=false, ativo=false;
+  others.forEach(mi2=>{ if(isDemitido(mi2)) demit=true; else ativo=true; });
+  return demit && ativo;
 }
 
 // ── ANÁLISES AVANÇADAS por SECRETARIA (regressão + ABC + benchmark + sazonalidade) ──
