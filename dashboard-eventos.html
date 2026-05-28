@@ -8902,9 +8902,11 @@ ESTRUTURA OBRIGATÓRIA DA NOTIFICAÇÃO
 3. II — DOS FATOS (descrição objetiva da irregularidade${a.tipo==='ACUM'?'; LISTAR EXPRESSAMENTE OS DOIS (OU MAIS) CARGOS/VÍNCULOS IDENTIFICADOS no caso, incluindo matrícula, cargo e secretaria de cada um':''})
 4. III — DA ANÁLISE JURÍDICA (fundamentação detalhada com artigos e leis específicas)
 5. IV — DOS RISCOS (responsabilização, devolução ao erário, glosa, improbidade administrativa quando aplicável)
-6. V — DAS RECOMENDAÇÕES (medidas pontuais que a Secretaria deve adotar, com prazos sugeridos)
-7. VI — DA CONCLUSÃO (e prazo para resposta da Secretaria, sugerindo 15 dias úteis)
+6. V — DAS RECOMENDAÇÕES (NO MÁXIMO 3 medidas pontuais que a Secretaria deve adotar — liste exatamente 3 itens numerados, não mais)
+7. VI — DA CONCLUSÃO (e prazo para resposta da Secretaria)
 8. Espaço para assinatura do Controlador-Geral do Município
+
+REGRAS DE PRAZO: TODOS os prazos citados no documento (nas recomendações e na conclusão) devem ser IDÊNTICOS: use sempre "15 (quinze) dias úteis". Não use prazos diferentes em seções distintas.
 
 Use linguagem formal. Máximo 700 palavras. NÃO use markdown — apenas texto corrido com cabeçalhos em CAIXA ALTA. O título do documento deve ser: "NOTIFICAÇÃO REFERENTE AO ATO DE PESSOAL Nº ___/${new Date().getFullYear()}".`;
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
