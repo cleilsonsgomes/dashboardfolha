@@ -7311,6 +7311,8 @@ body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; line-hei
 .oficial-content h2 { font-size: 12pt; margin: 14pt 0 6pt 0; border-bottom: 1.5px solid #0c1f4d; padding-bottom: 3pt; }
 .oficial-content h3 { font-size: 11pt; margin: 10pt 0 4pt 0; }
 .oficial-content p { margin: 0 0 8pt 0; text-align: justify; text-indent: 1.25cm; }
+.oficial-content p.cab { text-indent: 0; text-align: left; margin: 0 0 2pt 0; }
+.oficial-content p.item { text-indent: 0; text-align: justify; margin: 0 0 6pt 0; padding-left: 1.25cm; }
 .oficial-content pre { white-space: pre-wrap; font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; margin: 0; text-align: justify; }
 .oficial-content table { width: 100%; border-collapse: collapse; margin: 10pt 0; font-size: 10pt; }
 .oficial-content table th { background: #0c1f4d; color: #fff; padding: 5pt 8pt; text-align: left; font-family: 'Arial', sans-serif; font-size: 9pt; }
@@ -8983,10 +8985,34 @@ Use linguagem formal. Máximo 700 palavras. NÃO use markdown — apenas texto c
     this._download(blob,'notificacao','txt');
   },
   _marca(){ const opc=this._getOpcoes(); return opc.marca==='oficial'?'':'<div class="watermark-minuta">MINUTA</div>'; },
+  // Converte texto puro em HTML estruturado (parágrafos/seções) — editável no Word
+  _fmtDoc(txt){
+    const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const linhas=(txt||'').split(/\r?\n/);
+    let out='';
+    linhas.forEach(raw=>{
+      const l=raw.trim();
+      if(!l) return; // espaçamento vem das margens dos <p>
+      const e=esc(l);
+      // Título do documento (já consta no H1 — ignora repetição)
+      if(/^NOTIFICA[ÇC][ÃA]O\s+REFERENTE\s+AO\s+ATO/i.test(l)) return;
+      // Seção em algarismo romano: "I — DA COMPETÊNCIA", "VI - DA CONCLUSÃO"
+      if(/^[IVXLC]+\s*[—\-–.]\s*[A-ZÀ-Ú]/.test(l)){ out+=`<h2>${e}</h2>`; return; }
+      // Campos de cabeçalho (Para:, De:, Data:, Ref:, Assunto:)
+      if(/^(Para|De|Data|Ref\.?|Assunto|Notifica[çc][ãa]o\s+n[ºo°])\s*:?/i.test(l)){ out+=`<p class="cab">${e}</p>`; return; }
+      // Item numerado de lista (1. / 2) / 3 -)
+      if(/^\d+\s*[\.\)\-–]/.test(l)){ out+=`<p class="item">${e}</p>`; return; }
+      // Linha curta TODA em maiúsculas = subtítulo
+      if(l.length<=60 && l===l.toUpperCase() && /[A-ZÀ-Ú]{3}/.test(l)){ out+=`<h3>${e}</h3>`; return; }
+      // Parágrafo normal (justificado, com recuo)
+      out+=`<p>${e}</p>`;
+    });
+    return out;
+  },
   exportarWord(){
     const txt=document.getElementById('parecer-modal-texto').value;
     const marca=this._marca();
-    const conteudo=`${marca}<h1>Notificação referente ao Ato de Pessoal</h1><pre>${txt.replace(/</g,'&lt;')}</pre>`;
+    const conteudo=`${marca}<h1>Notificação referente ao Ato de Pessoal</h1>${this._fmtDoc(txt)}`;
     const html=_oficialTemplate('Notificação referente ao Ato de Pessoal',conteudo);
     const blob=new Blob(['﻿'+html],{type:'application/msword'});
     this._download(blob,'notificacao','doc');
@@ -8994,7 +9020,7 @@ Use linguagem formal. Máximo 700 palavras. NÃO use markdown — apenas texto c
   exportarPdf(){
     const txt=document.getElementById('parecer-modal-texto').value;
     const marca=this._marca();
-    const conteudo=`${marca}<h1>Notificação referente ao Ato de Pessoal</h1><pre>${txt.replace(/</g,'&lt;')}</pre>`;
+    const conteudo=`${marca}<h1>Notificação referente ao Ato de Pessoal</h1>${this._fmtDoc(txt)}`;
     const w=window.open('','_blank');
     w.document.write(_oficialTemplate('Notificação referente ao Ato de Pessoal',conteudo));
     w.document.close();
