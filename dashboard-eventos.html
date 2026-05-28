@@ -1102,6 +1102,7 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       <option value="INSS_APOS_INCAP">⛔ Apos. Incapacidade Trabalhando</option>
       <option value="INSS_APOS_ATIVO">👴 Aposentado + Vínculo Ativo</option>
       <option value="INSS_DUPLO">🏥 Duplo Recebimento (Aux-doença)</option>
+      <option value="CC_PLANTAO">🩺 Comissionado recebendo Plantão</option>
     </select>
     <select class="sf" id="irreg-crit-flt" onchange="renderIrreg()" style="min-width:140px">
       <option value="">Todas as criticidades</option>
@@ -7060,6 +7061,35 @@ function _irrgColetarAchados(){
     });
   });
 
+  // ── 9. Cargo em Comissão + Plantão (assistencial) — incompatibilidade funcional ──
+  const evPlantao=new Set();
+  ev_names.forEach((n,i)=>{ if(/PLANT[AÃ]O/i.test(n||'')) evPlantao.add(i); });
+  if(evPlantao.size>0){
+    const ccPl={};
+    // Usa agg4 (cobre todos os servidores, inclusive comissionados só anuais)
+    agg4.forEach(r=>{
+      if(FS.anos.size>0&&!FS.anos.has(r[A4_ANO]))return;
+      if(!evPlantao.has(r[A4_EI]))return;
+      const prof=srv_profile[r[A4_MI]]||[0,0,0];
+      const ri=prof[2];
+      if(ri!==REG.COMISSAO&&ri!==REG.ESTAT_COMIS)return; // só comissionados
+      if(isDemitido(r[A4_MI]))return;
+      if(!ccPl[r[A4_MI]])ccPl[r[A4_MI]]={mi:r[A4_MI],si:prof[1],cargoIdx:prof[0],total:0,evs:new Set()};
+      ccPl[r[A4_MI]].total+=r[A4_VAL];
+      ccPl[r[A4_MI]].evs.add(ev_names[r[A4_EI]]||('Ev '+r[A4_EI]));
+    });
+    Object.values(ccPl).forEach(d=>{
+      if(d.total<=0)return;
+      achados.push({
+        tipo:'CC_PLANTAO', critico:2, mi:d.mi, si:d.si, cargoIdx:d.cargoIdx,
+        desc:`Cargo em Comissão recebendo plantão assistencial: ${[...d.evs].slice(0,2).join(', ')} — incompatibilidade entre função de direção/assessoramento e atividade-fim`,
+        valor:d.total,
+        resolucao:'Verificar compatibilidade entre a função comissionada (direção/chefia/assessoramento) e o exercício de plantão assistencial (atividade-fim privativa). Apurar acumulação de funções (CF 37 XVI), compatibilidade de horários e respaldo legal específico para o pagamento do plantão a ocupante de CC. Suspender o plantão se não houver amparo.',
+        base:'CF/88 Art. 37 II e XVI · Princípio da segregação de funções · Resolução TCM/BA nº 1120/05 Art. 11 II'
+      });
+    });
+  }
+
   return achados;
 }
 
@@ -7069,8 +7099,8 @@ function renderIrreg(){
   const criticoBg=c=>c===3?'#fee2e2':c===2?'#fef9c3':'#dcfce7';
   const criticoBd=c=>c===3?'#fca5a5':c===2?'#fde68a':'#86efac';
   const criticoTxt=c=>c===3?'#991b1b':c===2?'#854d0e':'#166534';
-  const TIPO_LABELS={'TETO':'Teto Constitucional','HE':'HE Sistemática','ACUM':'Acumulação de Cargos','GRAT':'Gratif. Incompatível','INS':'Insalubridade Indevida','INSS_APOS_INCAP':'Aposentado p/ Incapacidade Trabalhando','INSS_APOS_ATIVO':'Aposentado + Vínculo Ativo','INSS_DUPLO':'Duplo Recebimento (Aux-doença + Salário)'};
-  const TIPO_ICONS={'TETO':'⚖️','HE':'⏰','ACUM':'👥','GRAT':'💸','INS':'☣️','INSS_APOS_INCAP':'⛔','INSS_APOS_ATIVO':'👴','INSS_DUPLO':'🏥'};
+  const TIPO_LABELS={'TETO':'Teto Constitucional','HE':'HE Sistemática','ACUM':'Acumulação de Cargos','GRAT':'Gratif. Incompatível','INS':'Insalubridade Indevida','INSS_APOS_INCAP':'Aposentado p/ Incapacidade Trabalhando','INSS_APOS_ATIVO':'Aposentado + Vínculo Ativo','INSS_DUPLO':'Duplo Recebimento (Aux-doença + Salário)','CC_PLANTAO':'Comissionado recebendo Plantão'};
+  const TIPO_ICONS={'TETO':'⚖️','HE':'⏰','ACUM':'👥','GRAT':'💸','INS':'☣️','INSS_APOS_INCAP':'⛔','INSS_APOS_ATIVO':'👴','INSS_DUPLO':'🏥','CC_PLANTAO':'🩺'};
 
   let achados=_irrgColetarAchados();
 
@@ -7221,7 +7251,7 @@ function irrgExportPDF(){
     bySi[si].items.push(a);
   });
   const sorted=Object.values(bySi).sort((a,b)=>b.impacto-a.impacto);
-  const TIPO_LABELS={'TETO':'Teto Constitucional','HE':'HE Sistemática','ACUM':'Acumulação de Cargos','GRAT':'Gratif. Incompatível','INS':'Insalubridade Indevida','INSS_APOS_INCAP':'Aposentado p/ Incapacidade Trabalhando','INSS_APOS_ATIVO':'Aposentado + Vínculo Ativo','INSS_DUPLO':'Duplo Recebimento (Aux-doença + Salário)'};
+  const TIPO_LABELS={'TETO':'Teto Constitucional','HE':'HE Sistemática','ACUM':'Acumulação de Cargos','GRAT':'Gratif. Incompatível','INS':'Insalubridade Indevida','INSS_APOS_INCAP':'Aposentado p/ Incapacidade Trabalhando','INSS_APOS_ATIVO':'Aposentado + Vínculo Ativo','INSS_DUPLO':'Duplo Recebimento (Aux-doença + Salário)','CC_PLANTAO':'Comissionado recebendo Plantão'};
   const criticoLabel=c=>c===3?'Alta':c===2?'Média':'Baixa';
   const totalImpacto=achados.reduce((s,a)=>s+(a.valor||0),0);
   const alta=achados.filter(a=>a.critico===3).length;
@@ -8205,7 +8235,8 @@ function renderPlano(){
                   'INS':'Exigir laudo técnico atualizado para insalubridade/periculosidade',
                   'INSS_APOS_INCAP':'Suspender folha e instaurar PAD — aposentado por incapacidade trabalhando',
                   'INSS_APOS_ATIVO':'Notificar para regularização — aposentado RPPS com vínculo ativo',
-                  'INSS_DUPLO':'Suspender folha imediatamente — duplo recebimento INSS'};
+                  'INSS_DUPLO':'Suspender folha imediatamente — duplo recebimento INSS',
+                  'CC_PLANTAO':'Apurar incompatibilidade — comissionado recebendo plantão assistencial (suspender plantão sem amparo)'};
     const agrAch={};
     achadosSec.forEach(a=>{
       const t=a.tipo;
@@ -8688,6 +8719,7 @@ const PARECER={
     'INSS_APOS_ATIVO':'percepção simultânea de proventos de aposentadoria e remuneração de cargo público',
     'INSS_APOS_INCAP':'aposentadoria por incapacidade permanente cumulada com vínculo ativo (vedação EC 103/2019)',
     'INSS_DUPLO':'duplo recebimento — auxílio-doença INSS e salário do município no mesmo período',
+    'CC_PLANTAO':'ocupante de cargo em comissão (direção/assessoramento) recebendo plantão assistencial (atividade-fim) — incompatibilidade funcional',
     'INSS_APOS':'beneficiário do INSS sem custo atual identificado',
     'INSS_AUX':'beneficiário de auxílio-doença INSS'
   },
