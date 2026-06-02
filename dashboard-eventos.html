@@ -1124,6 +1124,9 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   <div id="inss-alertas" style="padding:0 18px 14px"></div>
   <div id="inss-filtro" style="padding:0 18px 10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
     <label style="font-size:11px;font-weight:600;color:var(--mu)">Filtrar:</label>
+    <select class="sf" id="inss-sec-flt" onchange="renderInss()" style="min-width:260px">
+      <option value="">Todas as secretarias</option>
+    </select>
     <select class="sf" id="inss-tipo-flt" onchange="renderInss()" style="min-width:200px">
       <option value="">Todos os benefícios</option>
       <option value="APOS">Apenas aposentadorias</option>
@@ -1144,7 +1147,8 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
       <option value="encerrado">Vínculo município ENCERRADO</option>
       <option value="duplo">⚠️ Duplo recebimento</option>
     </select>
-    <button onclick="inssExportCsv()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer">📥 Exportar CSV</button>
+    <button onclick="inssExportCsv()" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer">📥 CSV</button>
+    <button onclick="inssExportPdf()" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer">📄 PDF</button>
   </div>
   <div id="inss-graficos" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:0 18px 14px"></div>
   <div id="inss-tabela" style="padding:0 18px 24px"></div>
@@ -7393,10 +7397,21 @@ function renderInss(){
 
   let linhas=_inssColetar();
 
+  // Popular seletor de secretarias (uma vez)
+  const selSec=document.getElementById('inss-sec-flt');
+  if(selSec && selSec.options.length<=1){
+    const sis=new Set(); linhas.forEach(l=>sis.add(l.si));
+    [...sis].map(si=>({si,nm:(secs[si]||'?').replace(/^\d+ - /,'')}))
+      .sort((a,b)=>a.nm.localeCompare(b.nm,'pt-BR'))
+      .forEach(s=>{ const o=document.createElement('option'); o.value=s.si; o.textContent=s.nm; selSec.appendChild(o); });
+  }
+
   // Aplicar filtros
+  const secFlt=(document.getElementById('inss-sec-flt')||{}).value||'';
   const tFlt=(document.getElementById('inss-tipo-flt')||{}).value||'';
   const sFlt=(document.getElementById('inss-sit-flt')||{}).value||'';
   const vFlt=(document.getElementById('inss-vinc-flt')||{}).value||'';
+  if(secFlt) linhas=linhas.filter(l=>l.si===+secFlt);
   if(tFlt==='APOS') linhas=linhas.filter(l=>INSS_APOS.has(l.beneficio.t));
   else if(tFlt==='AUX') linhas=linhas.filter(l=>INSS_AUX.has(l.beneficio.t));
   else if(tFlt) linhas=linhas.filter(l=>l.beneficio.t===tFlt);
@@ -7546,8 +7561,26 @@ function renderInss(){
   document.getElementById('inss-tabela').innerHTML=html;
 }
 
+// Aplica os filtros da UI à lista de linhas INSS (reuso CSV/PDF)
+function _inssLinhasFiltradas(){
+  let linhas=_inssColetar();
+  const secFlt=(document.getElementById('inss-sec-flt')||{}).value||'';
+  const tFlt=(document.getElementById('inss-tipo-flt')||{}).value||'';
+  const sFlt=(document.getElementById('inss-sit-flt')||{}).value||'';
+  const vFlt=(document.getElementById('inss-vinc-flt')||{}).value||'';
+  if(secFlt) linhas=linhas.filter(l=>l.si===+secFlt);
+  if(tFlt==='APOS') linhas=linhas.filter(l=>INSS_APOS.has(l.beneficio.t));
+  else if(tFlt==='AUX') linhas=linhas.filter(l=>INSS_AUX.has(l.beneficio.t));
+  else if(tFlt) linhas=linhas.filter(l=>l.beneficio.t===tFlt);
+  if(sFlt) linhas=linhas.filter(l=>l.beneficio.s===sFlt);
+  if(vFlt==='ativo') linhas=linhas.filter(l=>!l.demitido);
+  else if(vFlt==='encerrado') linhas=linhas.filter(l=>l.demitido);
+  else if(vFlt==='duplo') linhas=linhas.filter(l=>!l.demitido&&l.beneficio.s==='A'&&l.folhaMedia>0);
+  return linhas;
+}
+
 function inssExportCsv(){
-  const linhas=_inssColetar();
+  const linhas=_inssLinhasFiltradas();
   const hdr=['CPF Mascarado','Nome','Matrícula','Cargo','Secretaria','Status Município','Demissão','Benefício','Situação INSS','Início','Cessação','Perícia','Folha Média Mensal (R$)'];
   const rows=linhas.map(l=>[l.cpfMasc,l.nome,l.mat,l.cargo,(secs[l.si]||'').replace(/^\d+ - /,''),l.demitido?'Encerrado':'Ativo',l.demData||'',INSS_TIPO_LBL[l.beneficio.t]||l.beneficio.t,INSS_SIT_LBL[l.beneficio.s],l.beneficio.i||'',l.beneficio.c||'',l.beneficio.p||'',l.folhaMedia.toFixed(2)]);
   const csv='﻿'+[hdr,...rows].map(r=>r.map(c=>`"${(c+'').replace(/"/g,'""')}"`).join(';')).join('\n');
@@ -7555,6 +7588,70 @@ function inssExportCsv(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url; a.download=`inss_cruzamento_${new Date().toISOString().slice(0,10)}.csv`; a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function inssExportPdf(){
+  const fR=v=>'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const linhas=_inssLinhasFiltradas();
+  if(!linhas.length){ alert('Nenhum registro com os filtros aplicados.'); return; }
+  // Ordena por criticidade depois por folha média desc
+  linhas.sort((a,b)=>{
+    const cA=!a.demitido&&a.beneficio.s==='A'&&INSS_APOS.has(a.beneficio.t)&&a.folhaMedia>0?2:0;
+    const cB=!b.demitido&&b.beneficio.s==='A'&&INSS_APOS.has(b.beneficio.t)&&b.folhaMedia>0?2:0;
+    if(cA!==cB)return cB-cA;
+    return b.folhaMedia-a.folhaMedia;
+  });
+  // Stats do filtro
+  const secFlt=(document.getElementById('inss-sec-flt')||{}).value||'';
+  const secNm=secFlt?(secs[+secFlt]||'').replace(/^\d+ - /,''):'Todas as secretarias';
+  const tFlt=(document.getElementById('inss-tipo-flt')||{}).value||'';
+  const sFlt=(document.getElementById('inss-sit-flt')||{}).value||'';
+  const vFlt=(document.getElementById('inss-vinc-flt')||{}).value||'';
+  const aposAtivosVinAtv=linhas.filter(l=>!l.demitido&&l.beneficio.s==='A'&&INSS_APOS.has(l.beneficio.t)&&l.folhaMedia>0);
+  const auxAtivos=linhas.filter(l=>!l.demitido&&l.beneficio.s==='A'&&INSS_AUX.has(l.beneficio.t)&&l.folhaMedia>0);
+  const custoMensal=aposAtivosVinAtv.reduce((s,l)=>s+l.folhaMedia,0)+auxAtivos.reduce((s,l)=>s+l.folhaMedia,0);
+
+  let body=`<h1>Relatório INSS / Previdência — Cruzamento por CPF</h1>
+  <p class="cab">Secretaria: <strong>${secNm}</strong></p>
+  <p class="cab">Data de emissão: <strong>${new Date().toLocaleDateString('pt-BR')}</strong></p>
+  <p class="cab">Filtros aplicados: ${[tFlt&&`tipo=${INSS_TIPO_LBL[tFlt]||tFlt}`,sFlt&&`situação=${INSS_SIT_LBL[sFlt]}`,vFlt&&`vínculo=${vFlt}`].filter(Boolean).join(' · ')||'nenhum'}</p>
+  <p class="cab">Total de registros: <strong>${linhas.length}</strong> · Custo mensal estimado (benefícios ativos × folha): <strong>${fR(custoMensal)}</strong></p>
+  <h2>I — RESUMO</h2>
+  <p>Foram identificados <strong>${linhas.length}</strong> registros previdenciários associados a servidores do município ${secFlt?'da '+secNm:''}. Destes, <strong>${aposAtivosVinAtv.length}</strong> servidores aposentados pelo INSS mantêm vínculo ativo na folha municipal e <strong>${auxAtivos.length}</strong> recebem auxílio-doença simultâneo ao salário.</p>
+  <h2>II — LISTA DETALHADA</h2>
+  <table>
+    <thead><tr>
+      <th>Servidor</th><th>Mat.</th><th>Cargo</th><th>Secretaria</th>
+      <th>Status</th><th>Benefício</th><th>Sit.</th><th>Início</th><th>Cessação</th><th class="r">Folha/mês</th>
+    </tr></thead><tbody>`;
+  linhas.forEach(l=>{
+    const b=l.beneficio;
+    const sec=(secs[l.si]||'').replace(/^\d+ - /,'');
+    const critico=!l.demitido&&b.s==='A'&&INSS_APOS.has(b.t)&&l.folhaMedia>0;
+    body+=`<tr${critico?' style="background:#fee2e2"':''}>
+      <td><strong>${l.nome}</strong></td>
+      <td>${l.mat}</td>
+      <td>${(l.cargo||'').slice(0,35)}</td>
+      <td>${sec.slice(0,32)}</td>
+      <td>${l.demitido?'<span class="alta">ENCERRADO</span>':'<span class="baixa">ATIVO</span>'}</td>
+      <td>${INSS_TIPO_LBL[b.t]||b.t}</td>
+      <td>${INSS_SIT_LBL[b.s]||b.s}</td>
+      <td>${dataBR(b.i)}</td>
+      <td>${b.c?dataBR(b.c):'—'}</td>
+      <td style="text-align:right;white-space:nowrap">${l.folhaMedia>0?fR(l.folhaMedia):'—'}</td>
+    </tr>`;
+  });
+  body+=`</tbody></table>
+  <h2>III — OBSERVAÇÕES TÉCNICAS</h2>
+  <p>Os servidores com vínculo ativo e benefício previdenciário ativo simultâneo devem ser objeto de verificação quanto à compatibilidade legal (CF/88 Art. 37 §10, Art. 40 §6°, EC 103/2019). Aposentadorias por incapacidade permanente cumuladas com vínculo ativo são especialmente vedadas pelo art. 6° da EC 103/2019.</p>
+  <p>Os auxílios-doença INSS ativos cumulados com folha municipal violam o art. 59 da Lei 8.213/91, que prevê a substituição da remuneração pelo benefício previdenciário.</p>
+  <p>Este relatório é emitido no âmbito da competência do Sistema de Controle Interno Municipal nos termos da Resolução TCM/BA nº 1120/05, Art. 10, V e Art. 11, II.</p>
+  <div class="assinatura"><div class="linha"></div><div class="cargo">Controlador-Geral do Município de Paulo Afonso-BA</div></div>`;
+
+  const w=window.open('','_blank');
+  w.document.write(_oficialTemplate('Relatório INSS / Previdência',body));
+  w.document.close();
+  setTimeout(()=>{w.focus();w.print();},600);
 }
 
 // ════════════════════════════════════════════════════════════════
