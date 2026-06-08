@@ -633,14 +633,24 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
 </div>
 <!-- TAB 10: Cargos -->
 <div class="con" id="tab-cargo" style="display:none">
-  <div class="sf-row">
+  <div class="sf-row" style="flex-wrap:wrap;gap:10px">
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Secretaria</label>
+      <select class="sf" id="cargo-sec" onchange="renderCargo()" style="min-width:240px">
+        <option value="">Todas as secretarias</option>
+      </select>
+    </div>
+    <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Competência</label>
+      <select class="sf" id="cargo-comp" onchange="renderCargo()" style="min-width:140px">
+        <option value="">Todas (acumulado)</option>
+      </select>
+    </div>
     <div><label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase">Regime</label>
       <select class="sf" id="cargo-reg" onchange="renderCargo()">
         <option value="">Todos os regimes</option>
       </select>
     </div>
     <input class="tsearch" id="cargo-busca" placeholder="Filtrar cargo…" oninput="renderCargo()" style="min-width:220px">
-    <span id="cargo-info" style="font-size:12px;color:var(--mu);margin-left:auto"></span>
+    <span id="cargo-info" style="font-size:12px;color:var(--mu);margin-left:auto;align-self:flex-end"></span>
   </div>
   <div class="kpi-grid" id="kpi-cargo"></div>
   <div class="g2">
@@ -2871,16 +2881,43 @@ function renderHELegal(heNames,heRegFlt,fK){
 
 
 function renderCargo(){
+  // Popula seletor de Secretaria (uma vez)
+  const selSec=document.getElementById('cargo-sec');
+  if(selSec && selSec.options.length<=1){
+    const sis=new Set(); srv_profile.forEach(p=>sis.add(p[1]));
+    [...sis].map(si=>({si,nm:(secs[si]||'?').replace(/^\d+ - /,'')}))
+      .sort((a,b)=>a.nm.localeCompare(b.nm,'pt-BR'))
+      .forEach(s=>{ const o=document.createElement('option'); o.value=s.si; o.textContent=s.nm; selSec.appendChild(o); });
+  }
+  // Popula seletor de Competência (uma vez)
+  const selComp=document.getElementById('cargo-comp');
+  if(selComp && selComp.options.length<=1){
+    const comps=[...new Set(agg2.filter(r=>!EXCLUIR_COMPS.has(r[0]*100+r[1])).map(r=>r[0]*100+r[1]))].sort((a,b)=>b-a);
+    const M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    comps.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=`${M[(c%100)-1]}/${Math.floor(c/100)}`; selComp.appendChild(o); });
+  }
+
+  const secFlt=Number((document.getElementById('cargo-sec')||{value:''}).value)||null;
+  const compFlt=Number((document.getElementById('cargo-comp')||{value:''}).value)||null;
   const regFlt=Number((document.getElementById('cargo-reg')||{value:''}).value)||0;
   const q=((document.getElementById('cargo-busca')||{value:''}).value).toLowerCase();
   const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
   const fK=v=>v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1000?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toFixed(0);
 
-  // Build cargo counts from srv_profile (static, all servers)
+  // Quando filtro de competência: só conta servidores que aparecem em agg2 nessa comp
+  let misNaComp=null;
+  if(compFlt){
+    misNaComp=new Set();
+    agg2.forEach(r=>{ if(r[0]*100+r[1]===compFlt) misNaComp.add(r[2]); });
+  }
+
+  // Build cargo counts from srv_profile (com filtros)
   const cargoCnt={}, cargoRegMap={};
   srv_profile.forEach((p,mi)=>{
-    const ci=p[0], ri=p[2];
+    const ci=p[0], si=p[1], ri=p[2];
     const c=cargos[ci];
+    if(secFlt!==null && si!==secFlt) return;
+    if(compFlt && !misNaComp.has(mi)) return;
     if(regFlt>0&&ri!==regFlt) return;
     if(q&&!c.toLowerCase().includes(q)) return;
     cargoCnt[c]=(cargoCnt[c]||0)+1;
@@ -2889,11 +2926,19 @@ function renderCargo(){
   });
   const sorted=Object.entries(cargoCnt).sort((a,b)=>b[1]-a[1]);
   const total=sorted.reduce((s,[,n])=>s+n,0);
-  document.getElementById('cargo-info').textContent=sorted.length+' cargos · '+total+' servidores';
+  const M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const compTxt = compFlt ? ` · ${M[(compFlt%100)-1]}/${Math.floor(compFlt/100)}` : '';
+  const secTxt = secFlt!==null ? ` · ${(secs[secFlt]||'').replace(/^\d+ - /,'').slice(0,40)}` : '';
+  document.getElementById('cargo-info').textContent=sorted.length+' cargos · '+total+' servidores'+secTxt+compTxt;
 
-  // KPIs
+  // KPIs — sempre escopo geral (independente dos filtros) para comparação
   const allCargoRegMap={};
-  srv_profile.forEach((p,mi)=>{const c=cargos[p[0]],ri=p[2];if(!allCargoRegMap[c])allCargoRegMap[c]={};allCargoRegMap[c][ri]=(allCargoRegMap[c][ri]||0)+1;});
+  srv_profile.forEach((p,mi)=>{
+    const c=cargos[p[0]],ri=p[2];
+    if(secFlt!==null && p[1]!==secFlt) return; // KPIs respeitam filtro de Secretaria
+    if(!allCargoRegMap[c])allCargoRegMap[c]={};
+    allCargoRegMap[c][ri]=(allCargoRegMap[c][ri]||0)+1;
+  });
   const multiRegCount=Object.values(allCargoRegMap).filter(rs=>Object.keys(rs).length>=2).length;
   const opKeywords=/PROFESSOR|TECNICO|AUXILIAR|AGENTE|MOTORISTA|VIGILANTE|ENFERMAGEM|MEDICO|SERVIC|MERENDEIRA|GARI|PEDREIRO|ELETRIC/;
   const opInCom=Object.entries(allCargoRegMap).filter(([c,rs])=>opKeywords.test(c.toUpperCase())&&rs[riCom]>0);
@@ -2915,16 +2960,32 @@ function renderCargo(){
     options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.raw+' servidores'}}},
       scales:{x:{ticks:{callback:v=>v}}}}});
 
-  // Chart 2: Top 15 by value (agg4)
+  // Chart 2: Top 15 by value
+  // Se houver competência específica → soma agg2 dessa comp (valor real do mês)
+  // Senão → soma agg4 dos anos filtrados (acumulado)
   const matToCargo=srv_profile.map(p=>p[0]);
   const cargoVal={};
-  agg4.filter(r=>FS.anos.size===0||FS.anos.has(r[A4_ANO])).forEach(r=>{
-    const ci=matToCargo[r[A4_MI]];if(ci===undefined)return;
-    const c=cargos[ci];
-    if(regFlt>0&&srv_profile[r[A4_MI]]&&srv_profile[r[A4_MI]][2]!==regFlt) return;
-    if(q&&!c.toLowerCase().includes(q)) return;
-    cargoVal[c]=(cargoVal[c]||0)+r[A4_VAL];
-  });
+  if(compFlt){
+    agg2.forEach(r=>{
+      if(r[0]*100+r[1]!==compFlt)return;
+      const prof=srv_profile[r[2]]||[0,0,0];
+      if(secFlt!==null && prof[1]!==secFlt) return;
+      if(regFlt>0 && prof[2]!==regFlt) return;
+      const c=cargos[prof[0]]; if(!c) return;
+      if(q&&!c.toLowerCase().includes(q)) return;
+      cargoVal[c]=(cargoVal[c]||0)+r[6];
+    });
+  } else {
+    agg4.filter(r=>FS.anos.size===0||FS.anos.has(r[A4_ANO])).forEach(r=>{
+      const prof=srv_profile[r[A4_MI]]||[0,0,0];
+      const ci=prof[0];
+      const c=cargos[ci]; if(c===undefined) return;
+      if(secFlt!==null && prof[1]!==secFlt) return;
+      if(regFlt>0 && prof[2]!==regFlt) return;
+      if(q&&!c.toLowerCase().includes(q)) return;
+      cargoVal[c]=(cargoVal[c]||0)+r[A4_VAL];
+    });
+  }
   const top15v=Object.entries(cargoVal).sort((a,b)=>b[1]-a[1]).slice(0,15);
   destroyChart('ch-cargo-val');
   charts['ch-cargo-val']=new Chart(document.getElementById('ch-cargo-val'),{type:'bar',
