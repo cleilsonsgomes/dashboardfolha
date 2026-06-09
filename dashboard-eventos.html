@@ -3066,6 +3066,9 @@ function renderCargo(){
 
 function renderCargoLei(){
   const riCom=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
+  const riEstComis=regimes.findIndex(r=>/Estatut.*Comiss/i.test(r)); // híbrido (efetivo em CC)
+  // Considera ambos: CC puro + estatutário designado para função comissionada
+  const ocupaCC = ri => ri===riCom || ri===riEstComis;
   const [A1a,A1m,A1e,A1s,A1r,A1v,A1c]=[0,1,2,3,4,5,6]; // agg1 índices locais
 
   // Mapeamento por palavra-chave (mais específico primeiro)
@@ -3092,7 +3095,7 @@ function renderCargoLei(){
   // CC chart: sempre do srv_profile (dado anual — único com info de cargo)
   const miAno4=new Set(agg4.filter(r=>FS.anos.size===0||FS.anos.has(r[A4_ANO])).map(r=>r[A4_MI]));
   const miSet=new Set();
-  srv_profile.forEach((p,mi)=>{if(p&&p[2]===riCom&&miAno4.has(mi)) miSet.add(mi);});
+  srv_profile.forEach((p,mi)=>{if(p&&ocupaCC(p[2])&&miAno4.has(mi)) miSet.add(mi);});
   const byCCNivel={};
   // Matriz contratado por (sec × cargo)
   const byCCSec={}; // {secNome: {ccKey: count}}
@@ -3111,7 +3114,7 @@ function renderCargoLei(){
   let bySec={}, isMonthly=false;
   if(temFiltroComp){
     const bySecComp={};
-    agg1.filter(r=>r[A1r]===riCom&&!EXCLUIR_COMPS.has(r[A1a]*100+r[A1m])&&FS.comps.has(r[A1a]*100+r[A1m]))
+    agg1.filter(r=>ocupaCC(r[A1r])&&!EXCLUIR_COMPS.has(r[A1a]*100+r[A1m])&&FS.comps.has(r[A1a]*100+r[A1m]))
       .forEach(r=>{
         const si=r[A1s],comp=r[A1a]*100+r[A1m];
         if(!bySecComp[si]) bySecComp[si]={};
