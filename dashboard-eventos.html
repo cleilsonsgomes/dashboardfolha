@@ -2786,21 +2786,21 @@ const LEI_SEC = {
   'Secretaria Municipal de Meio Ambiente e Serviços Públicos - SEMMASP': 79,
   'Secretaria Municipal de Turismo, Indústria e Comércio - SETIC': 36,
   'Secretaria Municipal de Cultura e Esporte - SECULTE': 32,
-  'Secretaria de Planejamento Estratégico – SEPLANE': 10,
+  'Secretaria de Planejamento Estratégico – SEPLANE': 9,
   'Secretaria Municipal de Ordem Pública e Segurança Cidadã-SMOP': 16,
 };
 const LEI_CC = [
-  {nivel:'SM – Secretário',        lei:18,  key:'SM'},
-  {nivel:'CC2 – Subsecretário',    lei:14,  key:'CC2'},
-  {nivel:'CC3 – Superintendente',  lei:49,  key:'CC3'},
-  {nivel:'CC4 – Assessor Superior',lei:47,  key:'CC4'},
-  {nivel:'CC5 – Coordenador',      lei:146, key:'CC5'},
-  {nivel:'CC6 – Assessoria Téc.',  lei:70,  key:'CC6'},
-  {nivel:'CC7 – Supervisor',       lei:158, key:'CC7'},
-  {nivel:'CC8 – Aux. Técnico I',   lei:88,  key:'CC8'},
-  {nivel:'CC9 – Aux. Técnico II',  lei:136, key:'CC9'},
+  {nivel:'SM – Secretário',        lei:18,  key:'SM'},  // 17 PDF + 1 SEPLANE
+  {nivel:'CC2 – Subsecretário',    lei:15,  key:'CC2'}, // 14 PDF + 1 SEPLANE
+  {nivel:'CC3 – Superintendente',  lei:48,  key:'CC3'}, // 47 PDF + 1 SEPLANE
+  {nivel:'CC4 – Assessor Superior',lei:47,  key:'CC4'}, // 46 PDF + 1 SEPLANE
+  {nivel:'CC5 – Coordenador',      lei:147, key:'CC5'}, // 146 PDF + 1 SEPLANE
+  {nivel:'CC6 – Assessoria Téc.',  lei:69,  key:'CC6'}, // 68 PDF + 1 SEPLANE
+  {nivel:'CC7 – Supervisor',       lei:157, key:'CC7'}, // 156 PDF + 1 SEPLANE
+  {nivel:'CC8 – Aux. Técnico I',   lei:88,  key:'CC8'}, // 87 PDF + 1 SEPLANE
+  {nivel:'CC9 – Aux. Técnico II',  lei:136, key:'CC9'}, // 135 PDF + 1 SEPLANE
 ];
-const LEI_TOTAL = 735;
+const LEI_TOTAL = 734; // 725 PDF + 9 SEPLANE (1 vaga por cargo) — Emenda 23/12/2025
 
 
 function renderHELegal(heNames,heRegFlt,fK){
