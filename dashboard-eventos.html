@@ -2802,6 +2802,33 @@ const LEI_CC = [
 ];
 const LEI_TOTAL = 734; // 725 PDF + 9 SEPLANE (1 vaga por cargo) — Emenda 23/12/2025
 
+// Matriz Sec × Cargo (Anexo IV LC 10/2025) — base para drill-down
+// Valores zerados omitidos. SEMMASP = Serviços Públicos + Meio Ambiente (fundidos no dataset).
+const LEI_MATRIX = {
+  'Gabinete do Prefeito': {SM:1, CC3:1, CC4:10, CC5:10, CC6:2, CC7:10, CC8:2, CC9:1},
+  'Gabinete do Vice-Prefeito - GVP': {CC4:1, CC6:2, CC7:1, CC8:1, CC9:1},
+  'Ouvidoria': {CC7:1, CC8:1},
+  'Assessoria de Comunicação': {CC6:2, CC7:3, CC9:1},
+  'Procuradoria Geral do Município - PGM': {SM:1, CC3:1, CC4:10, CC5:2, CC7:3, CC8:2},
+  'Controladoria Geral do Município - CGM': {SM:1, CC3:1, CC4:1, CC5:3, CC6:3, CC7:2},
+  'Secretaria Municipal da Fazenda - SEFAZ': {SM:1, CC2:1, CC3:3, CC4:1, CC5:5, CC6:4, CC7:10, CC8:11, CC9:12},
+  'Secretaria de Administração Municipal - SEAM': {SM:1, CC2:1, CC3:5, CC4:2, CC5:13, CC6:3, CC7:8, CC8:8, CC9:8},
+  'Secretaria Municipal de Tecnologia e Inovação - SMTI': {SM:1, CC2:1, CC3:2, CC4:2, CC5:3, CC6:2, CC7:2, CC8:8, CC9:8},
+  'Secretaria Municipal da Saude - SMS': {SM:1, CC2:1, CC3:7, CC4:4, CC5:31, CC6:27, CC7:48, CC8:14},
+  'Secretaria Municipal de Desenvolvimento Social e Cidadania - SEDES': {SM:1, CC2:1, CC3:4, CC4:2, CC5:12, CC6:2, CC7:23, CC9:36},
+  'Secretaria Municipal de Política Para a Mulher e Cidadania - SMPMC': {SM:1, CC2:1, CC3:1, CC5:4, CC6:2, CC7:3, CC8:1},
+  'Secretaria Municipal de Infraestrutura e Planejamento Urbano - SEINFRA': {SM:1, CC2:1, CC3:3, CC4:3, CC5:8, CC6:8, CC7:7, CC8:12, CC9:8},
+  'Secretaria Municipal de Educação - SME': {SM:1, CC2:1, CC3:3, CC4:2, CC5:12, CC7:5, CC8:6, CC9:1},
+  'Secretaria Municipal de Desenvolvimento Rural - SDR': {SM:1, CC2:1, CC3:3, CC4:2, CC5:10, CC6:4, CC8:8, CC9:8},
+  // SEMMASP = Serviços Públicos (44) + Meio Ambiente (35) somados
+  'Secretaria Municipal de Meio Ambiente e Serviços Públicos - SEMMASP': {SM:2, CC2:2, CC3:5, CC4:3, CC5:15, CC6:4, CC7:21, CC8:1, CC9:26},
+  'Secretaria Municipal de Turismo, Indústria e Comércio - SETIC': {SM:1, CC2:1, CC3:2, CC4:1, CC5:7, CC6:1, CC7:2, CC8:7, CC9:14},
+  'Secretaria Municipal de Cultura e Esporte - SECULTE': {SM:1, CC2:1, CC3:3, CC4:2, CC5:8, CC6:2, CC7:5, CC8:5, CC9:5},
+  // SEPLANE — adicionada pela Emenda 23/12/2025: 1 vaga por cargo
+  'Secretaria de Planejamento Estratégico – SEPLANE': {SM:1, CC2:1, CC3:1, CC4:1, CC5:1, CC6:1, CC7:1, CC8:1, CC9:1},
+  'Secretaria Municipal de Ordem Pública e Segurança Cidadã-SMOP': {SM:1, CC2:1, CC3:3, CC5:3, CC7:2, CC9:6},
+};
+
 
 function renderHELegal(heNames,heRegFlt,fK){
   const srvStats={};
@@ -3067,7 +3094,17 @@ function renderCargoLei(){
   const miSet=new Set();
   srv_profile.forEach((p,mi)=>{if(p&&p[2]===riCom&&miAno4.has(mi)) miSet.add(mi);});
   const byCCNivel={};
-  miSet.forEach(mi=>{const p=srv_profile[mi];const n=matchCC(cargos[p[0]]);if(n) byCCNivel[n]=(byCCNivel[n]||0)+1;});
+  // Matriz contratado por (sec × cargo)
+  const byCCSec={}; // {secNome: {ccKey: count}}
+  miSet.forEach(mi=>{
+    const p=srv_profile[mi];
+    const n=matchCC(cargos[p[0]]);
+    if(!n) return;
+    byCCNivel[n]=(byCCNivel[n]||0)+1;
+    const secNm=secs[p[1]];
+    if(!byCCSec[secNm]) byCCSec[secNm]={};
+    byCCSec[secNm][n]=(byCCSec[secNm][n]||0)+1;
+  });
 
   // Por secretaria: mensal via agg1 MAX (evento mais abrangente = proxy headcount)
   // quando competência filtrada; caso contrário usa srv_profile anual
@@ -3159,21 +3196,70 @@ function renderCargoLei(){
       scales:{x:{ticks:{callback:v=>(v>0?'+':'')+v},grid:{color:ctx=>ctx.tick.value===0?'#64748b':'#f1f5f9'}}}
     }});
 
-  // Tabela secretaria
+  // Tabela secretaria com DRILL-DOWN por cargo
   const tbody=document.getElementById('lei-sec-body');
-  if(tbody) tbody.innerHTML=secComp.map(d=>{
-    const pct=d.lei>0?Math.round(d.cont/d.lei*100):0;
-    const ok=d.saldo<=0;
-    const badge=ok?'background:#dcfce7;color:#166534':'background:#fee2e2;color:#991b1b';
-    return`<tr>
-      <td style="font-size:12px">${d.s}</td>
-      <td class="r">${d.lei}</td>
-      <td class="r" style="font-weight:600">${d.cont}</td>
-      <td class="r" style="font-weight:700;color:${ok?'#059669':'#dc2626'}">${d.saldo>0?'+':''}${d.saldo}</td>
-      <td class="r"><span class="badge" style="${badge}">${pct}%</span></td>
-      <td><span class="badge" style="${badge}">${ok?'✓ Dentro do limite':'✗ Excesso'}</span></td>
-    </tr>`;
-  }).join('');
+  if(tbody){
+    // Nome completo da secretaria (chave do LEI_SEC) para casar com LEI_MATRIX
+    const secCompFull=Object.entries(LEI_SEC)
+      .map(([nm,lei])=>({nm,nmCurto:nm.replace(/^Secretaria Municipal d[aeo] /,'').replace(/^Secretaria de /,'').replace(/ [-–] \w+$/,'').trim(),
+        lei,cont:bySec[nm]||0,saldo:(bySec[nm]||0)-lei}))
+      .sort((a,b)=>b.saldo-a.saldo);
+    tbody.innerHTML=secCompFull.map((d,idx)=>{
+      const pct=d.lei>0?Math.round(d.cont/d.lei*100):0;
+      const ok=d.saldo<=0;
+      const badge=ok?'background:#dcfce7;color:#166534':'background:#fee2e2;color:#991b1b';
+      // Linha principal — clicável
+      const rowMain=`<tr style="cursor:pointer" onclick="_leiToggleDrill(${idx})">
+        <td style="font-size:12px"><span id="lei-arrow-${idx}" style="color:#94a3b8;margin-right:6px;font-weight:700">▶</span>${d.nmCurto}</td>
+        <td class="r">${d.lei}</td>
+        <td class="r" style="font-weight:600">${d.cont}</td>
+        <td class="r" style="font-weight:700;color:${ok?'#059669':'#dc2626'}">${d.saldo>0?'+':''}${d.saldo}</td>
+        <td class="r"><span class="badge" style="${badge}">${pct}%</span></td>
+        <td><span class="badge" style="${badge}">${ok?'✓ Dentro do limite':'✗ Excesso'}</span></td>
+      </tr>`;
+      // Linha de drill-down — sub-tabela por cargo
+      const matriz=LEI_MATRIX[d.nm]||{};
+      const contratado=byCCSec[d.nm]||{};
+      // Mostra TODOS os 9 níveis CC (mesmo zerados) para visão completa
+      const subRows=LEI_CC.map(({nivel,key})=>{
+        const ll=matriz[key]||0;
+        const cc=contratado[key]||0;
+        const ss=cc-ll;
+        const ppct=ll>0?Math.round(cc/ll*100):(cc>0?999:0);
+        const ook=ss<=0;
+        const bb=ook?'background:#dcfce7;color:#166534':'background:#fee2e2;color:#991b1b';
+        // Destaque visual para contratado sem previsão legal
+        const corValor = ll===0 && cc>0 ? '#dc2626' : '#1e293b';
+        return `<tr style="background:#fafafa;font-size:11px">
+          <td style="padding-left:36px;color:#475569">${nivel}</td>
+          <td class="r" style="color:#0f172a">${ll}</td>
+          <td class="r" style="font-weight:600;color:${corValor}">${cc}</td>
+          <td class="r" style="font-weight:700;color:${ook?'#059669':'#dc2626'}">${ss>0?'+':''}${ss}</td>
+          <td class="r"><span class="badge" style="${bb};font-size:9.5px">${ll===0?(cc>0?'sem previsão':'—'):ppct+'%'}</span></td>
+          <td><span class="badge" style="${bb};font-size:9.5px">${ook?'✓':'✗ Excesso'}</span></td>
+        </tr>`;
+      }).join('');
+      const rowDrill=`<tr id="lei-drill-${idx}" style="display:none"><td colspan="6" style="padding:0;background:#fafafa">
+        <div style="padding:8px 14px;background:#f1f5f9;font-size:10.5px;font-weight:700;color:#475569;border-top:1px solid #e2e8f0">📋 Detalhe por Cargo — ${d.nm}</div>
+        <table style="width:100%;border-collapse:collapse;margin:0">
+          <thead><tr style="background:#e2e8f0;font-size:10px"><th style="padding:5px 8px;padding-left:36px;text-align:left;color:#475569;text-transform:uppercase">Nível</th><th class="r" style="padding:5px 8px;color:#475569;text-transform:uppercase">Lei</th><th class="r" style="padding:5px 8px;color:#475569;text-transform:uppercase">Contratado</th><th class="r" style="padding:5px 8px;color:#475569;text-transform:uppercase">Saldo</th><th class="r" style="padding:5px 8px;color:#475569;text-transform:uppercase">%</th><th style="padding:5px 8px;color:#475569;text-transform:uppercase">Status</th></tr></thead>
+          <tbody>${subRows}</tbody>
+        </table>
+      </td></tr>`;
+      return rowMain+rowDrill;
+    }).join('');
+  }
+}
+
+// Toggle de drill-down da tabela Lei × Contratado
+function _leiToggleDrill(idx){
+  const drill=document.getElementById('lei-drill-'+idx);
+  const arrow=document.getElementById('lei-arrow-'+idx);
+  if(!drill||!arrow) return;
+  const shown=drill.style.display!=='none';
+  drill.style.display=shown?'none':'';
+  arrow.textContent=shown?'▶':'▼';
+  arrow.style.color=shown?'#94a3b8':'#0c4a6e';
 }
 
 function renderAudit(){
