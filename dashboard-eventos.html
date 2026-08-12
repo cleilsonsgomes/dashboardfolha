@@ -206,6 +206,13 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   <div style="max-width:960px;margin:0 auto">
     <h2 style="font-size:20px;font-weight:800;color:#0f172a;margin:0 0 4px">📥 Importar dados mensais da folha</h2>
     <div id="folha-banner" style="display:none;margin:8px 0;padding:10px 14px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;color:#065f46;font-size:13px"></div>
+    <div id="folha-mode-box" style="margin:8px 0;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;color:#334155">
+        <input type="checkbox" id="folha-replace-toggle" onchange="folhaToggleReplaceMode(this)" style="width:16px;height:16px;cursor:pointer">
+        Modo substituição total
+      </label>
+      <span id="folha-mode-status" style="font-size:12px;color:#64748b">usa a base embutida (2023–mai/2026) + meses importados</span>
+    </div>
     <div class="info-box" style="margin-top:8px">
       📄 <strong>Modelo aceito:</strong> a planilha exportada da folha em <strong>formato longo</strong> (uma linha por servidor × evento), com as colunas
       <code>FUN_MATRICULA, PES_NOME, PES_CPF, FUN_ADMISSAO, FUN_DEM_DATA, EVE_NUMERO, EVE_NOME, VALOR, CAR_NOME, CEN_NUMERO, CEN_NOME, SEC_NUMERO, SEC_NOME, MES_ID, MES_NOME, ANO_ID, REG_NUMERO, REG_NOME, CTI_ID, CTI_NOME, LOC_NUMERO, LOC_NOME</code>.
@@ -9639,8 +9646,18 @@ const FolhaStore = (function () {
 // MERGE — aplica camadas sobre os arrays globais (in-place, 1× por load)
 // ══════════════════════════════════════════════════════════════════════
 let FOLHA_LAYERS_META = []; // p/ UI: [{comp,ano,mes,nrows,fileName,importedAt,totalVal,nServers}]
-function folhaApplyOverlay(layersArr) {
+function folhaApplyOverlay(layersArr, replaceBase) {
   FOLHA_LAYERS_META = [];
+  let _inssByMat = null;
+  if (replaceBase) {
+    // captura INSS por matrícula (p/ remapear depois) e ZERA a base embutida
+    _inssByMat = {};
+    Object.keys(inss).forEach(mi => { const mat = String(mats[mi]); if (mat && mat !== 'undefined') _inssByMat[mat] = inss[mi]; });
+    [mats, nomes, cpfs, admissoes, demissoes, srv_profile, eventos, ev_names, cargos, secs, regimes, agg1, agg2, dup3, agg4].forEach(a => { a.length = 0; });
+    Object.keys(inss).forEach(k => { delete inss[k]; });
+    EXCLUIR_COMPS.clear();   // sem base embutida não há mai/2026 incompleto a ocultar
+    ANOS_ALL.length = 0;
+  }
   if (!layersArr || !layersArr.length) return;
   // índices por chave natural a partir do estado atual (base)
   const matIdx = new Map(); mats.forEach((m, i) => matIdx.set(String(m), i));
@@ -9687,6 +9704,10 @@ function folhaApplyOverlay(layersArr) {
     });
     FOLHA_LAYERS_META.push({ comp: layer.comp, ano: layer.ano, mes: layer.mes, nrows: layer.nrows, fileName: layer.fileName || '', importedAt: layer.importedAt || '', totalVal: (layer.agg1 || []).reduce((s, r) => s + r.val, 0), nServers: Object.keys(layer.servers || {}).length });
   });
+  // remapeia INSS pelos novos índices (modo substituição)
+  if (_inssByMat) {
+    Object.keys(_inssByMat).forEach(mat => { const mi = matIdx.get(String(mat)); if (mi != null) inss[mi] = _inssByMat[mat]; });
+  }
   // estende ANOS_ALL se surgiram anos novos
   const merged = [...anoSet].sort((a, b) => a - b);
   if (merged.length !== ANOS_ALL.length) { ANOS_ALL.length = 0; merged.forEach(a => ANOS_ALL.push(a)); }
@@ -9782,8 +9803,8 @@ async function folhaOnFiles(fileList) {
   const comps = Object.keys(byComp).map(Number).sort((a, b) => a - b);
   if (!comps.length) { folhaSetProgress(''); folhaSetReport('<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#b91c1c">' + (anyError || 'Nenhuma competência válida encontrada.') + '</div>'); return; }
 
-  // avisos de sobreposição com a base
-  const overlap = comps.filter(c => c <= FOLHA_BASE_MAX_COMP);
+  // avisos de sobreposição com a base (não se aplica no modo substituição total)
+  const overlap = folhaReplaceMode() ? [] : comps.filter(c => c <= FOLHA_BASE_MAX_COMP);
   const nowIso = new Date().toISOString().slice(0, 16).replace('T', ' ');
   let saved = 0, saveErr = '';
   for (const c of comps) {
@@ -9862,6 +9883,17 @@ function renderUpload() {
     }
     _folhaUploadWired = true;
   }
+  const tog = document.getElementById('folha-replace-toggle');
+  const st = document.getElementById('folha-mode-status');
+  const rep = folhaReplaceMode();
+  if (tog) tog.checked = rep;
+  if (st) {
+    st.textContent = rep
+      ? '⚠️ ATIVO — mostra SOMENTE os meses importados (base embutida ignorada)'
+      : 'usa a base embutida (2023–mai/2026) + meses importados';
+    st.style.color = rep ? '#b45309' : '#64748b';
+    st.style.fontWeight = rep ? '700' : '400';
+  }
   folhaRenderList();
 }
 function folhaUpdateBanner() {
@@ -9876,8 +9908,9 @@ function folhaUpdateBanner() {
 // atualiza subtítulo e badge do cabeçalho conforme os dados mesclados
 function folhaUpdateHeader() {
   const anoMin = ANOS_ALL[0], anoMax = ANOS_ALL[ANOS_ALL.length - 1];
+  const periodo = (anoMin != null) ? (anoMin === anoMax ? String(anoMin) : anoMin + '–' + anoMax) : '—';
   const sub = document.getElementById('hdr-sub');
-  if (sub) sub.textContent = 'Detalhe por rubrica · ' + mats.length.toLocaleString('pt-BR') + ' servidores · ' + eventos.length + ' eventos · ' + anoMin + '–' + anoMax;
+  if (sub) sub.textContent = 'Detalhe por rubrica · ' + mats.length.toLocaleString('pt-BR') + ' servidores · ' + eventos.length + ' eventos · ' + periodo;
   const badge = document.getElementById('hdr-reg-badge');
   if (badge) { const tot = agg1.reduce((s, r) => s + (r[6] || 0), 0); badge.textContent = tot.toLocaleString('pt-BR') + ' registros'; }
 }
@@ -9895,13 +9928,26 @@ function folhaSetRcl(comp, raw) {
   if (hint) hint.textContent = v > 0 ? '✓ salvo (' + folhaBRL(v) + ') — reabra as abas de Auditoria/Impacto' : 'sem RCL';
 }
 
+// ── Modo substituição total (usar só importações, ignorar base embutida) ──
+const FOLHA_REPLACE_KEY = 'folhaReplaceBase';
+function folhaReplaceMode() { try { return localStorage.getItem(FOLHA_REPLACE_KEY) === '1'; } catch (e) { return false; } }
+function folhaToggleReplaceMode(cb) {
+  const on = cb.checked;
+  const msg = on
+    ? 'Ativar MODO SUBSTITUIÇÃO TOTAL?\n\nA base embutida (2023 → mai/2026) deixa de ser usada. O painel passa a mostrar SOMENTE os meses que você importar — ideal para reconstruir todo o histórico pelas planilhas.\n\nRecarregar agora?'
+    : 'Voltar ao modo normal (base embutida + meses importados)?\n\nRecarregar agora?';
+  if (!confirm(msg)) { cb.checked = !on; return; }
+  try { if (on) localStorage.setItem(FOLHA_REPLACE_KEY, '1'); else localStorage.removeItem(FOLHA_REPLACE_KEY); } catch (e) {}
+  location.reload();
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // BOOTSTRAP — carrega camadas, aplica overlay e inicializa o painel
 // ══════════════════════════════════════════════════════════════════════
 async function folhaBootstrap() {
   let layers = [];
   try { layers = await FolhaStore.getAll(); } catch (e) { console.warn('[folha] getAll', e); }
-  try { folhaApplyOverlay(layers); } catch (e) { console.error('[folha] overlay', e); }
+  try { folhaApplyOverlay(layers, folhaReplaceMode()); } catch (e) { console.error('[folha] overlay', e); }
   try { folhaApplyRcl(); } catch (e) { console.error('[folha] rcl', e); }
   try { rebuildCategories(); } catch (e) { console.error('[folha] categorias', e); }
   try { boot(); } catch (e) { console.error('[folha] boot', e); }
