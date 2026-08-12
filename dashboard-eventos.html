@@ -110,10 +110,10 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   <div style="flex:1">
     <div style="font-size:10px;opacity:.7;margin-bottom:2px">MUNICÍPIO DE PAULO AFONSO – BA</div>
     <h1>📋 Análise de Eventos da Folha de Pagamento</h1>
-    <p>Detalhe por rubrica · 7.482 servidores · 211 eventos · 2023–2026</p>
+    <p id="hdr-sub">Detalhe por rubrica · 7.482 servidores · 211 eventos · 2023–2026</p>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <span class="hbadge">393.711 registros</span>
+    <span class="hbadge" id="hdr-reg-badge">393.711 registros</span>
     <span class="hbadge">Padrão: 2025–2026 · Comissionados</span>
   </div>
 </header>
@@ -198,6 +198,31 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   <button class="tb"        id="tbn-irreg"  onclick="switchTab('irreg')">🚨 15. Irregularidades</button>
   <button class="tb"        id="tbn-inss"   onclick="switchTab('inss')">🏛️ 16. INSS/Previdência</button>
   <button class="tb"        id="tbn-plano"  onclick="switchTab('plano')">🎯 17. Plano de Ação</button>
+  <button class="tb"        id="tbn-upload" onclick="switchTab('upload')" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0">📥 Importar dados</button>
+</div>
+
+<!-- TAB: Importar dados mensais -->
+<div class="con" id="tab-upload" style="display:none">
+  <div style="max-width:960px;margin:0 auto">
+    <h2 style="font-size:20px;font-weight:800;color:#0f172a;margin:0 0 4px">📥 Importar dados mensais da folha</h2>
+    <div id="folha-banner" style="display:none;margin:8px 0;padding:10px 14px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;color:#065f46;font-size:13px"></div>
+    <div class="info-box" style="margin-top:8px">
+      📄 <strong>Modelo aceito:</strong> a planilha exportada da folha em <strong>formato longo</strong> (uma linha por servidor × evento), com as colunas
+      <code>FUN_MATRICULA, PES_NOME, PES_CPF, FUN_ADMISSAO, FUN_DEM_DATA, EVE_NUMERO, EVE_NOME, VALOR, CAR_NOME, CEN_NUMERO, CEN_NOME, SEC_NUMERO, SEC_NOME, MES_ID, MES_NOME, ANO_ID, REG_NUMERO, REG_NOME, CTI_ID, CTI_NOME, LOC_NUMERO, LOC_NOME</code>.
+      Envie <strong>um arquivo consolidado por mês</strong> (todas as secretarias) — ou vários arquivos, que serão somados. A base embutida já cobre <strong>Jan/2023 até Abr/2026</strong>; importe a partir de <strong>Jun/2026</strong>.
+      Cada mês fica salvo <strong>neste navegador</strong> e é somado à base em todas as abas. Reimportar o mesmo mês substitui aquele mês. Os benefícios de <strong>INSS/Previdência</strong> vêm de outra base e não são alterados por aqui.
+    </div>
+    <div id="folha-drop" style="margin-top:14px;border:2px dashed #cbd5e1;border-radius:12px;padding:26px;text-align:center;transition:.15s">
+      <input type="file" id="folha-file" accept=".xlsx,.xls" multiple style="display:none">
+      <div style="font-size:34px;margin-bottom:6px">🗂️</div>
+      <button onclick="document.getElementById('folha-file').click()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer">Selecionar arquivo(s) .xlsx</button>
+      <div style="margin-top:8px;color:#64748b;font-size:12.5px">ou arraste e solte aqui</div>
+    </div>
+    <div id="folha-progress" style="margin-top:12px"></div>
+    <div id="folha-report" style="margin-top:12px"></div>
+    <h3 style="font-size:15px;font-weight:800;color:#334155;margin:22px 0 8px">Meses importados</h3>
+    <div id="folha-list"></div>
+  </div>
 </div>
 
 <!-- TAB 1: Composição -->
@@ -1328,13 +1353,17 @@ const [A4_MI,A4_ANO,A4_EI,A4_VAL]=[0,1,2,3];
 
 // Categorias de eventos
 const EV_BASE=new Set(), EV_GRAT=new Set(), EV_EXTRA=new Set(), EV_FER=new Set();
-eventos.forEach((e,i)=>{
-  const n=ev_names[i].toUpperCase();
-  if(['VENCIMENTO','SALARIO','SUBSIDIO','CARGO COMISSAO'].includes(n)) EV_BASE.add(i);
-  else if(/GRATIF|ADICIONAL|INSALUB|NOTURNO|PRODUT|PERICULOSID/.test(n)) EV_GRAT.add(i);
-  else if(/HORA EXTRA|PLANTÃO|PLANTAO/.test(n)) EV_EXTRA.add(i);
-  else if(/FERIA|1\/3/.test(n)) EV_FER.add(i);
-});
+function rebuildCategories(){
+  EV_BASE.clear(); EV_GRAT.clear(); EV_EXTRA.clear(); EV_FER.clear();
+  eventos.forEach((e,i)=>{
+    const n=(ev_names[i]||'').toUpperCase();
+    if(['VENCIMENTO','SALARIO','SUBSIDIO','CARGO COMISSAO'].includes(n)) EV_BASE.add(i);
+    else if(/GRATIF|ADICIONAL|INSALUB|NOTURNO|PRODUT|PERICULOSID/.test(n)) EV_GRAT.add(i);
+    else if(/HORA EXTRA|PLANTÃO|PLANTAO/.test(n)) EV_EXTRA.add(i);
+    else if(/FERIA|1\/3/.test(n)) EV_FER.add(i);
+  });
+}
+rebuildCategories();
 const evCat=i=>EV_BASE.has(i)?0:EV_GRAT.has(i)?1:EV_EXTRA.has(i)?2:EV_FER.has(i)?3:4;
 const CAT=['Base Salarial','Gratificações','Extras/Plantões','Férias','Outros'];
 const CC=['#1d4ed8','#7c3aed','#dc2626','#059669','#94a3b8'];
@@ -1452,7 +1481,7 @@ function filtA2(){
 // ════════════════════════════════════════════════════════════════
 // TABS
 // ════════════════════════════════════════════════════════════════
-const ALL_TABS=['comp','cresc','plant','he','dup','srv','ins','grat','sim','cargo','audit','estag','pesq','imp','irreg','inss','plano'];
+const ALL_TABS=['comp','cresc','plant','he','dup','srv','ins','grat','sim','cargo','audit','estag','pesq','imp','irreg','inss','plano','upload'];
 let inited={};
 let charts={};
 let _chPareto=null; // movido pra cima — evita TDZ quando init() chama renderCompPareto
@@ -1485,6 +1514,7 @@ function renderTab(t){
   if(t==='irreg') renderIrreg();
   if(t==='inss')  renderInss();
   if(t==='plano') renderPlano();
+  if(t==='upload') renderUpload();
 }
 
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
@@ -4743,7 +4773,7 @@ function renderEstag(){
 }
 
 
-(function init(){
+function boot(){
   msInit('ano', ANOS_ALL.map(String), [2025,2026], ANOS_ALL);
   msInit('reg', regimes.map(r=>r.replace(/^\d+ - /,'')), [], regimes.map((_,i)=>i));
   msInit('sec', secs.map(s=>s.replace(/^\d+ - /,'')), [], secs.map((_,i)=>i));
@@ -4781,7 +4811,7 @@ function renderEstag(){
   }
   renderTab('comp');
   inited['comp']=true;
-})();
+}
 // ════════════════════════════════════════════════════════════════
 // TAB 13 — PESQUISA
 // ════════════════════════════════════════════════════════════════
@@ -9420,6 +9450,467 @@ function renderCompPareto(){
 }
 
 // ── Sinaliza que o script terminou de carregar ───────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════
+// [IMPORTAÇÃO MENSAL] injetado — base + camadas (overlay)
+// ══════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+// IMPORTAÇÃO MENSAL DE FOLHA (formato longo) — base + camadas (overlay)
+// Base embutida = imutável; cada mês importado vira uma camada no IndexedDB.
+// ══════════════════════════════════════════════════════════════════════
+const FOLHA_SEP = String.fromCharCode(1);
+const FOLHA_BASE_MAX_COMP = (function () {
+  let mx = 0; agg1.forEach(r => { const c = r[0] * 100 + r[1]; if (c > mx) mx = c; }); return mx;
+})(); // maior competência já embutida (ex.: 202605)
+
+// ---- categoria de evento por NOME (mesma regra do dashboard) -------------
+function folhaEvCatByName(name) {
+  const n = String(name || '').toUpperCase();
+  if (['VENCIMENTO', 'SALARIO', 'SUBSIDIO', 'CARGO COMISSAO'].indexOf(n) >= 0) return 0;
+  if (/GRATIF|ADICIONAL|INSALUB|NOTURNO|PRODUT|PERICULOSID/.test(n)) return 1;
+  if (/HORA EXTRA|PLANT[ÃA]O/.test(n)) return 2;
+  if (/FERIA|1\/3/.test(n)) return 3;
+  return 4;
+}
+
+// ---- normalização --------------------------------------------------------
+const FolhaNorm = {
+  intStr(v) {
+    if (v === null || v === undefined || v === '') return '';
+    if (typeof v === 'number') return String(Math.round(v));
+    const s = String(v).trim();
+    const m = s.match(/^(\d+)(?:\.0+)?$/); if (m) return m[1];
+    return s.replace(/\D+/g, '') || s;
+  },
+  cpf(v) { const d = this.intStr(v); if (!d) return ''; return d.length <= 11 ? d.padStart(11, '0') : d; },
+  num(v) {
+    if (v === null || v === undefined || v === '') return 0;
+    if (typeof v === 'number') return v;
+    const raw = String(v).trim();
+    if (/^-?\d+\.\d+$/.test(raw)) return parseFloat(raw);
+    const n = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
+    return isNaN(n) ? 0 : n;
+  },
+  date(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (v instanceof Date) return v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0');
+    const s = String(v).trim();
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return m[1] + '-' + m[2] + '-' + m[3];
+    m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if (m) return m[3] + '-' + m[2] + '-' + m[1];
+    return null;
+  },
+  clean(v) { return v === null || v === undefined ? '' : String(v).trim(); }
+};
+
+const FOLHA_ALIASES = {
+  FUN_MATRICULA: 'mat', MATRICULA: 'mat',
+  PES_NOME: 'nome', NOME: 'nome', PES_CPF: 'cpf', CPF: 'cpf',
+  FUN_ADMISSAO: 'adm', ADMISSAO: 'adm', FUN_DEM_DATA: 'dem', DEMISSAO: 'dem', DEM_DATA: 'dem',
+  EVE_NUMERO: 'eve', EVENTO: 'eve', EVE_NOME: 'evenome', EVENTO_NOME: 'evenome',
+  VALOR: 'val', VLR: 'val', CAR_NOME: 'cargo', CARGO: 'cargo',
+  SEC_NOME: 'sec', SECRETARIA: 'sec', MES_ID: 'mes', MES: 'mes',
+  ANO_ID: 'ano', ANO: 'ano', REG_NOME: 'reg', REGIME: 'reg', CTI_ID: 'cti', CTI: 'cti'
+};
+const FOLHA_REQUIRED = ['mat', 'eve', 'evenome', 'val', 'sec', 'mes', 'ano', 'reg'];
+
+// ---- agrega array-de-arrays (com cabeçalho) numa camada por competência ---
+function folhaAggregate(rowsAOA) {
+  if (!rowsAOA || rowsAOA.length < 2) return { ok: false, error: 'Planilha vazia.' };
+  const col = {};
+  rowsAOA[0].forEach((h, i) => { const k = String(h || '').trim().toUpperCase(); if (FOLHA_ALIASES[k]) col[FOLHA_ALIASES[k]] = i; });
+  const missing = FOLHA_REQUIRED.filter(k => !(k in col));
+  if (missing.length) return { ok: false, error: 'Colunas ausentes: ' + missing.join(', ') + '. Esperado: FUN_MATRICULA, EVE_NUMERO, EVE_NOME, VALOR, SEC_NOME, MES_ID, ANO_ID, REG_NOME.' };
+
+  const S = FOLHA_SEP, comps = {}, profileFreq = {};
+  function ensure(c) { return comps[c] || (comps[c] = { agg1: {}, agg2: {}, agg4: {}, dup: {}, servers: {}, events: {}, nrows: 0 }); }
+  let totalVal = 0, badRows = 0;
+  for (let r = 1; r < rowsAOA.length; r++) {
+    const row = rowsAOA[r]; if (!row || row.length === 0) continue;
+    const mat = FolhaNorm.intStr(row[col.mat]); if (!mat) continue;
+    const ano = parseInt(FolhaNorm.intStr(row[col.ano]), 10);
+    const mes = parseInt(FolhaNorm.intStr(row[col.mes]), 10);
+    if (!ano || !mes) { badRows++; continue; }
+    const eve = FolhaNorm.intStr(row[col.eve]);
+    const evenome = FolhaNorm.clean(row[col.evenome]);
+    const val = FolhaNorm.num(row[col.val]);
+    const sec = FolhaNorm.clean(row[col.sec]);
+    const reg = FolhaNorm.clean(row[col.reg]);
+    const cargo = ('cargo' in col) ? FolhaNorm.clean(row[col.cargo]) : '';
+    const comp = ano * 100 + mes, L = ensure(comp);
+    L.nrows++; totalVal += val;
+    if (!L.events[eve]) L.events[eve] = evenome;
+    let pf = profileFreq[mat];
+    if (!pf) pf = profileFreq[mat] = { nome: '', cpf: '', adm: null, dem: null, cargoCount: {}, secCount: {}, regCount: {} };
+    const nm = FolhaNorm.clean(row[col.nome]); if (nm) pf.nome = nm;
+    const cp = FolhaNorm.cpf(row[col.cpf]); if (cp) pf.cpf = cp;
+    const ad = FolhaNorm.date(row[col.adm]); if (ad) pf.adm = ad;
+    const dm = FolhaNorm.date(row[col.dem]); if (dm) pf.dem = dm;
+    if (cargo) pf.cargoCount[cargo] = (pf.cargoCount[cargo] || 0) + 1;
+    if (sec) pf.secCount[sec] = (pf.secCount[sec] || 0) + 1;
+    if (reg) pf.regCount[reg] = (pf.regCount[reg] || 0) + 1;
+    L.servers[mat] = true;
+    const k1 = eve + S + sec + S + reg;
+    const a1 = L.agg1[k1] || (L.agg1[k1] = { eve, sec, reg, val: 0, cnt: 0 }); a1.val += val; a1.cnt++;
+    const k4 = mat + S + eve;
+    const a4 = L.agg4[k4] || (L.agg4[k4] = { mat, eve, val: 0 }); a4.val += val;
+    if (folhaEvCatByName(evenome) === 2) {
+      const k2 = mat + S + eve + S + sec + S + reg;
+      const a2 = L.agg2[k2] || (L.agg2[k2] = { mat, eve, sec, reg, val: 0, cnt: 0 }); a2.val += val; a2.cnt++;
+    }
+    const cti = ('cti' in col) ? FolhaNorm.intStr(row[col.cti]) : '';
+    const kd = mat + S + eve + S + cti;
+    const dd = L.dup[kd] || (L.dup[kd] = { mat, eve, cnt: 0 }); dd.cnt++;
+  }
+  function mode(o) { let b = '', bc = -1; for (const k in o) if (o[k] > bc) { bc = o[k]; b = k; } return b; }
+  const profiles = {};
+  for (const m in profileFreq) { const p = profileFreq[m]; profiles[m] = { nome: p.nome, cpf: p.cpf, adm: p.adm, dem: p.dem, cargo: mode(p.cargoCount), sec: mode(p.secCount), reg: mode(p.regCount) }; }
+
+  const layers = {};
+  Object.keys(comps).forEach(comp => {
+    const L = comps[comp], ano = Math.floor(comp / 100), mes = comp % 100;
+    const agg1L = Object.keys(L.agg1).map(k => { const o = L.agg1[k]; return { ano, mes, eve: o.eve, sec: o.sec, reg: o.reg, val: +o.val.toFixed(2), cnt: o.cnt }; });
+    const agg2L = Object.keys(L.agg2).map(k => { const o = L.agg2[k]; return { ano, mes, mat: o.mat, eve: o.eve, sec: o.sec, reg: o.reg, val: +o.val.toFixed(2), cnt: o.cnt }; });
+    const agg4L = Object.keys(L.agg4).map(k => { const o = L.agg4[k]; return { mat: o.mat, ano, eve: o.eve, val: +o.val.toFixed(2) }; });
+    const dupMerge = {};
+    Object.keys(L.dup).forEach(k => { const d = L.dup[k]; if (d.cnt <= 1) return; const mk = d.mat + S + d.eve; if (!dupMerge[mk] || d.cnt > dupMerge[mk].cnt) dupMerge[mk] = { mat: d.mat, eve: d.eve, cnt: d.cnt }; });
+    const dup3L = Object.keys(dupMerge).map(mk => { const d = dupMerge[mk]; return { mat: d.mat, eve: d.eve, mes, ano, cnt: d.cnt }; });
+    const servers = {}; Object.keys(L.servers).forEach(mm => servers[mm] = profiles[mm]);
+    const secSet = {}; agg1L.forEach(r => secSet[r.sec] = (secSet[r.sec] || 0) + r.val);
+    layers[comp] = { comp: +comp, ano, mes, nrows: L.nrows, servers, events: L.events, agg1: agg1L, agg2: agg2L, agg4: agg4L, dup3: dup3L, secTotals: secSet };
+  });
+  return { ok: true, layers, stats: { totalVal: +totalVal.toFixed(2), badRows, comps: Object.keys(layers).map(Number).sort((a, b) => a - b) } };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ARMAZENAMENTO — IndexedDB (primário) com fallback p/ localStorage
+// ══════════════════════════════════════════════════════════════════════
+const FolhaStore = (function () {
+  const DB = 'folhaImportDB', ST = 'layers', LSK = 'folhaImportLayers';
+  let _idb = null, _useLS = false;
+  function openIDB() {
+    return new Promise((resolve, reject) => {
+      if (_idb) return resolve(_idb);
+      if (!('indexedDB' in window)) return reject(new Error('sem IndexedDB'));
+      let req; try { req = indexedDB.open(DB, 1); } catch (e) { return reject(e); }
+      req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains(ST)) db.createObjectStore(ST, { keyPath: 'comp' }); };
+      req.onsuccess = () => { _idb = req.result; resolve(_idb); };
+      req.onerror = () => reject(req.error || new Error('IndexedDB falhou'));
+    });
+  }
+  function lsGetAll() { try { return JSON.parse(localStorage.getItem(LSK) || '{}'); } catch (e) { return {}; } }
+  function lsSetAll(o) { localStorage.setItem(LSK, JSON.stringify(o)); }
+  async function getAll() {
+    try {
+      const db = await openIDB();
+      return await new Promise((res, rej) => {
+        const tx = db.transaction(ST, 'readonly').objectStore(ST).getAll();
+        tx.onsuccess = () => res(tx.result || []); tx.onerror = () => rej(tx.error);
+      });
+    } catch (e) {
+      _useLS = true; const o = lsGetAll(); return Object.keys(o).map(k => o[k]);
+    }
+  }
+  async function put(layer) {
+    try {
+      const db = await openIDB();
+      return await new Promise((res, rej) => {
+        const tx = db.transaction(ST, 'readwrite'); tx.objectStore(ST).put(layer);
+        tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error);
+      });
+    } catch (e) {
+      _useLS = true; const o = lsGetAll(); o[layer.comp] = layer;
+      try { lsSetAll(o); return true; } catch (e2) { throw new Error('Sem espaço no armazenamento local (localStorage). Use o site publicado (IndexedDB) para meses consolidados grandes.'); }
+    }
+  }
+  async function del(comp) {
+    try {
+      const db = await openIDB();
+      return await new Promise((res, rej) => { const tx = db.transaction(ST, 'readwrite'); tx.objectStore(ST).delete(+comp); tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error); });
+    } catch (e) { const o = lsGetAll(); delete o[comp]; lsSetAll(o); return true; }
+  }
+  async function clear() {
+    try { const db = await openIDB(); return await new Promise((res, rej) => { const tx = db.transaction(ST, 'readwrite'); tx.objectStore(ST).clear(); tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error); }); }
+    catch (e) { localStorage.removeItem(LSK); return true; }
+  }
+  return { getAll, put, del, clear, usingLS: () => _useLS };
+})();
+
+// ══════════════════════════════════════════════════════════════════════
+// MERGE — aplica camadas sobre os arrays globais (in-place, 1× por load)
+// ══════════════════════════════════════════════════════════════════════
+let FOLHA_LAYERS_META = []; // p/ UI: [{comp,ano,mes,nrows,fileName,importedAt,totalVal,nServers}]
+function folhaApplyOverlay(layersArr) {
+  FOLHA_LAYERS_META = [];
+  if (!layersArr || !layersArr.length) return;
+  // índices por chave natural a partir do estado atual (base)
+  const matIdx = new Map(); mats.forEach((m, i) => matIdx.set(String(m), i));
+  const eveIdx = new Map(); eventos.forEach((e, i) => eveIdx.set(String(e), i));
+  const cargoIdx = new Map(); cargos.forEach((c, i) => cargoIdx.set(c, i));
+  const secIdx = new Map(); secs.forEach((s, i) => secIdx.set(s, i));
+  const regIdx = new Map(); regimes.forEach((r, i) => regIdx.set(r, i));
+  const anoSet = new Set(ANOS_ALL);
+  const internCargo = n => { if (!n) return -1; if (cargoIdx.has(n)) return cargoIdx.get(n); const i = cargos.push(n) - 1; cargoIdx.set(n, i); return i; };
+  const internSec = n => { if (!n) return -1; if (secIdx.has(n)) return secIdx.get(n); const i = secs.push(n) - 1; secIdx.set(n, i); return i; };
+  const internReg = n => { if (!n) return -1; if (regIdx.has(n)) return regIdx.get(n); const i = regimes.push(n) - 1; regIdx.set(n, i); return i; };
+  const internEve = (code, name) => { const k = String(code); if (eveIdx.has(k)) return eveIdx.get(k); const i = eventos.push(isNaN(+code) ? code : +code) - 1; ev_names.push(name || String(code)); eveIdx.set(k, i); return i; };
+  function internServer(mat, prof) {
+    const k = String(mat);
+    if (matIdx.has(k)) {
+      const mi = matIdx.get(k);
+      // atualiza demissão se antes vazia e agora presente (mantém status atual)
+      if (prof && prof.dem && !demissoes[mi]) demissoes[mi] = prof.dem;
+      return mi;
+    }
+    const mi = mats.push(k) - 1;
+    nomes.push(prof ? prof.nome : ''); cpfs.push(prof ? prof.cpf : '');
+    admissoes.push(prof ? prof.adm : null); demissoes.push(prof ? (prof.dem || null) : null);
+    srv_profile.push([internCargo(prof ? prof.cargo : ''), internSec(prof ? prof.sec : ''), internReg(prof ? prof.reg : '')]);
+    matIdx.set(k, mi); return mi;
+  }
+  // índice de agg4 (mi|ano|ei -> ref da linha) p/ acumular
+  const A4 = new Map(); agg4.forEach(r => A4.set(r[0] + '|' + r[1] + '|' + r[2], r));
+
+  layersArr.sort((a, b) => a.comp - b.comp).forEach(layer => {
+    // interna servidores e eventos primeiro
+    const serverMi = {}; Object.keys(layer.servers || {}).forEach(mat => { serverMi[mat] = internServer(mat, layer.servers[mat]); });
+    const eventEi = {}; Object.keys(layer.events || {}).forEach(code => { eventEi[code] = internEve(code, layer.events[code]); });
+    const ei = code => (code in eventEi) ? eventEi[code] : internEve(code, layer.events && layer.events[code]);
+    const mi = mat => (mat in serverMi) ? serverMi[mat] : internServer(mat, (layer.servers && layer.servers[mat]) || null);
+    anoSet.add(layer.ano);
+    (layer.agg1 || []).forEach(r => { agg1.push([r.ano, r.mes, ei(r.eve), internSec(r.sec), internReg(r.reg), r.val, r.cnt]); });
+    (layer.agg2 || []).forEach(r => { agg2.push([r.ano, r.mes, mi(r.mat), ei(r.eve), internSec(r.sec), internReg(r.reg), r.val, r.cnt]); });
+    (layer.dup3 || []).forEach(r => { dup3.push([mi(r.mat), ei(r.eve), r.mes, r.ano, r.cnt]); });
+    (layer.agg4 || []).forEach(r => {
+      const m = mi(r.mat), e = ei(r.eve), key = m + '|' + r.ano + '|' + e, ex = A4.get(key);
+      if (ex) ex[3] = +(ex[3] + r.val).toFixed(2);
+      else { const nr = [m, r.ano, e, r.val]; agg4.push(nr); A4.set(key, nr); }
+    });
+    FOLHA_LAYERS_META.push({ comp: layer.comp, ano: layer.ano, mes: layer.mes, nrows: layer.nrows, fileName: layer.fileName || '', importedAt: layer.importedAt || '', totalVal: (layer.agg1 || []).reduce((s, r) => s + r.val, 0), nServers: Object.keys(layer.servers || {}).length });
+  });
+  // estende ANOS_ALL se surgiram anos novos
+  const merged = [...anoSet].sort((a, b) => a - b);
+  if (merged.length !== ANOS_ALL.length) { ANOS_ALL.length = 0; merged.forEach(a => ANOS_ALL.push(a)); }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// COMBINA camadas do MESMO mês (vários arquivos num upload) — soma agregados
+// ══════════════════════════════════════════════════════════════════════
+function folhaCombineLayers(dst, src) {
+  const S = FOLHA_SEP;
+  if (!dst) return JSON.parse(JSON.stringify(src));
+  dst.nrows += src.nrows;
+  Object.assign(dst.servers, src.servers);
+  Object.assign(dst.events, src.events);
+  const idx = (arr, keyFn) => { const m = new Map(); arr.forEach(r => m.set(keyFn(r), r)); return m; };
+  // agg1
+  const m1 = idx(dst.agg1, r => r.eve + S + r.sec + S + r.reg);
+  src.agg1.forEach(r => { const k = r.eve + S + r.sec + S + r.reg, e = m1.get(k); if (e) { e.val = +(e.val + r.val).toFixed(2); e.cnt += r.cnt; } else { dst.agg1.push(r); m1.set(k, r); } });
+  // agg2
+  const m2 = idx(dst.agg2, r => r.mat + S + r.eve + S + r.sec + S + r.reg);
+  src.agg2.forEach(r => { const k = r.mat + S + r.eve + S + r.sec + S + r.reg, e = m2.get(k); if (e) { e.val = +(e.val + r.val).toFixed(2); e.cnt += r.cnt; } else { dst.agg2.push(r); m2.set(k, r); } });
+  // agg4
+  const m4 = idx(dst.agg4, r => r.mat + S + r.eve);
+  src.agg4.forEach(r => { const k = r.mat + S + r.eve, e = m4.get(k); if (e) { e.val = +(e.val + r.val).toFixed(2); } else { dst.agg4.push(r); m4.set(k, r); } });
+  // dup3 (união, mantém maior cnt)
+  const md = idx(dst.dup3, r => r.mat + S + r.eve);
+  src.dup3.forEach(r => { const k = r.mat + S + r.eve, e = md.get(k); if (e) { if (r.cnt > e.cnt) e.cnt = r.cnt; } else { dst.dup3.push(r); md.set(k, r); } });
+  return dst;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// SheetJS sob demanda (só ao importar)
+// ══════════════════════════════════════════════════════════════════════
+let _folhaXLSXPromise = null;
+function folhaLoadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (_folhaXLSXPromise) return _folhaXLSXPromise;
+  _folhaXLSXPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = () => resolve(window.XLSX);
+    s.onerror = () => reject(new Error('Falha ao carregar a biblioteca de leitura de planilha (precisa de internet).'));
+    document.head.appendChild(s);
+  });
+  return _folhaXLSXPromise;
+}
+function folhaReadFileAOA(file, XLSX) {
+  return new Promise((resolve, reject) => {
+    const rd = new FileReader();
+    rd.onload = e => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        resolve(XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null }));
+      } catch (err) { reject(err); }
+    };
+    rd.onerror = () => reject(rd.error);
+    rd.readAsArrayBuffer(file);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// FLUXO DE IMPORTAÇÃO
+// ══════════════════════════════════════════════════════════════════════
+function folhaSetProgress(html) { const el = document.getElementById('folha-progress'); if (el) el.innerHTML = html; }
+function folhaSetReport(html) { const el = document.getElementById('folha-report'); if (el) el.innerHTML = html; }
+const folhaMesNome = m => ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m] || m;
+const folhaBRL = v => 'R$ ' + (v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+async function folhaOnFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  folhaSetReport('');
+  folhaSetProgress('<div style="padding:10px;color:#0369a1">⏳ Carregando biblioteca de leitura…</div>');
+  let XLSX;
+  try { XLSX = await folhaLoadXLSX(); } catch (e) { folhaSetProgress('<div style="padding:10px;color:#dc2626">❌ ' + e.message + '</div>'); return; }
+
+  const byComp = {}; const perFile = []; let anyError = '';
+  for (let f = 0; f < files.length; f++) {
+    const file = files[f];
+    folhaSetProgress('<div style="padding:10px;color:#0369a1">⏳ Lendo <b>' + file.name + '</b> (' + (f + 1) + '/' + files.length + ')…</div>');
+    let aoa;
+    try { aoa = await folhaReadFileAOA(file, XLSX); } catch (e) { anyError += 'Erro lendo ' + file.name + ': ' + e.message + '<br>'; continue; }
+    const res = folhaAggregate(aoa);
+    if (!res.ok) { anyError += '<b>' + file.name + '</b>: ' + res.error + '<br>'; continue; }
+    perFile.push({ name: file.name, comps: res.stats.comps, totalVal: res.stats.totalVal });
+    res.stats.comps.forEach(c => {
+      const layer = res.layers[c]; layer.fileName = (layer.fileName ? layer.fileName + ' + ' : '') + file.name;
+      byComp[c] = folhaCombineLayers(byComp[c], layer);
+    });
+  }
+
+  const comps = Object.keys(byComp).map(Number).sort((a, b) => a - b);
+  if (!comps.length) { folhaSetProgress(''); folhaSetReport('<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#b91c1c">' + (anyError || 'Nenhuma competência válida encontrada.') + '</div>'); return; }
+
+  // avisos de sobreposição com a base
+  const overlap = comps.filter(c => c <= FOLHA_BASE_MAX_COMP);
+  const nowIso = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  let saved = 0, saveErr = '';
+  for (const c of comps) {
+    const layer = byComp[c]; layer.importedAt = nowIso;
+    // recompacta events (só nomes) e servers já estão prontos
+    try { await FolhaStore.put(layer); saved++; } catch (e) { saveErr += 'Erro salvando ' + folhaMesNome(layer.mes) + '/' + layer.ano + ': ' + e.message + '<br>'; }
+  }
+  folhaSetProgress('');
+  // relatório
+  let rep = '<div style="padding:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">';
+  rep += '<div style="font-weight:800;color:#15803d;font-size:15px;margin-bottom:8px">✅ ' + saved + ' competência(s) importada(s)</div>';
+  rep += '<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>' +
+    ['Competência', 'Linhas', 'Servidores', 'Total folha'].map(h => '<th style="text-align:left;padding:4px 8px;color:#166534;border-bottom:1px solid #bbf7d0">' + h + '</th>').join('') + '</tr></thead><tbody>';
+  comps.forEach(c => { const L = byComp[c]; rep += '<tr><td style="padding:4px 8px;font-weight:700">' + folhaMesNome(L.mes) + '/' + L.ano + '</td><td style="padding:4px 8px">' + L.nrows.toLocaleString('pt-BR') + '</td><td style="padding:4px 8px">' + Object.keys(L.servers).length.toLocaleString('pt-BR') + '</td><td style="padding:4px 8px">' + folhaBRL(L.agg1.reduce((s, r) => s + r.val, 0)) + '</td></tr>'; });
+  rep += '</tbody></table>';
+  if (overlap.length) rep += '<div style="margin-top:8px;padding:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;color:#92400e;font-size:12px">⚠️ ' + overlap.map(c => folhaMesNome(c % 100) + '/' + Math.floor(c / 100)).join(', ') + ' já faz parte da base embutida — importar pode duplicar valores nas visões anuais. Recomenda-se importar apenas meses a partir de ' + folhaMesNome((FOLHA_BASE_MAX_COMP % 100) + 1 > 12 ? 1 : (FOLHA_BASE_MAX_COMP % 100) + 1) + '/' + (((FOLHA_BASE_MAX_COMP % 100) + 1 > 12) ? Math.floor(FOLHA_BASE_MAX_COMP / 100) + 1 : Math.floor(FOLHA_BASE_MAX_COMP / 100)) + '.</div>';
+  if (anyError) rep += '<div style="margin-top:8px;padding:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#b91c1c;font-size:12px">' + anyError + '</div>';
+  if (saveErr) rep += '<div style="margin-top:8px;padding:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#b91c1c;font-size:12px">' + saveErr + '</div>';
+  rep += '<div style="margin-top:12px"><button onclick="location.reload()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">🔄 Aplicar e recarregar painel</button> <span style="color:#166534;font-size:12px;margin-left:8px">Os dados aparecem em todas as abas após recarregar.</span></div>';
+  rep += '</div>';
+  folhaSetReport(rep);
+  folhaRenderList();
+}
+
+async function folhaDeleteComp(comp) {
+  if (!confirm('Remover a competência importada ' + folhaMesNome(comp % 100) + '/' + Math.floor(comp / 100) + '?')) return;
+  await FolhaStore.del(+comp);
+  folhaRenderList();
+  folhaSetReport('<div style="padding:10px;color:#334155">Competência removida. <button onclick="location.reload()" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-weight:700;cursor:pointer">🔄 Recarregar</button></div>');
+}
+async function folhaResetAll() {
+  if (!confirm('Apagar TODOS os meses importados e voltar somente à base embutida?')) return;
+  await FolhaStore.clear();
+  folhaRenderList();
+  folhaSetReport('<div style="padding:10px;color:#334155">Importações apagadas. <button onclick="location.reload()" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-weight:700;cursor:pointer">🔄 Recarregar</button></div>');
+}
+
+async function folhaRenderList() {
+  const el = document.getElementById('folha-list'); if (!el) return;
+  let layers = [];
+  try { layers = await FolhaStore.getAll(); } catch (e) {}
+  layers.sort((a, b) => a.comp - b.comp);
+  if (!layers.length) { el.innerHTML = '<div style="padding:14px;color:var(--mu);font-size:13px;text-align:center;border:1px dashed #cbd5e1;border-radius:8px">Nenhum mês importado ainda. A base embutida vai de Jan/2023 até ' + folhaMesNome(FOLHA_BASE_MAX_COMP % 100) + '/' + Math.floor(FOLHA_BASE_MAX_COMP / 100) + '.</div>'; return; }
+  const rclOv = folhaGetRclOverrides();
+  let h = '<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>' +
+    ['Competência', 'Arquivo', 'Linhas', 'Servidores', 'Total folha', 'RCL do mês (opcional)', 'Importado em', ''].map(x => '<th style="text-align:left;padding:6px 8px;background:#f1f5f9;color:#334155;font-size:10.5px;text-transform:uppercase">' + x + '</th>').join('') + '</tr></thead><tbody>';
+  layers.forEach(L => {
+    const tot = (L.agg1 || []).reduce((s, r) => s + r.val, 0);
+    const rclVal = (rclOv[L.comp] != null ? rclOv[L.comp] : (RCL_MENSAL[L.comp] || ''));
+    h += '<tr style="border-bottom:1px solid #f1f5f9">' +
+      '<td style="padding:6px 8px;font-weight:700;color:#0f172a">' + folhaMesNome(L.mes) + '/' + L.ano + '</td>' +
+      '<td style="padding:6px 8px;color:#64748b;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (L.fileName || '') + '">' + (L.fileName || '—') + '</td>' +
+      '<td style="padding:6px 8px">' + (L.nrows || 0).toLocaleString('pt-BR') + '</td>' +
+      '<td style="padding:6px 8px">' + Object.keys(L.servers || {}).length.toLocaleString('pt-BR') + '</td>' +
+      '<td style="padding:6px 8px">' + folhaBRL(tot) + '</td>' +
+      '<td style="padding:6px 8px"><input type="text" value="' + rclVal + '" placeholder="R$" onchange="folhaSetRcl(' + L.comp + ',this.value)" style="width:120px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:11.5px" title="Receita Corrente Líquida do mês, usada nas abas de Auditoria/Impacto"><div id="folha-rcl-hint-' + L.comp + '" style="font-size:9.5px;color:#94a3b8;margin-top:2px">' + (rclOv[L.comp] ? '✓ salvo' : '') + '</div></td>' +
+      '<td style="padding:6px 8px;color:#64748b">' + (L.importedAt || '—') + '</td>' +
+      '<td style="padding:6px 8px"><button onclick="folhaDeleteComp(' + L.comp + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer">🗑 Remover</button></td>' +
+      '</tr>';
+  });
+  h += '</tbody></table>';
+  h += '<div style="margin-top:10px"><button onclick="folhaResetAll()" style="background:#fff;color:#b91c1c;border:1px solid #fecaca;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Apagar todas as importações</button></div>';
+  el.innerHTML = h;
+}
+
+let _folhaUploadWired = false;
+function renderUpload() {
+  if (!_folhaUploadWired) {
+    const inp = document.getElementById('folha-file');
+    if (inp) inp.addEventListener('change', e => { folhaOnFiles(e.target.files); e.target.value = ''; });
+    const dz = document.getElementById('folha-drop');
+    if (dz) {
+      ['dragover', 'dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.style.background = '#eff6ff'; dz.style.borderColor = '#3b82f6'; }));
+      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.style.background = ''; dz.style.borderColor = '#cbd5e1'; }));
+      dz.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files) folhaOnFiles(e.dataTransfer.files); });
+    }
+    _folhaUploadWired = true;
+  }
+  folhaRenderList();
+}
+function folhaUpdateBanner() {
+  const el = document.getElementById('folha-banner'); if (!el) return;
+  const n = FOLHA_LAYERS_META.length;
+  if (!n) { el.style.display = 'none'; return; }
+  const cs = FOLHA_LAYERS_META.map(m => folhaMesNome(m.mes) + '/' + m.ano).join(', ');
+  el.style.display = '';
+  el.innerHTML = '📥 <b>' + n + '</b> mês(es) importado(s) além da base: ' + cs;
+}
+
+// atualiza subtítulo e badge do cabeçalho conforme os dados mesclados
+function folhaUpdateHeader() {
+  const anoMin = ANOS_ALL[0], anoMax = ANOS_ALL[ANOS_ALL.length - 1];
+  const sub = document.getElementById('hdr-sub');
+  if (sub) sub.textContent = 'Detalhe por rubrica · ' + mats.length.toLocaleString('pt-BR') + ' servidores · ' + eventos.length + ' eventos · ' + anoMin + '–' + anoMax;
+  const badge = document.getElementById('hdr-reg-badge');
+  if (badge) { const tot = agg1.reduce((s, r) => s + (r[6] || 0), 0); badge.textContent = tot.toLocaleString('pt-BR') + ' registros'; }
+}
+
+// ── RCL mensal (Receita Corrente Líquida) informada p/ meses importados ───
+const FOLHA_RCL_KEY = 'folhaRclOverrides';
+function folhaGetRclOverrides() { try { return JSON.parse(localStorage.getItem(FOLHA_RCL_KEY) || '{}'); } catch (e) { return {}; } }
+function folhaApplyRcl() { try { const o = folhaGetRclOverrides(); Object.keys(o).forEach(k => { const v = +o[k]; if (v > 0) RCL_MENSAL[+k] = v; }); } catch (e) {} }
+function folhaSetRcl(comp, raw) {
+  const v = FolhaNorm.num(raw);
+  const o = folhaGetRclOverrides();
+  if (v > 0) { o[comp] = v; RCL_MENSAL[+comp] = v; } else { delete o[comp]; }
+  try { localStorage.setItem(FOLHA_RCL_KEY, JSON.stringify(o)); } catch (e) {}
+  const hint = document.getElementById('folha-rcl-hint-' + comp);
+  if (hint) hint.textContent = v > 0 ? '✓ salvo (' + folhaBRL(v) + ') — reabra as abas de Auditoria/Impacto' : 'sem RCL';
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// BOOTSTRAP — carrega camadas, aplica overlay e inicializa o painel
+// ══════════════════════════════════════════════════════════════════════
+async function folhaBootstrap() {
+  let layers = [];
+  try { layers = await FolhaStore.getAll(); } catch (e) { console.warn('[folha] getAll', e); }
+  try { folhaApplyOverlay(layers); } catch (e) { console.error('[folha] overlay', e); }
+  try { folhaApplyRcl(); } catch (e) { console.error('[folha] rcl', e); }
+  try { rebuildCategories(); } catch (e) { console.error('[folha] categorias', e); }
+  try { boot(); } catch (e) { console.error('[folha] boot', e); }
+  try { folhaUpdateBanner(); } catch (e) {}
+  try { folhaUpdateHeader(); } catch (e) {}
+}
+folhaBootstrap();
+
+
 window.__SCRIPT_READY__ = true;
 console.log('✅ Dashboard script carregado. PARECER:', !!window.PARECER, '| ASSIST:', !!window.ASSIST);
 
