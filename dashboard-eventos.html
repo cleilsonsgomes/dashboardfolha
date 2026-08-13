@@ -9512,15 +9512,27 @@ const FOLHA_ALIASES = {
   EVE_NUMERO: 'eve', EVENTO: 'eve', EVE_NOME: 'evenome', EVENTO_NOME: 'evenome',
   VALOR: 'val', VLR: 'val', CAR_NOME: 'cargo', CARGO: 'cargo',
   SEC_NOME: 'sec', SECRETARIA: 'sec', MES_ID: 'mes', MES: 'mes',
-  ANO_ID: 'ano', ANO: 'ano', REG_NOME: 'reg', REGIME: 'reg', CTI_ID: 'cti', CTI: 'cti'
+  ANO_ID: 'ano', ANO: 'ano', REG_NOME: 'reg', REGIME: 'reg', CTI_ID: 'cti', CTI: 'cti',
+  // formato "Relatorio - Relacao de Eventos" (chaves ja normalizadas: sem acento/simbolo)
+  'NOME DA PESSOA': 'nome', 'DATA DE ADMISSAO': 'adm', 'DATA DE DEMISSAO': 'dem',
+  'N DO EVENTO': 'eve', 'NOME DO EVENTO': 'evenome', 'TIPO DE CALCULO': 'cti', 'FUNCAO': 'funcao'
 };
+// casa cabecalhos ignorando acentos, simbolos (grau/ordinal) e separadores
+function folhaNormHeader(h) { return String(h || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[°º]/g, '').replace(/[^A-Za-z0-9]+/g, ' ').trim().toUpperCase(); }
+const FOLHA_ALIAS_NORM = {}; Object.keys(FOLHA_ALIASES).forEach(k => { FOLHA_ALIAS_NORM[folhaNormHeader(k)] = FOLHA_ALIASES[k]; });
+// mes por extenso -> numero (aceita numero puro tambem)
+const FOLHA_MESES = {};
+['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'].forEach((nm, i) => { FOLHA_MESES[nm.toUpperCase()] = i + 1; FOLHA_MESES[nm.slice(0, 3).toUpperCase()] = i + 1; });
+function folhaParseMes(v) { if (typeof v === 'number') return Math.round(v); const s = String(v == null ? '' : v).trim(); if (/^\d+$/.test(s)) return parseInt(s, 10); const n = s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase(); return FOLHA_MESES[n] || FOLHA_MESES[n.slice(0, 3)] || 0; }
+// remove prefixo "N - " do nome do evento (ex.: "6 - CARGO COMISSAO" -> "CARGO COMISSAO")
+function folhaCleanEvName(s) { return String(s || '').replace(/^\s*\d+\s*-\s*/, '').trim(); }
 const FOLHA_REQUIRED = ['mat', 'eve', 'evenome', 'val', 'sec', 'mes', 'ano', 'reg'];
 
 // ---- agrega array-de-arrays (com cabeçalho) numa camada por competência ---
 function folhaAggregate(rowsAOA) {
   if (!rowsAOA || rowsAOA.length < 2) return { ok: false, error: 'Planilha vazia.' };
   const col = {};
-  rowsAOA[0].forEach((h, i) => { const k = String(h || '').trim().toUpperCase(); if (FOLHA_ALIASES[k]) col[FOLHA_ALIASES[k]] = i; });
+  rowsAOA[0].forEach((h, i) => { const k = folhaNormHeader(h); if (FOLHA_ALIAS_NORM[k]) col[FOLHA_ALIAS_NORM[k]] = i; });
   const missing = FOLHA_REQUIRED.filter(k => !(k in col));
   if (missing.length) return { ok: false, error: 'Colunas ausentes: ' + missing.join(', ') + '. Esperado: FUN_MATRICULA, EVE_NUMERO, EVE_NOME, VALOR, SEC_NOME, MES_ID, ANO_ID, REG_NOME.' };
 
@@ -9531,14 +9543,14 @@ function folhaAggregate(rowsAOA) {
     const row = rowsAOA[r]; if (!row || row.length === 0) continue;
     const mat = FolhaNorm.intStr(row[col.mat]); if (!mat) continue;
     const ano = parseInt(FolhaNorm.intStr(row[col.ano]), 10);
-    const mes = parseInt(FolhaNorm.intStr(row[col.mes]), 10);
+    const mes = folhaParseMes(row[col.mes]);
     if (!ano || !mes) { badRows++; continue; }
     const eve = FolhaNorm.intStr(row[col.eve]);
-    const evenome = FolhaNorm.clean(row[col.evenome]);
+    const evenome = folhaCleanEvName(FolhaNorm.clean(row[col.evenome]));
     const val = FolhaNorm.num(row[col.val]);
     const sec = FolhaNorm.clean(row[col.sec]);
     const reg = FolhaNorm.clean(row[col.reg]);
-    const cargo = ('cargo' in col) ? FolhaNorm.clean(row[col.cargo]) : '';
+    const cargo = (('cargo' in col) ? FolhaNorm.clean(row[col.cargo]) : '') || (('funcao' in col) ? FolhaNorm.clean(row[col.funcao]) : '');
     const comp = ano * 100 + mes, L = ensure(comp);
     L.nrows++; totalVal += val;
     if (!L.events[eve]) L.events[eve] = evenome;
@@ -9662,9 +9674,9 @@ function folhaApplyOverlay(layersArr, replaceBase) {
   const secIdx = new Map(); secs.forEach((s, i) => secIdx.set(s, i));
   const regIdx = new Map(); regimes.forEach((r, i) => regIdx.set(r, i));
   const anoSet = new Set(ANOS_ALL);
-  const internCargo = n => { if (!n) return -1; if (cargoIdx.has(n)) return cargoIdx.get(n); const i = cargos.push(n) - 1; cargoIdx.set(n, i); return i; };
-  const internSec = n => { if (!n) return -1; if (secIdx.has(n)) return secIdx.get(n); const i = secs.push(n) - 1; secIdx.set(n, i); return i; };
-  const internReg = n => { if (!n) return -1; if (regIdx.has(n)) return regIdx.get(n); const i = regimes.push(n) - 1; regIdx.set(n, i); return i; };
+  const internCargo = n => { n = n || 'Não informado'; if (cargoIdx.has(n)) return cargoIdx.get(n); const i = cargos.push(n) - 1; cargoIdx.set(n, i); return i; };
+  const internSec = n => { n = n || 'Não informada'; if (secIdx.has(n)) return secIdx.get(n); const i = secs.push(n) - 1; secIdx.set(n, i); return i; };
+  const internReg = n => { n = n || 'Não informado'; if (regIdx.has(n)) return regIdx.get(n); const i = regimes.push(n) - 1; regIdx.set(n, i); return i; };
   const internEve = (code, name) => { const k = String(code); if (eveIdx.has(k)) return eveIdx.get(k); const i = eventos.push(isNaN(+code) ? code : +code) - 1; ev_names.push(name || String(code)); eveIdx.set(k, i); return i; };
   function internServer(mat, prof) {
     const k = String(mat);
