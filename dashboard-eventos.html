@@ -114,7 +114,7 @@ select.sf{padding:6px 10px;border:1.5px solid var(--bd);border-radius:8px;font-s
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <span class="hbadge" id="hdr-reg-badge">0 registros</span>
-    <span class="hbadge">Padrão: 2025–2026 · Comissionados</span>
+    <span class="hbadge">Padrão: todos os anos · todos os regimes</span>
   </div>
 </header>
 
@@ -1382,7 +1382,7 @@ const meses_str=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out',
 // ════════════════════════════════════════════════════════════════
 // MULTI-SELECT FILTER SYSTEM
 // ════════════════════════════════════════════════════════════════
-const FS={anos:new Set([2025,2026]),ris:new Set(),sis:new Set(),eis:new Set(),comps:new Set()};
+const FS={anos:new Set(),ris:new Set(),sis:new Set(),eis:new Set(),comps:new Set()};
 const EXCLUIR_COMPS=new Set();
 
 // RCL mensal real (Receita Corrente Líquida) — Paulo Afonso/BA
@@ -1453,10 +1453,8 @@ function applyFilters(){
   rerenderAll();
 }
 function resetFilters(){
-  msClear('ano'); [2025,2026].forEach(v=>MS['ano'].selected.add(v)); msLabel('ano');
-  msClear('reg');
-  const ri_com=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
-  if(ri_com>=0) MS['reg'].selected.add(ri_com); msLabel('reg');
+  msClear('ano'); msLabel('ano');
+  msClear('reg'); msLabel('reg');
   msClear('sec'); msLabel('sec');
   msClear('ev'); msLabel('ev');
   if(MS['competencia']){msAll('competencia');}
@@ -4781,7 +4779,7 @@ function renderEstag(){
 
 
 function boot(){
-  msInit('ano', ANOS_ALL.map(String), [2025,2026], ANOS_ALL);
+  msInit('ano', ANOS_ALL.map(String), [], ANOS_ALL);
   msInit('reg', regimes.map(r=>r.replace(/^\d+ - /,'')), [], regimes.map((_,i)=>i));
   msInit('sec', secs.map(s=>s.replace(/^\d+ - /,'')), [], secs.map((_,i)=>i));
   msInit('ev', ev_names, [], eventos.map((_,i)=>i));
@@ -4800,9 +4798,7 @@ function boot(){
     regimes.forEach((r,i)=>{const o=document.createElement('option');o.value=i;o.textContent=r.replace(/^\d+ - /,'');heRegSel.appendChild(o);});
   }
 
-  // Default: 2025+2026 e Cargos em Comissão
-  const ri_com=regimes.findIndex(r=>/Cargos em Comiss/i.test(r));
-  if(ri_com>=0){MS['reg'].selected.add(ri_com);msLabel('reg');}
+  // Default: todos os anos e todos os regimes (seleção vazia = todos)
   applyFilters();
 
   // Inicializa Mês no filtro de plantões
